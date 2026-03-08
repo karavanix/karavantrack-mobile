@@ -9,7 +9,7 @@ import 'gps.dart';
 // ---------------------------------------------------------------------------
 // API Configuration
 // ---------------------------------------------------------------------------
-const String _kBaseUrl = 'https://api.yool.live/'; // <-- set your host
+const String _kBaseUrl = 'https://api.yool.live';
 const String _kBasePath = '/api/v1';
 
 String _url(String path) => '$_kBaseUrl$_kBasePath$path';
@@ -41,7 +41,7 @@ class ApiService {
 
   bool get hasToken => _accessToken != null;
 
-  // Refresh access token using refresh token
+  // POST /auth/refresh
   Future<bool> refreshTokens() async {
     if (_refreshToken == null) return false;
     try {
@@ -67,9 +67,7 @@ class ApiService {
     final resp = await fn();
     if (resp.statusCode == 401 && _refreshToken != null) {
       final refreshed = await refreshTokens();
-      if (refreshed) {
-        return fn();
-      }
+      if (refreshed) return fn();
     }
     return resp;
   }
@@ -97,8 +95,7 @@ class ApiService {
       );
       return {'success': true, 'data': data};
     }
-    final err = _parseError(response);
-    return {'success': false, 'message': err};
+    return {'success': false, 'message': _parseError(response)};
   }
 
   // POST /auth/register
@@ -113,8 +110,7 @@ class ApiService {
     final body = <String, dynamic>{'password': password, 'role': role};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    if (firstName != null && firstName.isNotEmpty)
-      body['first_name'] = firstName;
+    if (firstName != null && firstName.isNotEmpty) body['first_name'] = firstName;
     if (lastName != null && lastName.isNotEmpty) body['last_name'] = lastName;
 
     final response = await http.post(
@@ -132,8 +128,7 @@ class ApiService {
       }
       return {'success': true, 'data': data};
     }
-    final err = _parseError(response);
-    return {'success': false, 'message': err};
+    return {'success': false, 'message': _parseError(response)};
   }
 
   // POST /auth/logout
@@ -197,35 +192,35 @@ class ApiService {
     } catch (_) {}
   }
 
-  // GET /loads
-  Future<List<Map<String, dynamic>>> getLoads({
-    String? companyId,
-    String? carrierId,
-    String? status,
+  // GET /loads/pending — returns query.ListResponse: {count, limit, offset, result:[LoadResponse]}
+  Future<Map<String, dynamic>> getPendingLoads({
     int? limit,
     int? offset,
   }) async {
     final params = <String, String>{};
-    if (companyId != null) params['company_id'] = companyId;
-    if (carrierId != null) params['carrier_id'] = carrierId;
-    if (status != null) params['status'] = status;
     if (limit != null) params['limit'] = limit.toString();
     if (offset != null) params['offset'] = offset.toString();
 
-    final uri = Uri.parse(
-      _url('/loads'),
-    ).replace(queryParameters: params.isEmpty ? null : params);
+    final uri = Uri.parse(_url('/loads/pending'))
+        .replace(queryParameters: params.isEmpty ? null : params);
     final response = await _authedRequest(
       () => http.get(uri, headers: _authHeaders),
     );
-
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data is List) {
-        return data.cast<Map<String, dynamic>>();
-      }
+      return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    return [];
+    return {'count': 0, 'limit': 20, 'offset': 0, 'result': <dynamic>[]};
+  }
+
+  // GET /loads/active — returns the current active load for the authenticated carrier
+  Future<Map<String, dynamic>?> getActiveLoad() async {
+    final response = await _authedRequest(
+      () => http.get(Uri.parse(_url('/loads/active')), headers: _authHeaders),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    return null;
   }
 
   // GET /loads/{id}
@@ -253,8 +248,7 @@ class ApiService {
   // POST /loads/{id}/start
   Future<bool> startLoad(String id) async {
     final response = await _authedRequest(
-      () =>
-          http.post(Uri.parse(_url('/loads/$id/start')), headers: _authHeaders),
+      () => http.post(Uri.parse(_url('/loads/$id/start')), headers: _authHeaders),
     );
     return response.statusCode == 200;
   }
@@ -301,25 +295,13 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  // GET /users/shippers/search
-  Future<List<Map<String, dynamic>>> searchShippers(String query) async {
-    final uri = Uri.parse(
-      _url('/users/shippers/search'),
-    ).replace(queryParameters: {'q': query});
-    final response = await _authedRequest(
-      () => http.get(uri, headers: _authHeaders),
-    );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data is List) return data.cast<Map<String, dynamic>>();
-    }
-    return [];
-  }
-
-  // GET /companies/{id}
+  // GET /carriers/companies/{id}
   Future<Map<String, dynamic>?> getCompany(String id) async {
     final response = await _authedRequest(
-      () => http.get(Uri.parse(_url('/companies/$id')), headers: _authHeaders),
+      () => http.get(
+        Uri.parse(_url('/carriers/companies/$id')),
+        headers: _authHeaders,
+      ),
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -478,22 +460,31 @@ enum NoticeAudience { driver, shipper }
 
 class DriverProfile {
   DriverProfile({
-    required this.fullName,
+    required this.firstName,
+    required this.lastName,
     required this.phone,
     this.email,
     this.vehicleNumber,
     this.vehicleType,
     required this.consentAccepted,
     this.userId,
+    this.role,
   });
 
-  String fullName;
+  String firstName;
+  String lastName;
   String phone;
   String? email;
   String? vehicleNumber;
   String? vehicleType;
   bool consentAccepted;
-  String? userId; // from API /users/me response
+  String? userId;
+  String? role;
+
+  String get fullName {
+    final parts = [firstName, lastName].where((s) => s.isNotEmpty).join(' ');
+    return parts.isNotEmpty ? parts : 'Водитель';
+  }
 }
 
 class TrackingPoint {
@@ -553,6 +544,7 @@ class LoadItem {
     required this.shipperContact,
     required this.createdAtUtc,
     this.plannedAtUtc,
+    this.dropoffAtUtc,
     required this.assignmentMethod,
     this.assignedPhone,
     this.assignedEmail,
@@ -564,6 +556,10 @@ class LoadItem {
     required this.dropoffLon,
     this.isVisibleToCurrentDriver = false,
     this.pendingDriverRegistration = false,
+    this.carrierId,
+    this.companyId,
+    this.referenceId,
+    this.title,
   });
 
   final String id;
@@ -573,11 +569,16 @@ class LoadItem {
   final String shipperContact;
   final DateTime createdAtUtc;
   final DateTime? plannedAtUtc;
+  final DateTime? dropoffAtUtc;
   final AssignmentMethod assignmentMethod;
   final String? assignedPhone;
   final String? assignedEmail;
   final String? inviteToken;
   final DateTime? inviteExpiresAtUtc;
+  final String? carrierId;
+  final String? companyId;
+  final String? referenceId;
+  final String? title;
 
   final double pickupLat;
   final double pickupLon;
@@ -642,8 +643,8 @@ class LoadItem {
       id: json['id'] as String? ?? '',
       pickupAddress: json['pickup_address'] as String? ?? '',
       dropoffAddress: json['dropoff_address'] as String? ?? '',
-      description:
-          json['description'] as String? ?? json['title'] as String? ?? '',
+      description: json['description'] as String? ?? json['title'] as String? ?? '',
+      title: json['title'] as String?,
       shipperContact: json['member_id'] as String? ?? '',
       createdAtUtc:
           DateTime.tryParse(json['created_at'] as String? ?? '') ??
@@ -651,11 +652,17 @@ class LoadItem {
       plannedAtUtc: json['pickup_at'] != null
           ? DateTime.tryParse(json['pickup_at'] as String)
           : null,
+      dropoffAtUtc: json['dropoff_at'] != null
+          ? DateTime.tryParse(json['dropoff_at'] as String)
+          : null,
       assignmentMethod: AssignmentMethod.contact,
       pickupLat: (json['pickup_lat'] as num?)?.toDouble() ?? 0,
       pickupLon: (json['pickup_lng'] as num?)?.toDouble() ?? 0,
       dropoffLat: (json['dropoff_lat'] as num?)?.toDouble() ?? 0,
       dropoffLon: (json['dropoff_lng'] as num?)?.toDouble() ?? 0,
+      carrierId: json['carrier_id'] as String?,
+      companyId: json['company_id'] as String?,
+      referenceId: json['reference_id'] as String?,
       isVisibleToCurrentDriver: true,
     );
     item.status = status;
@@ -664,12 +671,11 @@ class LoadItem {
 }
 
 // ---------------------------------------------------------------------------
-// AppStore — replaces DemoStore, wires to real API
+// AppStore — wires to real API
 // ---------------------------------------------------------------------------
 class AppStore extends ChangeNotifier {
   AppStore() {
     _nowUtc = DateTime.now().toUtc();
-    // Update clock every second for UI timestamps
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _nowUtc = DateTime.now().toUtc();
       _checkSilenceAlerts();
@@ -686,6 +692,7 @@ class AppStore extends ChangeNotifier {
 
   bool isLoggedIn = false;
   bool isLoading = false;
+  bool isCarrierLoading = false;
   String loggedInPhone = '';
   String loggedInEmail = '';
 
@@ -697,15 +704,17 @@ class AppStore extends ChangeNotifier {
   bool networkOnline = true;
 
   final List<LoadItem> _loads = <LoadItem>[];
+  // Carrier-specific: pending (assigned) loads and active load
+  final List<LoadItem> _pendingLoads = <LoadItem>[];
+  LoadItem? _carrierActiveLoad;
+
   final List<AppNotice> _notices = <AppNotice>[];
   final List<AuditEvent> _events = <AuditEvent>[];
 
   String? selectedShipperLoadId;
-
   Position? _lastGpsPosition;
 
   DateTime get nowUtc => _nowUtc;
-
   bool get isProfileCompleted => profile != null;
 
   bool get driverPermissionsReady =>
@@ -720,11 +729,8 @@ class AppStore extends ChangeNotifier {
 
   List<LoadItem> get loads => List<LoadItem>.unmodifiable(_sortedLoads(_loads));
 
-  List<LoadItem> get driverVisibleLoads {
-    return _sortedLoads(
-      _loads.where((l) => l.isVisibleToCurrentDriver).toList(),
-    );
-  }
+  List<LoadItem> get driverVisibleLoads =>
+      _sortedLoads(_loads.where((l) => l.isVisibleToCurrentDriver).toList());
 
   List<LoadItem> get assignedLoads =>
       driverVisibleLoads.where((l) => l.status == LoadStatus.assigned).toList();
@@ -736,6 +742,12 @@ class AppStore extends ChangeNotifier {
       driverVisibleLoads.where((l) => l.isFinal).toList();
 
   List<LoadItem> get shipperLoads => _sortedLoads(List<LoadItem>.from(_loads));
+
+  // Carrier page: loads from /loads/pending
+  List<LoadItem> get pendingLoads => List<LoadItem>.unmodifiable(_pendingLoads);
+
+  // Carrier page: active load from /loads/active
+  LoadItem? get carrierActiveLoad => _carrierActiveLoad;
 
   List<LoadItem> get availableInviteLoads {
     return _sortedLoads(
@@ -793,11 +805,12 @@ class AppStore extends ChangeNotifier {
   void onGpsPosition(Position position) {
     _lastGpsPosition = position;
     if (!networkOnline || !driverPermissionsReady) return;
-    // Send location for all active loads
     for (final load in _loads) {
-      if (load.isActive) {
-        _sendGpsPointToApi(load, position);
-      }
+      if (load.isActive) _sendGpsPointToApi(load, position);
+    }
+    // Also track carrier active load
+    if (_carrierActiveLoad != null && _carrierActiveLoad!.isActive) {
+      _sendGpsPointToApi(_carrierActiveLoad!, position);
     }
   }
 
@@ -824,6 +837,7 @@ class AppStore extends ChangeNotifier {
         _log('auth.login', 'Вход выполнен: ${email ?? phone}');
         await _loadProfile();
         await fetchLoads();
+        await fetchCarrierLoads();
         notifyListeners();
         return null;
       }
@@ -862,6 +876,7 @@ class AppStore extends ChangeNotifier {
         _log('auth.register', 'Регистрация: ${email ?? phone}');
         await _loadProfile();
         await fetchLoads();
+        await fetchCarrierLoads();
         notifyListeners();
         return null;
       }
@@ -881,6 +896,8 @@ class AppStore extends ChangeNotifier {
     loggedInPhone = '';
     profile = null;
     _loads.clear();
+    _pendingLoads.clear();
+    _carrierActiveLoad = null;
     _notices.clear();
     _events.clear();
     selectedShipperLoadId = null;
@@ -896,14 +913,15 @@ class AppStore extends ChangeNotifier {
     if (me == null) return;
     final firstName = (me['first_name'] as String? ?? '').trim();
     final lastName = (me['last_name'] as String? ?? '').trim();
-    final fullName = [firstName, lastName].where((s) => s.isNotEmpty).join(' ');
-    if (fullName.isEmpty) return; // profile not completed yet
+    if (firstName.isEmpty && lastName.isEmpty) return; // profile not completed
     profile = DriverProfile(
-      fullName: fullName,
+      firstName: firstName,
+      lastName: lastName,
       phone: me['phone'] as String? ?? loggedInPhone,
       email: me['email'] as String?,
       consentAccepted: true,
       userId: me['id'] as String?,
+      role: me['role'] as String?,
     );
     notifyListeners();
   }
@@ -942,26 +960,62 @@ class AppStore extends ChangeNotifier {
         firstName: firstName,
         lastName: lastName,
       );
-      if (!success) {
-        return 'Не удалось сохранить профиль на сервере';
-      }
+      if (!success) return 'Не удалось сохранить профиль на сервере';
 
       profile = DriverProfile(
-        fullName: trimmedName,
+        firstName: firstName,
+        lastName: lastName,
         phone: trimmedPhone,
         email: trimmedEmail.isEmpty ? null : trimmedEmail,
-        vehicleNumber: trimmedVehicleNumber.isEmpty
-            ? null
-            : trimmedVehicleNumber,
+        vehicleNumber: trimmedVehicleNumber.isEmpty ? null : trimmedVehicleNumber,
         vehicleType: trimmedVehicleType.isEmpty ? null : trimmedVehicleType,
         consentAccepted: consentAccepted,
+        userId: profile?.userId,
+        role: profile?.role,
       );
       loggedInPhone = trimmedPhone;
-      _log(
-        'driver.profile.saved',
-        'Профиль обновлен: $trimmedName / $trimmedPhone',
-      );
+      _log('driver.profile.saved', 'Профиль обновлен: $trimmedName / $trimmedPhone');
       await fetchLoads();
+      await fetchCarrierLoads();
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return 'Ошибка сети: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Update first name and last name via PUT /users/me
+  Future<String?> updateName({
+    required String firstName,
+    required String lastName,
+  }) async {
+    final fn = firstName.trim();
+    final ln = lastName.trim();
+    if (fn.isEmpty) return 'Имя не может быть пустым';
+
+    isLoading = true;
+    notifyListeners();
+    try {
+      final success = await _api.updateMe(firstName: fn, lastName: ln);
+      if (!success) return 'Не удалось обновить имя на сервере';
+
+      if (profile != null) {
+        profile = DriverProfile(
+          firstName: fn,
+          lastName: ln,
+          phone: profile!.phone,
+          email: profile!.email,
+          vehicleNumber: profile!.vehicleNumber,
+          vehicleType: profile!.vehicleType,
+          consentAccepted: profile!.consentAccepted,
+          userId: profile!.userId,
+          role: profile!.role,
+        );
+      }
+      _log('profile.name.updated', 'Имя обновлено: $fn $ln');
       notifyListeners();
       return null;
     } catch (e) {
@@ -973,12 +1027,28 @@ class AppStore extends ChangeNotifier {
   }
 
   // -------------------------------------------------------------------------
-  // LOADS
+  // LOADS — driver view (uses pending + active combined)
   // -------------------------------------------------------------------------
   Future<void> fetchLoads() async {
     try {
-      final rawLoads = await _api.getLoads();
+      // Fetch pending (assigned) loads
+      final pendingResp = await _api.getPendingLoads(limit: 50);
+      final rawResult = pendingResp['result'];
+      final List<Map<String, dynamic>> rawLoads =
+          rawResult is List ? rawResult.cast<Map<String, dynamic>>() : [];
+
+      // Fetch active load
+      final activeJson = await _api.getActiveLoad();
+
       final parsed = rawLoads.map(LoadItem.fromApiJson).toList();
+
+      // Merge active load into driver loads if not already present
+      if (activeJson != null) {
+        final activeLoad = LoadItem.fromApiJson(activeJson);
+        final alreadyIn = parsed.any((l) => l.id == activeLoad.id);
+        if (!alreadyIn) parsed.add(activeLoad);
+      }
+
       _loads.clear();
       _loads.addAll(parsed);
       if (_loads.isNotEmpty && selectedShipperLoadId == null) {
@@ -991,9 +1061,45 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // CARRIER LOADS — dedicated carrier page
+  // -------------------------------------------------------------------------
+  Future<void> fetchCarrierLoads() async {
+    isCarrierLoading = true;
+    notifyListeners();
+    try {
+      // Fetch pending (assigned) loads for this carrier
+      final pendingResp = await _api.getPendingLoads(limit: 50);
+      final rawResult = pendingResp['result'];
+      final List<Map<String, dynamic>> rawPending =
+          rawResult is List ? rawResult.cast<Map<String, dynamic>>() : [];
+
+      _pendingLoads.clear();
+      _pendingLoads.addAll(rawPending.map(LoadItem.fromApiJson));
+
+      // Fetch current active load
+      final activeJson = await _api.getActiveLoad();
+      _carrierActiveLoad = activeJson != null ? LoadItem.fromApiJson(activeJson) : null;
+
+      _log(
+        'carrier.loads.fetched',
+        'Pending: ${_pendingLoads.length}, Active: ${_carrierActiveLoad?.id ?? 'none'}',
+      );
+      notifyListeners();
+    } catch (e) {
+      _log('carrier.loads.fetch.error', 'Ошибка загрузки Carrier грузов: $e');
+    } finally {
+      isCarrierLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> acceptLoad(String loadId) async {
-    final load = _findLoad(loadId);
-    if (load == null || load.status != LoadStatus.assigned) return;
+    final load = _findLoad(loadId) ?? _pendingLoads.firstWhere(
+      (l) => l.id == loadId,
+      orElse: () => _pendingLoads.first,
+    );
+    if (load.status != LoadStatus.assigned) return;
 
     isLoading = true;
     notifyListeners();
@@ -1004,9 +1110,6 @@ class AppStore extends ChangeNotifier {
         load.acceptedAtUtc = nowUtc;
         load.moving = true;
         load.nextTrackingDueUtc = nowUtc;
-        if (load.assignmentMethod == AssignmentMethod.inviteLink) {
-          load.inviteConsumed = true;
-        }
         _log('load.accepted', 'Водитель принял груз ${load.id}');
         _notify(
           audience: NoticeAudience.shipper,
@@ -1019,6 +1122,8 @@ class AppStore extends ChangeNotifier {
         } else if (_lastGpsPosition != null) {
           _sendGpsPointToApi(load, _lastGpsPosition!);
         }
+        // Refresh carrier loads after accept
+        await fetchCarrierLoads();
       } else {
         _log('load.accept.error', 'Сервер отклонил принятие груза $loadId');
       }
@@ -1033,14 +1138,10 @@ class AppStore extends ChangeNotifier {
   void rejectLoad(String loadId, RejectReason reason, {String? otherText}) {
     final load = _findLoad(loadId);
     if (load == null || load.status != LoadStatus.assigned) return;
-    // No reject endpoint in API — local only
     load.status = LoadStatus.rejected;
     load.rejectedAtUtc = nowUtc;
     load.rejectReasonLabel = _rejectReasonLabel(reason, otherText: otherText);
-    _log(
-      'load.rejected',
-      'Груз ${load.id} отклонен: ${load.rejectReasonLabel}',
-    );
+    _log('load.rejected', 'Груз ${load.id} отклонен: ${load.rejectReasonLabel}');
     _notify(
       audience: NoticeAudience.shipper,
       title: 'Груз отклонен',
@@ -1050,7 +1151,8 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> completeLoad(String loadId) async {
-    final load = _findLoad(loadId);
+    final load = _findLoad(loadId) ??
+        (_carrierActiveLoad?.id == loadId ? _carrierActiveLoad : null);
     if (load == null || !load.isActive) return;
 
     isLoading = true;
@@ -1061,13 +1163,15 @@ class AppStore extends ChangeNotifier {
         load.status = LoadStatus.completed;
         load.completedAtUtc = nowUtc;
         load.nextTrackingDueUtc = null;
-        _log('load.completed', 'Груз ${load.id} завершен. Трекинг остановлен.');
+        _log('load.completed', 'Груз ${load.id} завершен.');
         _notify(
           audience: NoticeAudience.shipper,
           title: 'Груз завершен',
-          message:
-              'Груз #${load.id} переведен в Completed. Трекинг остановлен.',
+          message: 'Груз #${load.id} переведен в Completed. Трекинг остановлен.',
         );
+        if (_carrierActiveLoad?.id == loadId) {
+          _carrierActiveLoad = null;
+        }
       }
     } catch (e) {
       _log('load.complete.error', 'Ошибка: $e');
@@ -1078,7 +1182,6 @@ class AppStore extends ChangeNotifier {
   }
 
   void cancelLoad(String loadId) {
-    // No cancel endpoint in API — local only
     final load = _findLoad(loadId);
     if (load == null || !load.isActive) return;
     load.status = LoadStatus.cancelled;
@@ -1094,7 +1197,8 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> markLoadInTransit(String loadId) async {
-    final load = _findLoad(loadId);
+    final load = _findLoad(loadId) ??
+        (_carrierActiveLoad?.id == loadId ? _carrierActiveLoad : null);
     if (load == null || load.status != LoadStatus.accepted) return;
 
     isLoading = true;
@@ -1124,76 +1228,7 @@ class AppStore extends ChangeNotifier {
     load.isVisibleToCurrentDriver = true;
     load.inviteOpenedByDriver = true;
     load.pendingDriverRegistration = false;
-    _log(
-      'load.invite.opened',
-      'Водитель открыл приглашение для груза ${load.id}',
-    );
-    notifyListeners();
-    return null;
-  }
-
-  // Local-only load creation (no POST /loads endpoint in API)
-  String? createLoad({
-    required String pickupAddress,
-    required String dropoffAddress,
-    required String description,
-    DateTime? plannedAtUtc,
-    required AssignmentMethod assignmentMethod,
-    required String shipperContact,
-    String? driverPhone,
-    String? driverEmail,
-  }) {
-    final pickup = pickupAddress.trim();
-    final dropoff = dropoffAddress.trim();
-    final note = description.trim();
-    final shipper = shipperContact.trim();
-    final phone = (driverPhone ?? '').trim();
-    final email = (driverEmail ?? '').trim();
-
-    if (pickup.isEmpty || dropoff.isEmpty)
-      return 'Укажите точки погрузки и разгрузки';
-    if (shipper.isEmpty) return 'Укажите контакт грузовладельца';
-
-    if (assignmentMethod == AssignmentMethod.contact) {
-      if (phone.isEmpty && email.isEmpty)
-        return 'Для назначения по телефону/email заполните хотя бы одно поле';
-      if (phone.isNotEmpty && !_isValidPhone(phone))
-        return 'Некорректный телефон водителя';
-      if (email.isNotEmpty && !_isValidEmail(email))
-        return 'Некорректный email водителя';
-    }
-
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final load = LoadItem(
-      id: id,
-      pickupAddress: pickup,
-      dropoffAddress: dropoff,
-      description: note.isEmpty ? 'Без комментария' : note,
-      shipperContact: shipper,
-      createdAtUtc: nowUtc,
-      plannedAtUtc: plannedAtUtc,
-      assignmentMethod: assignmentMethod,
-      assignedPhone: phone.isEmpty ? null : phone,
-      assignedEmail: email.isEmpty ? null : email,
-      inviteToken: assignmentMethod == AssignmentMethod.inviteLink
-          ? _generateToken(28)
-          : null,
-      inviteExpiresAtUtc: assignmentMethod == AssignmentMethod.inviteLink
-          ? nowUtc.add(const Duration(hours: 72))
-          : null,
-      pickupLat: 41.2995,
-      pickupLon: 69.2401,
-      dropoffLat: 39.6542,
-      dropoffLon: 66.9597,
-    );
-
-    if (assignmentMethod == AssignmentMethod.contact) {
-      load.pendingDriverRegistration = true;
-    }
-
-    _loads.add(load);
-    selectedShipperLoadId = load.id;
-    _log('load.created', 'Создан груз ${load.id} ($pickup -> $dropoff)');
+    _log('load.invite.opened', 'Водитель открыл приглашение для груза ${load.id}');
     notifyListeners();
     return null;
   }
@@ -1228,10 +1263,7 @@ class AppStore extends ChangeNotifier {
   void setLocationServicesEnabled(bool value) {
     if (locationServicesEnabled == value) return;
     locationServicesEnabled = value;
-    _log(
-      'permissions.location_services',
-      'Location Services ${value ? 'ON' : 'OFF'}',
-    );
+    _log('permissions.location_services', 'Location Services ${value ? 'ON' : 'OFF'}');
     _handlePermissionIncidentState();
     notifyListeners();
   }
@@ -1239,10 +1271,7 @@ class AppStore extends ChangeNotifier {
   void setLocationAlwaysEnabled(bool value) {
     if (locationAlwaysEnabled == value) return;
     locationAlwaysEnabled = value;
-    _log(
-      'permissions.location_always',
-      'Location Always ${value ? 'ON' : 'OFF'}',
-    );
+    _log('permissions.location_always', 'Location Always ${value ? 'ON' : 'OFF'}');
     _handlePermissionIncidentState();
     notifyListeners();
   }
@@ -1250,10 +1279,7 @@ class AppStore extends ChangeNotifier {
   void setBackgroundUpdatesEnabled(bool value) {
     if (backgroundUpdatesEnabled == value) return;
     backgroundUpdatesEnabled = value;
-    _log(
-      'permissions.background_updates',
-      'Background updates ${value ? 'ON' : 'OFF'}',
-    );
+    _log('permissions.background_updates', 'Background updates ${value ? 'ON' : 'OFF'}');
     _handlePermissionIncidentState();
     notifyListeners();
   }
@@ -1266,8 +1292,7 @@ class AppStore extends ChangeNotifier {
       _notify(
         audience: NoticeAudience.driver,
         title: 'Нет интернета',
-        message:
-            'Точки трекинга будут буферизоваться локально и отправятся позже.',
+        message: 'Точки трекинга будут буферизоваться локально и отправятся позже.',
       );
     } else {
       _flushAllOfflineBuffers();
@@ -1298,21 +1323,19 @@ class AppStore extends ChangeNotifier {
     load.lastLocalPoint = point;
 
     if (networkOnline) {
-      if (load.offlineBuffer.isNotEmpty) {
-        await _flushLoadBuffer(load);
-      }
+      if (load.offlineBuffer.isNotEmpty) await _flushLoadBuffer(load);
       await _deliverTrackingPoint(load, point);
     } else {
       load.offlineBuffer.add(point);
       _log(
         'tracking.buffered',
-        'Нет сети: точка для груза ${load.id} сохранена локально (buffer=${load.offlineBuffer.length})',
+        'Нет сети: точка для груза ${load.id} сохранена (buffer=${load.offlineBuffer.length})',
       );
     }
     notifyListeners();
   }
 
-   Future<void> _deliverTrackingPoint(LoadItem load, TrackingPoint point) async {
+  Future<void> _deliverTrackingPoint(LoadItem load, TrackingPoint point) async {
     try {
       final ok = await _api.registerLocation(
         loadId: load.id,
@@ -1328,17 +1351,13 @@ class AppStore extends ChangeNotifier {
         load.silenceAlertSent = false;
         load.silenceAlertAtUtc = null;
         if (load.status == LoadStatus.accepted && point.speedKmh > 1) {
-          // Auto-transition to in_transit
           await _api.startLoad(load.id);
           load.status = LoadStatus.inTransit;
-          _log(
-            'load.status.change',
-            'Груз ${load.id}: статус In Transit (авто)',
-          );
+          _log('load.status.change', 'Груз ${load.id}: статус In Transit (авто)');
         }
         _log(
           'tracking.point.sent',
-          'POST /loads/${load.id}/location: speed=${point.speedKmh.toStringAsFixed(1)} км/ч, accuracy=${point.accuracyM.toStringAsFixed(0)}м',
+          'POST /loads/${load.id}/location: speed=${point.speedKmh.toStringAsFixed(1)} км/ч',
         );
       }
     } catch (e) {
@@ -1349,9 +1368,10 @@ class AppStore extends ChangeNotifier {
 
   void _flushAllOfflineBuffers() {
     for (final load in _loads) {
-      if (load.offlineBuffer.isNotEmpty) {
-        _flushLoadBuffer(load);
-      }
+      if (load.offlineBuffer.isNotEmpty) _flushLoadBuffer(load);
+    }
+    if (_carrierActiveLoad?.offlineBuffer.isNotEmpty == true) {
+      _flushLoadBuffer(_carrierActiveLoad!);
     }
   }
 
@@ -1364,10 +1384,7 @@ class AppStore extends ChangeNotifier {
     for (final point in points) {
       await _deliverTrackingPoint(load, point);
     }
-    _log(
-      'tracking.batch.sent',
-      'Batch=$batchSize точек для груза ${load.id} отправлено',
-    );
+    _log('tracking.batch.sent', 'Batch=$batchSize точек для груза ${load.id} отправлено');
   }
 
   void _checkSilenceAlerts() {
@@ -1377,16 +1394,13 @@ class AppStore extends ChangeNotifier {
         load.silenceAlertAtUtc = null;
         continue;
       }
-
       DateTime? lastSeenUtc;
       if (load.lastDeliveredPoint != null) {
         lastSeenUtc = load.lastDeliveredPoint!.timestampUtc;
       } else if (load.acceptedAtUtc != null) {
         lastSeenUtc = load.acceptedAtUtc;
       }
-
       if (lastSeenUtc == null) continue;
-
       final silence = nowUtc.difference(lastSeenUtc);
       if (silence >= const Duration(minutes: 10) && !load.silenceAlertSent) {
         load.silenceAlertSent = true;
@@ -1396,10 +1410,7 @@ class AppStore extends ChangeNotifier {
           title: 'Трекинг молчит 10 минут',
           message: 'Нет обновлений трекинга 10 минут по грузу #${load.id}',
         );
-        _log(
-          'tracking.silence',
-          'Событие тишины: груз ${load.id}, нет новых точек более 10 минут',
-        );
+        _log('tracking.silence', 'Событие тишины: груз ${load.id}');
       }
     }
   }
@@ -1413,13 +1424,9 @@ class AppStore extends ChangeNotifier {
       }
       return;
     }
-
     if (_permissionIncidentOpen && driverPermissionsReady) {
       _permissionIncidentOpen = false;
-      _log(
-        'permissions.restored',
-        'Разрешения восстановлены. Трекинг может продолжиться.',
-      );
+      _log('permissions.restored', 'Разрешения восстановлены.');
       _notify(
         audience: NoticeAudience.driver,
         title: 'Разрешения восстановлены',
@@ -1432,8 +1439,7 @@ class AppStore extends ChangeNotifier {
     _notify(
       audience: NoticeAudience.driver,
       title: 'Трекинг невозможен',
-      message:
-          'Включите геолокацию "Всегда" и фоновые обновления, иначе трекинг невозможен.',
+      message: 'Включите геолокацию "Всегда" и фоновые обновления.',
     );
   }
 
@@ -1442,14 +1448,12 @@ class AppStore extends ChangeNotifier {
     required String title,
     required String message,
   }) {
-    _notices.add(
-      AppNotice(
-        timestampUtc: nowUtc,
-        audience: audience,
-        title: title,
-        message: message,
-      ),
-    );
+    _notices.add(AppNotice(
+      timestampUtc: nowUtc,
+      audience: audience,
+      title: title,
+      message: message,
+    ));
   }
 
   void _log(String type, String message) {
@@ -1487,7 +1491,54 @@ class AppStore extends ChangeNotifier {
 }
 
 // ---------------------------------------------------------------------------
-// LOGIN SCREEN — email/password (replaces OTP)
+// NETWORK STATUS WIDGET — for AppBar
+// ---------------------------------------------------------------------------
+class NetworkStatusIndicator extends StatelessWidget {
+  const NetworkStatusIndicator({Key? key, required this.online}) : super(key: key);
+
+  final bool online;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      margin: const EdgeInsets.only(right: 8),
+      decoration: BoxDecoration(
+        color: online
+            ? Colors.green.withOpacity(0.15)
+            : Colors.red.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: online ? Colors.green.shade300 : Colors.red.shade300,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            online ? Icons.wifi : Icons.wifi_off,
+            size: 14,
+            color: online ? Colors.green.shade700 : Colors.red.shade700,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            online ? 'Online' : 'Offline',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: online ? Colors.green.shade700 : Colors.red.shade700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// LOGIN SCREEN
 // ---------------------------------------------------------------------------
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key, required this.store}) : super(key: key);
@@ -1505,6 +1556,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   String _role = 'carrier';
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -1541,9 +1593,7 @@ class _LoginScreenState extends State<LoginScreen> {
       error = await widget.store.login(email: email, password: password);
     }
 
-    if (error != null && mounted) {
-      _showError(error);
-    }
+    if (error != null && mounted) _showError(error);
   }
 
   @override
@@ -1578,7 +1628,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       color: Color(0xFF1D4ED8),
                                     ),
                                   ),
-                                  SizedBox(width: 12),
+                                  SizedBox(width: 11),
                                   Expanded(
                                     child: Text(
                                       'Yool Driver Tracking',
@@ -1614,7 +1664,29 @@ class _LoginScreenState extends State<LoginScreen> {
                                     border: OutlineInputBorder(),
                                   ),
                                 ),
-                                const SizedBox(height: 12),                    
+                                const SizedBox(height: 12),
+                                DropdownButtonFormField<String>(
+                                  value: _role,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Роль',
+                                    prefixIcon: Icon(Icons.badge_outlined),
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  items: const <DropdownMenuItem<String>>[
+                                    DropdownMenuItem(
+                                      value: 'carrier',
+                                      child: Text('Перевозчик (Carrier)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'shipper',
+                                      child: Text('Отправитель (Shipper)'),
+                                    ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v != null) setState(() => _role = v);
+                                  },
+                                ),
+                                const SizedBox(height: 12),
                               ],
                               TextField(
                                 controller: _emailController,
@@ -1628,11 +1700,18 @@ class _LoginScreenState extends State<LoginScreen> {
                               const SizedBox(height: 12),
                               TextField(
                                 controller: _passwordController,
-                                obscureText: true,
-                                decoration: const InputDecoration(
+                                obscureText: _obscurePassword,
+                                decoration: InputDecoration(
                                   labelText: 'Пароль',
-                                  prefixIcon: Icon(Icons.lock_outline),
-                                  border: OutlineInputBorder(),
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  border: const OutlineInputBorder(),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(_obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility),
+                                    onPressed: () => setState(
+                                        () => _obscurePassword = !_obscurePassword),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -1647,22 +1726,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                           color: Colors.white,
                                         ),
                                       )
-                                    : Icon(
-                                        _isRegisterMode
-                                            ? Icons.person_add
-                                            : Icons.login,
-                                      ),
+                                    : Icon(_isRegisterMode
+                                        ? Icons.person_add
+                                        : Icons.login),
                                 label: Text(
-                                  _isRegisterMode
-                                      ? 'Зарегистрироваться'
-                                      : 'Войти',
+                                  _isRegisterMode ? 'Зарегистрироваться' : 'Войти',
                                 ),
                               ),
                               const SizedBox(height: 8),
                               TextButton(
                                 onPressed: () => setState(
-                                  () => _isRegisterMode = !_isRegisterMode,
-                                ),
+                                    () => _isRegisterMode = !_isRegisterMode),
                                 child: Text(
                                   _isRegisterMode
                                       ? 'Уже есть аккаунт? Войти'
@@ -1711,8 +1785,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   late final TextEditingController _fullNameController;
   late final TextEditingController _phoneController;
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _vehicleNumberController =
-      TextEditingController();
+  final TextEditingController _vehicleNumberController = TextEditingController();
   final TextEditingController _vehicleTypeController = TextEditingController();
   bool _consentAccepted = false;
 
@@ -1722,8 +1795,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _fullNameController = TextEditingController();
     _phoneController = TextEditingController(text: widget.store.loggedInPhone);
     _emailController.text = widget.store.loggedInEmail;
-    _vehicleNumberController.text = '';
-    _vehicleTypeController.text = '';
   }
 
   @override
@@ -1759,9 +1830,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           const Text(
                             'Заполните профиль',
                             style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                            ),
+                                fontSize: 22, fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 8),
                           const Text(
@@ -1825,21 +1894,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             onPressed: loading
                                 ? null
                                 : () async {
-                                    final error = await widget.store
-                                        .saveProfile(
-                                          fullName: _fullNameController.text,
-                                          phone: _phoneController.text,
-                                          email: _emailController.text,
-                                          vehicleNumber:
-                                              _vehicleNumberController.text,
-                                          vehicleType:
-                                              _vehicleTypeController.text,
-                                          consentAccepted: _consentAccepted,
-                                        );
+                                    final error = await widget.store.saveProfile(
+                                      fullName: _fullNameController.text,
+                                      phone: _phoneController.text,
+                                      email: _emailController.text,
+                                      vehicleNumber: _vehicleNumberController.text,
+                                      vehicleType: _vehicleTypeController.text,
+                                      consentAccepted: _consentAccepted,
+                                    );
                                     if (error != null && mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(content: Text(error)),
                                       );
                                     }
@@ -1871,7 +1935,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// MAIN SHELL
+// MAIN SHELL — 3 tabs: Driver, Carrier, Settings
 // ---------------------------------------------------------------------------
 class MainShell extends StatefulWidget {
   const MainShell({Key? key, required this.store}) : super(key: key);
@@ -1895,15 +1959,24 @@ class _MainShellState extends State<MainShell> {
         final store = widget.store;
         final List<Widget> screens = <Widget>[
           store.shouldBlockDriverApp
-              ? BlockingScreen(store: store, onOpenSettings: () => _setTab(3))
+              ? BlockingScreen(store: store, onOpenSettings: () => _setTab(2))
               : DriverHomeScreen(store: store),
-          
-          
+          CarrierScreen(store: store),
           SettingsSupportScreen(store: store),
         ];
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Yool Driver Tracking')),
+          appBar: AppBar(
+            title: const Text('Yool Driver Tracking'),
+            actions: <Widget>[
+              AnimatedBuilder(
+                animation: store,
+                builder: (_, __) => NetworkStatusIndicator(
+                  online: store.networkOnline,
+                ),
+              ),
+            ],
+          ),
           body: IndexedStack(index: _tabIndex, children: screens),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _tabIndex,
@@ -1916,9 +1989,14 @@ class _MainShellState extends State<MainShell> {
                 label: 'Водитель',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                activeIcon: Icon(Icons.person_outlined),
-                label: 'Профиль',
+                icon: Icon(Icons.local_shipping_outlined),
+                activeIcon: Icon(Icons.local_shipping),
+                label: 'Перевозки',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.settings_outlined),
+                activeIcon: Icon(Icons.settings),
+                label: 'Настройки',
               ),
             ],
           ),
@@ -1968,6 +2046,14 @@ class DriverHomeScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(profile?.phone ?? ''),
+                                  if (profile?.role != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Роль: ${profile!.role}',
+                                      style: const TextStyle(
+                                          fontSize: 12, color: Colors.black54),
+                                    ),
+                                  ],
                                   const SizedBox(height: 8),
                                   Wrap(
                                     spacing: 8,
@@ -1975,8 +2061,8 @@ class DriverHomeScreen extends StatelessWidget {
                                     children: <Widget>[
                                       StatusPill(
                                         label: store.driverPermissionsReady
-                                            ? 'Location Always: OK'
-                                            : 'Location Always: BLOCK',
+                                            ? 'Location: OK'
+                                            : 'Location: BLOCK',
                                         color: store.driverPermissionsReady
                                             ? Colors.green
                                             : Colors.red,
@@ -1990,10 +2076,8 @@ class DriverHomeScreen extends StatelessWidget {
                                             : Colors.orange,
                                       ),
                                       StatusPill(
-                                        label:
-                                            'Buffer: ${store.pendingOfflinePointCount}',
-                                        color:
-                                            store.pendingOfflinePointCount == 0
+                                        label: 'Buffer: ${store.pendingOfflinePointCount}',
+                                        color: store.pendingOfflinePointCount == 0
                                             ? Colors.teal
                                             : Colors.orange,
                                       ),
@@ -2031,19 +2115,14 @@ class DriverHomeScreen extends StatelessWidget {
                                 children: store.availableInviteLoads
                                     .map(
                                       (load) => Container(
-                                        margin: const EdgeInsets.only(
-                                          bottom: 8,
-                                        ),
+                                        margin: const EdgeInsets.only(bottom: 8),
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFF8FAFF),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                           border: Border.all(
-                                            color: Colors.black.withOpacity(
-                                              0.06,
-                                            ),
+                                            color: Colors.black.withOpacity(0.06),
                                           ),
                                         ),
                                         child: Column(
@@ -2053,46 +2132,38 @@ class DriverHomeScreen extends StatelessWidget {
                                             Text(
                                               'Груз #${load.id}: ${load.pickupAddress} -> ${load.dropoffAddress}',
                                               style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                                  fontWeight: FontWeight.w600),
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
                                               'Ссылка действует до ${formatDateTime(load.inviteExpiresAtUtc)}',
                                               style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.black54,
-                                              ),
+                                                  fontSize: 12,
+                                                  color: Colors.black54),
                                             ),
                                             const SizedBox(height: 8),
                                             Row(
                                               children: <Widget>[
                                                 Expanded(
                                                   child: Text(
-                                                    store.getDriverInviteLink(
-                                                      load,
-                                                    ),
+                                                    store.getDriverInviteLink(load),
                                                     style: const TextStyle(
                                                       fontSize: 12,
                                                       color: Color(0xFF1D4ED8),
                                                     ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
+                                                    overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                                 const SizedBox(width: 8),
                                                 TextButton(
                                                   onPressed: () {
-                                                    final error = store
-                                                        .claimInvite(load.id);
+                                                    final error =
+                                                        store.claimInvite(load.id);
                                                     if (error != null) {
-                                                      ScaffoldMessenger.of(
-                                                        context,
-                                                      ).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text(error),
-                                                        ),
-                                                      );
+                                                      ScaffoldMessenger.of(context)
+                                                          .showSnackBar(SnackBar(
+                                                              content:
+                                                                  Text(error)));
                                                     }
                                                   },
                                                   child: const Text('Открыть'),
@@ -2110,16 +2181,16 @@ class DriverHomeScreen extends StatelessWidget {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 4),
-                    const TabBar(
-                      tabs: <Widget>[
-                        Tab(text: 'Назначенные'),
-                        Tab(text: 'Активные'),
-                        Tab(text: 'Завершённые'),
-                      ],
-                    ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 4),
+              const TabBar(
+                tabs: <Widget>[
+                  Tab(text: 'Назначенные'),
+                  Tab(text: 'Активные'),
+                  Tab(text: 'Завершённые'),
+                ],
               ),
               Expanded(
                 child: TabBarView(
@@ -2153,6 +2224,439 @@ class DriverHomeScreen extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// CARRIER SCREEN — shows current carrier's loads with accept feature
+// ---------------------------------------------------------------------------
+class CarrierScreen extends StatefulWidget {
+  const CarrierScreen({Key? key, required this.store}) : super(key: key);
+
+  final AppStore store;
+
+  @override
+  State<CarrierScreen> createState() => _CarrierScreenState();
+}
+
+class _CarrierScreenState extends State<CarrierScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh carrier loads when tab is shown
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.store.fetchCarrierLoads();
+    });
+  }
+
+  Future<void> _onRefresh() => widget.store.fetchCarrierLoads();
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.store,
+      builder: (context, _) {
+        final store = widget.store;
+
+        if (store.isCarrierLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return RefreshIndicator(
+          onRefresh: _onRefresh,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: <Widget>[
+              // ── Active Load Section ──────────────────────────────────────
+              _SectionHeader(
+                icon: Icons.play_circle_outline,
+                title: 'Текущий активный груз',
+                color: const Color(0xFF0D7A5F),
+                action: OutlinedButton.icon(
+                  onPressed: _onRefresh,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Обновить'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                    textStyle: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (store.carrierActiveLoad == null)
+                _EmptyCard(message: 'Нет активного груза')
+              else
+                _CarrierActiveLoadCard(
+                  load: store.carrierActiveLoad!,
+                  store: store,
+                ),
+
+              const SizedBox(height: 20),
+
+              // ── Pending Loads Section ────────────────────────────────────
+              _SectionHeader(
+                icon: Icons.inbox_outlined,
+                title: 'Назначенные грузы (${store.pendingLoads.length})',
+                color: const Color(0xFF1D4ED8),
+              ),
+              const SizedBox(height: 8),
+              if (store.pendingLoads.isEmpty)
+                _EmptyCard(message: 'Нет назначенных грузов')
+              else
+                ...store.pendingLoads.map((load) => _CarrierLoadCard(
+                      load: load,
+                      store: store,
+                    )),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+    required this.color,
+    this.action,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: <Widget>[
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ),
+        if (action != null) action!,
+      ],
+    );
+  }
+}
+
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: Row(
+          children: <Widget>[
+            const Icon(Icons.inbox, color: Colors.black26),
+            const SizedBox(width: 12),
+            Text(message, style: const TextStyle(color: Colors.black54)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CarrierActiveLoadCard extends StatelessWidget {
+  const _CarrierActiveLoadCard({required this.load, required this.store});
+
+  final LoadItem load;
+  final AppStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: const Color(0xFFECFDF5),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFF6EE7B7), width: 1.5),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => ActiveLoadScreen(store: store, loadId: load.id),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      load.title?.isNotEmpty == true
+                          ? load.title!
+                          : 'Груз #${load.id}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 16),
+                    ),
+                  ),
+                  LoadStatusChip(status: load.status),
+                ],
+              ),
+              if (load.referenceId != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Ref: ${load.referenceId}',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+              const SizedBox(height: 10),
+              _AddressRow(
+                icon: Icons.trip_origin,
+                color: Colors.green,
+                label: 'Откуда',
+                address: load.pickupAddress,
+                dateTime: load.plannedAtUtc,
+              ),
+              const SizedBox(height: 6),
+              _AddressRow(
+                icon: Icons.flag_outlined,
+                color: Colors.red,
+                label: 'Куда',
+                address: load.dropoffAddress,
+                dateTime: load.dropoffAtUtc,
+              ),
+              if (load.lastDeliveredPoint != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      const Icon(Icons.my_location, size: 16,
+                          color: Color(0xFF059669)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Скорость: ${load.lastDeliveredPoint!.speedKmh.toStringAsFixed(1)} км/ч  •  обновлено ${formatRelativeTime(store.nowUtc, load.lastDeliveredPoint!.timestampUtc)}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
+                  if (load.status == LoadStatus.accepted)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: store.isLoading
+                            ? null
+                            : () => store.markLoadInTransit(load.id),
+                        icon: const Icon(Icons.route_outlined, size: 18),
+                        label: const Text('В пути'),
+                      ),
+                    ),
+                  if (load.isActive) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: store.isLoading
+                            ? null
+                            : () async {
+                                await store.completeLoad(load.id);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Груз завершён')),
+                                  );
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF059669)),
+                        icon: const Icon(Icons.task_alt, size: 18),
+                        label: const Text('Завершить'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CarrierLoadCard extends StatelessWidget {
+  const _CarrierLoadCard({required this.load, required this.store});
+
+  final LoadItem load;
+  final AppStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    load.title?.isNotEmpty == true
+                        ? load.title!
+                        : 'Груз #${load.id}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                ),
+                LoadStatusChip(status: load.status),
+              ],
+            ),
+            if (load.referenceId != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                'Ref: ${load.referenceId}',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
+            const SizedBox(height: 10),
+            _AddressRow(
+              icon: Icons.trip_origin,
+              color: Colors.green,
+              label: 'Откуда',
+              address: load.pickupAddress,
+              dateTime: load.plannedAtUtc,
+            ),
+            const SizedBox(height: 6),
+            _AddressRow(
+              icon: Icons.flag_outlined,
+              color: Colors.red,
+              label: 'Куда',
+              address: load.dropoffAddress,
+              dateTime: load.dropoffAtUtc,
+            ),
+            if (load.description.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                load.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.black54, fontSize: 13),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: store.isLoading
+                      ? const Center(
+                          child: SizedBox(
+                            height: 36,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: load.status == LoadStatus.assigned
+                              ? () async {
+                                  await store.acceptLoad(load.id);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('Груз принят!')),
+                                    );
+                                  }
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1D4ED8),
+                          ),
+                          icon: const Icon(Icons.check_circle_outline, size: 18),
+                          label: const Text('Принять груз'),
+                        ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          LoadDetailsScreen(store: store, loadId: load.id),
+                    ),
+                  ),
+                  icon: const Icon(Icons.info_outline, size: 18),
+                  label: const Text('Детали'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddressRow extends StatelessWidget {
+  const _AddressRow({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.address,
+    this.dateTime,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String address;
+  final DateTime? dateTime;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(label,
+                  style: const TextStyle(fontSize: 11, color: Colors.black54)),
+              Text(address,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w500, fontSize: 13)),
+              if (dateTime != null)
+                Text(
+                  formatDateTime(dateTime),
+                  style: const TextStyle(fontSize: 11, color: Colors.black45),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DRIVER LOADS LIST TAB
+// ---------------------------------------------------------------------------
 class DriverLoadsListTab extends StatelessWidget {
   const DriverLoadsListTab({
     Key? key,
@@ -2179,15 +2683,12 @@ class DriverLoadsListTab extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  Text(title,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
-                  Text(subtitle, style: const TextStyle(color: Colors.black54)),
+                  Text(subtitle,
+                      style: const TextStyle(color: Colors.black54)),
                   const SizedBox(height: 12),
                   const Text('Список пуст.'),
                   const SizedBox(height: 12),
@@ -2215,19 +2716,15 @@ class DriverLoadsListTab extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             onTap: () {
               if (load.isActive) {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) =>
-                        ActiveLoadScreen(store: store, loadId: load.id),
-                  ),
-                );
+                Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) =>
+                      ActiveLoadScreen(store: store, loadId: load.id),
+                ));
               } else {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) =>
-                        LoadDetailsScreen(store: store, loadId: load.id),
-                  ),
-                );
+                Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) =>
+                      LoadDetailsScreen(store: store, loadId: load.id),
+                ));
               }
             },
             child: Padding(
@@ -2241,45 +2738,33 @@ class DriverLoadsListTab extends StatelessWidget {
                         child: Text(
                           'Груз #${load.id}',
                           style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
+                              fontWeight: FontWeight.w700, fontSize: 16),
                         ),
                       ),
                       LoadStatusChip(status: load.status),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: const <Widget>[
-                      Icon(Icons.trip_origin, size: 16, color: Colors.green),
-                      SizedBox(width: 6),
-                      Text('Погрузка', style: TextStyle(color: Colors.black54)),
-                    ],
-                  ),
+                  Row(children: const <Widget>[
+                    Icon(Icons.trip_origin, size: 16, color: Colors.green),
+                    SizedBox(width: 6),
+                    Text('Погрузка', style: TextStyle(color: Colors.black54)),
+                  ]),
                   const SizedBox(height: 2),
                   Text(load.pickupAddress),
                   const SizedBox(height: 8),
-                  Row(
-                    children: const <Widget>[
-                      Icon(Icons.flag_outlined, size: 16, color: Colors.red),
-                      SizedBox(width: 6),
-                      Text(
-                        'Разгрузка',
-                        style: TextStyle(color: Colors.black54),
-                      ),
-                    ],
-                  ),
+                  Row(children: const <Widget>[
+                    Icon(Icons.flag_outlined, size: 16, color: Colors.red),
+                    SizedBox(width: 6),
+                    Text('Разгрузка', style: TextStyle(color: Colors.black54)),
+                  ]),
                   const SizedBox(height: 2),
                   Text(load.dropoffAddress),
                   if (load.plannedAtUtc != null) ...<Widget>[
                     const SizedBox(height: 8),
                     Text(
                       'Дата/время: ${formatDateTime(load.plannedAtUtc)} UTC',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
                     ),
                   ],
                   const SizedBox(height: 8),
@@ -2289,8 +2774,7 @@ class DriverLoadsListTab extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.black87),
                   ),
-                  if (load.isActive &&
-                      load.lastDeliveredPoint != null) ...<Widget>[
+                  if (load.isActive && load.lastDeliveredPoint != null) ...<Widget>[
                     const SizedBox(height: 8),
                     Row(
                       children: <Widget>[
@@ -2319,8 +2803,11 @@ class DriverLoadsListTab extends StatelessWidget {
 // LOAD DETAILS SCREEN
 // ---------------------------------------------------------------------------
 class LoadDetailsScreen extends StatelessWidget {
-  const LoadDetailsScreen({Key? key, required this.store, required this.loadId})
-    : super(key: key);
+  const LoadDetailsScreen({
+    Key? key,
+    required this.store,
+    required this.loadId,
+  }) : super(key: key);
 
   final AppStore store;
   final String loadId;
@@ -2330,10 +2817,11 @@ class LoadDetailsScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: store,
       builder: (context, child) {
-        final load = _findById(store.loads, loadId);
-        if (load == null) {
-          return const Scaffold(body: Center(child: Text('Груз не найден')));
-        }
+        final load = _findById(store.loads, loadId) ??
+            store.pendingLoads.firstWhere(
+              (l) => l.id == loadId,
+              orElse: () => store.loads.first,
+            );
 
         final canAccept =
             load.status == LoadStatus.assigned && store.driverPermissionsReady;
@@ -2353,11 +2841,11 @@ class LoadDetailsScreen extends StatelessWidget {
                         children: <Widget>[
                           Expanded(
                             child: Text(
-                              'Груз #${load.id}',
+                              load.title?.isNotEmpty == true
+                                  ? load.title!
+                                  : 'Груз #${load.id}',
                               style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                              ),
+                                  fontSize: 20, fontWeight: FontWeight.w700),
                             ),
                           ),
                           LoadStatusChip(status: load.status),
@@ -2366,22 +2854,26 @@ class LoadDetailsScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       InfoRow(label: 'Погрузка', value: load.pickupAddress),
                       InfoRow(label: 'Разгрузка', value: load.dropoffAddress),
-                      InfoRow(label: 'Комментарий', value: load.description),
-                      InfoRow(
-                        label: 'Контакты грузовладельца',
-                        value: load.shipperContact,
-                      ),
-                      InfoRow(
-                        label: 'Назначение',
-                        value:
-                            load.assignmentMethod == AssignmentMethod.inviteLink
-                            ? 'По ссылке-приглашению'
-                            : 'По телефону/email',
-                      ),
+                      if (load.description.isNotEmpty)
+                        InfoRow(label: 'Комментарий', value: load.description),
+                      if (load.referenceId != null)
+                        InfoRow(label: 'Ref ID', value: load.referenceId!),
+                      if (load.companyId != null)
+                        InfoRow(label: 'Company ID', value: load.companyId!),
+                      if (load.shipperContact.isNotEmpty)
+                        InfoRow(
+                          label: 'Контакт грузовладельца',
+                          value: load.shipperContact,
+                        ),
                       if (load.plannedAtUtc != null)
                         InfoRow(
-                          label: 'Дата/время',
+                          label: 'Дата погрузки',
                           value: '${formatDateTime(load.plannedAtUtc)} UTC',
+                        ),
+                      if (load.dropoffAtUtc != null)
+                        InfoRow(
+                          label: 'Дата разгрузки',
+                          value: '${formatDateTime(load.dropoffAtUtc)} UTC',
                         ),
                       if (load.rejectReasonLabel != null)
                         InfoRow(
@@ -2399,7 +2891,7 @@ class LoadDetailsScreen extends StatelessWidget {
                     child: Padding(
                       padding: EdgeInsets.all(12),
                       child: Text(
-                        'Для принятия и трекинга требуется геолокация "Всегда" и фоновые обновления. Включите их в Настройках.',
+                        'Для принятия и трекинга требуется геолокация "Всегда" и фоновые обновления.',
                       ),
                     ),
                   ),
@@ -2465,8 +2957,11 @@ class LoadDetailsScreen extends StatelessWidget {
 // ACTIVE LOAD SCREEN
 // ---------------------------------------------------------------------------
 class ActiveLoadScreen extends StatelessWidget {
-  const ActiveLoadScreen({Key? key, required this.store, required this.loadId})
-    : super(key: key);
+  const ActiveLoadScreen({
+    Key? key,
+    required this.store,
+    required this.loadId,
+  }) : super(key: key);
 
   final AppStore store;
   final String loadId;
@@ -2476,9 +2971,13 @@ class ActiveLoadScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: store,
       builder: (context, child) {
-        final load = _findById(store.loads, loadId);
+        final load = _findById(store.loads, loadId) ??
+            (store.carrierActiveLoad?.id == loadId
+                ? store.carrierActiveLoad
+                : null);
         if (load == null) {
-          return const Scaffold(body: Center(child: Text('Груз не найден')));
+          return const Scaffold(
+              body: Center(child: Text('Груз не найден')));
         }
 
         return Scaffold(
@@ -2498,9 +2997,7 @@ class ActiveLoadScreen extends StatelessWidget {
                             child: Text(
                               'Статус и трекинг',
                               style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 18,
-                              ),
+                                  fontWeight: FontWeight.w700, fontSize: 18),
                             ),
                           ),
                           LoadStatusChip(status: load.status),
@@ -2544,7 +3041,8 @@ class ActiveLoadScreen extends StatelessWidget {
                       const SizedBox(height: 14),
                       InfoRow(label: 'Погрузка', value: load.pickupAddress),
                       InfoRow(label: 'Разгрузка', value: load.dropoffAddress),
-                      InfoRow(label: 'Комментарий', value: load.description),
+                      if (load.description.isNotEmpty)
+                        InfoRow(label: 'Комментарий', value: load.description),
                       InfoRow(
                         label: 'Локально последняя точка',
                         value: load.lastLocalPoint == null
@@ -2552,7 +3050,7 @@ class ActiveLoadScreen extends StatelessWidget {
                             : '${formatDateTime(load.lastLocalPoint!.timestampUtc)} UTC',
                       ),
                       InfoRow(
-                        label: 'В системе (shipper) последняя точка',
+                        label: 'В системе последняя точка',
                         value: load.lastDeliveredPoint == null
                             ? 'Еще нет'
                             : '${formatDateTime(load.lastDeliveredPoint!.timestampUtc)} UTC (${formatRelativeTime(store.nowUtc, load.lastDeliveredPoint!.timestampUtc)})',
@@ -2586,9 +3084,7 @@ class ActiveLoadScreen extends StatelessWidget {
                       const Text(
                         'Управление грузом',
                         style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                        ),
+                            fontWeight: FontWeight.w700, fontSize: 18),
                       ),
                       const SizedBox(height: 12),
                       Wrap(
@@ -2597,12 +3093,11 @@ class ActiveLoadScreen extends StatelessWidget {
                         children: <Widget>[
                           OutlinedButton.icon(
                             onPressed: () => store.toggleLoadMovement(load.id),
-                            icon: Icon(
-                              load.moving
-                                  ? Icons.pause_circle_outline
-                                  : Icons.play_circle_outline,
-                            ),
-                            label: Text(load.moving ? 'Стоянка' : 'Движение'),
+                            icon: Icon(load.moving
+                                ? Icons.pause_circle_outline
+                                : Icons.play_circle_outline),
+                            label:
+                                Text(load.moving ? 'Стоянка' : 'Движение'),
                           ),
                           OutlinedButton.icon(
                             onPressed: () => store.markLoadInTransit(load.id),
@@ -2652,23 +3147,224 @@ class ActiveLoadScreen extends StatelessWidget {
     );
   }
 }
+
 // ---------------------------------------------------------------------------
-// SETTINGS / SUPPORT SCREEN
+// SETTINGS / SUPPORT SCREEN — with first/last name editing
 // ---------------------------------------------------------------------------
-class SettingsSupportScreen extends StatelessWidget {
-  const SettingsSupportScreen({Key? key, required this.store})
-    : super(key: key);
+class SettingsSupportScreen extends StatefulWidget {
+  const SettingsSupportScreen({Key? key, required this.store}) : super(key: key);
 
   final AppStore store;
 
   @override
+  State<SettingsSupportScreen> createState() => _SettingsSupportScreenState();
+}
+
+class _SettingsSupportScreenState extends State<SettingsSupportScreen> {
+  late final TextEditingController _firstNameController;
+  late final TextEditingController _lastNameController;
+  bool _nameEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final profile = widget.store.profile;
+    _firstNameController =
+        TextEditingController(text: profile?.firstName ?? '');
+    _lastNameController =
+        TextEditingController(text: profile?.lastName ?? '');
+  }
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    super.dispose();
+  }
+
+  void _syncControllersFromProfile() {
+    final profile = widget.store.profile;
+    if (profile != null) {
+      _firstNameController.text = profile.firstName;
+      _lastNameController.text = profile.lastName;
+    }
+  }
+
+  Future<void> _saveName() async {
+    final error = await widget.store.updateName(
+      firstName: _firstNameController.text,
+      lastName: _lastNameController.text,
+    );
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
+    } else {
+      setState(() => _nameEditing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Имя обновлено')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: store,
+      animation: widget.store,
       builder: (context, child) {
+        final store = widget.store;
+        final profile = store.profile;
+
         return ListView(
           padding: const EdgeInsets.all(16),
           children: <Widget>[
+            // ── Profile Card ──────────────────────────────────────────────
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        const Icon(Icons.person, color: Color(0xFF1D4ED8)),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Профиль',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (!_nameEditing)
+                          TextButton.icon(
+                            onPressed: () {
+                              _syncControllersFromProfile();
+                              setState(() => _nameEditing = true);
+                            },
+                            icon: const Icon(Icons.edit, size: 16),
+                            label: const Text('Изменить'),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (!_nameEditing) ...[
+                      // Display mode
+                      _ProfileRow(
+                        label: 'Имя',
+                        value: profile?.firstName.isNotEmpty == true
+                            ? profile!.firstName
+                            : '-',
+                      ),
+                      _ProfileRow(
+                        label: 'Фамилия',
+                        value: profile?.lastName.isNotEmpty == true
+                            ? profile!.lastName
+                            : '-',
+                      ),
+                      _ProfileRow(
+                        label: 'Телефон',
+                        value: profile?.phone ?? '-',
+                      ),
+                      if (profile?.email != null)
+                        _ProfileRow(
+                          label: 'Email',
+                          value: profile!.email!,
+                        ),
+                      if (profile?.role != null)
+                        _ProfileRow(
+                          label: 'Роль',
+                          value: profile!.role!,
+                        ),
+                    ] else ...[
+                      // Edit mode for first/last name
+                      TextField(
+                        controller: _firstNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Имя',
+                          prefixIcon: Icon(Icons.person_outline),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _lastNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Фамилия',
+                          prefixIcon: Icon(Icons.person_outline),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (store.isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _saveName,
+                                icon: const Icon(Icons.save_outlined),
+                                label: const Text('Сохранить'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              onPressed: () =>
+                                  setState(() => _nameEditing = false),
+                              child: const Text('Отмена'),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Network Status Card ───────────────────────────────────────
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Icon(
+                          store.networkOnline ? Icons.wifi : Icons.wifi_off,
+                          color: store.networkOnline
+                              ? Colors.green
+                              : Colors.red,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Состояние сети',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      store.networkOnline
+                          ? 'Соединение активно. Трекинг отправляется в реальном времени.'
+                          : 'Нет соединения. Точки трекинга буферизуются (${store.pendingOfflinePointCount} шт.).',
+                      style: TextStyle(
+                        color:
+                            store.networkOnline ? Colors.green : Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Support Card ──────────────────────────────────────────────
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
@@ -2678,23 +3374,25 @@ class SettingsSupportScreen extends StatelessWidget {
                     Text(
                       'Служба Поддержки',
                       style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
+                          fontSize: 18, fontWeight: FontWeight.w700),
                     ),
                     SizedBox(height: 8),
                     Text('info.support@yool.live'),
                     SizedBox(height: 4),
                     Text('+998 12 345 67 89'),
-                    SizedBox(height: 8),                 
                   ],
                 ),
               ),
             ),
+
+            const SizedBox(height: 8),
+
+            // ── Logout ────────────────────────────────────────────────────
             Card(
               child: ListTile(
-                leading: const Icon(Icons.logout),
-                title: const Text('Выйти'),
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text('Выйти',
+                    style: TextStyle(color: Colors.red)),
                 subtitle: const Text('Выход из аккаунта'),
                 onTap: store.logoutToLogin,
               ),
@@ -2702,6 +3400,36 @@ class SettingsSupportScreen extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _ProfileRow extends StatelessWidget {
+  const _ProfileRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(
+            width: 90,
+            child: Text(label,
+                style: const TextStyle(color: Colors.black54, fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2733,16 +3461,14 @@ class BlockingScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  const Icon(
-                    Icons.location_off_rounded,
-                    size: 56,
-                    color: Colors.orange,
-                  ),
+                  const Icon(Icons.location_off_rounded,
+                      size: 56, color: Colors.orange),
                   const SizedBox(height: 12),
                   const Text(
                     'Для работы приложения требуется доступ к геолокации: "Всегда"',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                    style: TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 10),
                   const Text(
@@ -2761,23 +3487,15 @@ class BlockingScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        const Text(
-                          'Что проверить',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
+                        const Text('Что проверить',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
                         _stateLine(
-                          'Location Services',
-                          store.locationServicesEnabled,
-                        ),
+                            'Location Services', store.locationServicesEnabled),
                         _stateLine(
-                          'Permission = Always',
-                          store.locationAlwaysEnabled,
-                        ),
+                            'Permission = Always', store.locationAlwaysEnabled),
                         _stateLine(
-                          'Background updates',
-                          store.backgroundUpdatesEnabled,
-                        ),
+                            'Background updates', store.backgroundUpdatesEnabled),
                         const SizedBox(height: 8),
                         const Text(
                           'Инструкция: Настройки -> Location -> Always',
@@ -2886,9 +3604,9 @@ class _RejectReasonDialogState extends State<RejectReasonDialog> {
           child: const Text('Отмена'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(
-            context,
-          ).pop(RejectDecision(_selected, _otherController.text.trim())),
+          onPressed: () => Navigator.of(context).pop(
+            RejectDecision(_selected, _otherController.text.trim()),
+          ),
           child: const Text('Подтвердить'),
         ),
       ],
@@ -2950,7 +3668,8 @@ class LoadStatusChip extends StatelessWidget {
       ),
       child: Text(
         statusLabel(status),
-        style: TextStyle(color: fg, fontWeight: FontWeight.w600, fontSize: 12),
+        style: TextStyle(
+            color: fg, fontWeight: FontWeight.w600, fontSize: 12),
       ),
     );
   }
@@ -2958,7 +3677,7 @@ class LoadStatusChip extends StatelessWidget {
 
 class StatusPill extends StatelessWidget {
   const StatusPill({Key? key, required this.label, required this.color})
-    : super(key: key);
+      : super(key: key);
 
   final String label;
   final Color color;
@@ -2974,10 +3693,7 @@ class StatusPill extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
+            color: color, fontWeight: FontWeight.w600, fontSize: 12),
       ),
     );
   }
@@ -2985,7 +3701,7 @@ class StatusPill extends StatelessWidget {
 
 class InfoRow extends StatelessWidget {
   const InfoRow({Key? key, required this.label, required this.value})
-    : super(key: key);
+      : super(key: key);
 
   final String label;
   final String value;
@@ -2999,14 +3715,13 @@ class InfoRow extends StatelessWidget {
         children: <Widget>[
           SizedBox(
             width: 180,
-            child: Text(label, style: const TextStyle(color: Colors.black54)),
+            child: Text(label,
+                style: const TextStyle(color: Colors.black54)),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
+            child: Text(value,
+                style: const TextStyle(fontWeight: FontWeight.w500)),
           ),
         ],
       ),
@@ -3052,7 +3767,7 @@ String formatDateTime(DateTime? dt) {
   if (dt == null) return '-';
   final utc = dt.toUtc();
   String two(int v) => v.toString().padLeft(2, '0');
-  return '${utc.year}-${two(utc.month)}-${two(utc.day)} ${two(utc.hour)}:${two(utc.minute)}:${two(utc.second)}';
+  return '${utc.year}-${two(utc.month)}-${two(utc.day)} ${two(utc.hour)}:${two(utc.minute)}';
 }
 
 String formatRelativeTime(DateTime nowUtc, DateTime thenUtc) {
