@@ -23,7 +23,7 @@ class SplashScreen extends StatelessWidget {
               Icon(Icons.local_shipping_rounded, color: Colors.white, size: 64),
               SizedBox(height: 14),
               Text(
-                'KaravanTrack',
+                'YoolLive',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 26,

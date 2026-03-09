@@ -4,7 +4,6 @@ import '../store/app_store.dart';
 import '../widgets/load_status_chip.dart';
 import '../widgets/status_pill.dart';
 import '../widgets/info_row.dart';
-import '../utils/formatters.dart';
 import '../theme/app_theme.dart';
 
 /// Active load tracking screen — shows live tracking data and actions.
@@ -39,8 +38,6 @@ class ActiveLoadScreen extends StatelessWidget {
           );
         }
 
-        final lastLocal = store.lastLocalPoint(loadId);
-        final lastDelivered = store.lastDeliveredPoint(loadId);
         final bufferCount = store.offlineBufferCount(loadId);
 
         return Scaffold(
@@ -107,31 +104,14 @@ class ActiveLoadScreen extends StatelessWidget {
                         label: 'Dropoff',
                         value: load.dropoffAddress,
                       ),
+                     
                       InfoRow(
-                        label: 'Last GPS',
-                        value: lastLocal == null
-                            ? 'Waiting...'
-                            : formatDateTime(lastLocal.timestampUtc),
+                        label: 'GPS Position',
+                        value: store.lastGpsPosition == null
+                            ? 'Waiting for GPS...'
+                            : '${store.lastGpsPosition!.latitude.toStringAsFixed(6)}, '
+                                '${store.lastGpsPosition!.longitude.toStringAsFixed(6)}',
                       ),
-                      InfoRow(
-                        label: 'Last delivered',
-                        value: lastDelivered == null
-                            ? 'Waiting...'
-                            : '${formatDateTime(lastDelivered.timestampUtc)} '
-                                '(${formatRelativeTime(store.nowUtc, lastDelivered.timestampUtc)})',
-                      ),
-                      if (lastDelivered != null) ...[
-                        InfoRow(
-                          label: 'Speed',
-                          value:
-                              '${lastDelivered.speedKmh.toStringAsFixed(1)} km/h',
-                        ),
-                        InfoRow(
-                          label: 'Accuracy',
-                          value:
-                              '${lastDelivered.accuracyM.toStringAsFixed(0)} m',
-                        ),
-                      ],
                     ],
                   ),
                 ),

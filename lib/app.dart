@@ -51,7 +51,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'KaravanTrack',
+      title: 'YoolLive',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       home: _showSplash

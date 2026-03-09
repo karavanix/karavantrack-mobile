@@ -65,6 +65,8 @@ class AppStore extends ChangeNotifier {
   List<LoadItem> get finishedLoads =>
       _allLoads.where((l) => l.status.isFinal).toList();
 
+  Position? get lastGpsPosition => _lastGpsPosition;
+
   TrackingPoint? lastLocalPoint(String loadId) => _lastLocalPoints[loadId];
   TrackingPoint? lastDeliveredPoint(String loadId) =>
       _lastDeliveredPoints[loadId];

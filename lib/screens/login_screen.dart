@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'KaravanTrack',
+                        'YoolLive',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 24,

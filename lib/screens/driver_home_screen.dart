@@ -22,7 +22,7 @@ class DriverHomeScreen extends StatelessWidget {
           length: 3,
           child: Scaffold(
             appBar: AppBar(
-              title: const Text('KaravanTrack'),
+              title: const Text('YoolLive'),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh),
@@ -299,6 +299,15 @@ class _LoadCard extends StatelessWidget {
                       label: 'Buffer: ${store.offlineBufferCount(load.id)}',
                       color: store.offlineBufferCount(load.id) == 0
                           ? AppColors.primary
+                          : AppColors.warning,
+                    ),
+                    StatusPill(
+                      label: store.lastGpsPosition != null
+                          ? 'GPS: ${store.lastGpsPosition!.latitude.toStringAsFixed(4)}, '
+                              '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
+                          : 'GPS: Waiting...',
+                      color: store.lastGpsPosition != null
+                          ? AppColors.success
                           : AppColors.warning,
                     ),
                   ],
