@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ---------------------------------------------------------------------------
 // API Configuration
@@ -16,22 +17,40 @@ class ApiService {
   ApiService._();
   static final ApiService instance = ApiService._();
 
+  static const String _tokenKey = 'auth_token';
+  static const String _refreshKey = 'refresh_token';
+
   String? _accessToken;
   String? _refreshToken;
 
-  Map<String, String> get _authHeaders => {
-        'Content-Type': 'application/json',
-        if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
-      };
-
-  void setTokens({required String access, required String refresh}) {
-    _accessToken = access;
-    _refreshToken = refresh;
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _accessToken = prefs.getString(_tokenKey);
+    _refreshToken = prefs.getString(_refreshKey);
   }
 
-  void clearTokens() {
+  Map<String, String> get _authHeaders => {
+    'Content-Type': 'application/json',
+    if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
+  };
+
+  Future<void> setTokens({
+    required String access,
+    required String refresh,
+  }) async {
+    _accessToken = access;
+    _refreshToken = refresh;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, access);
+    await prefs.setString(_refreshKey, refresh);
+  }
+
+  Future<void> clearTokens() async {
     _accessToken = null;
     _refreshToken = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_refreshKey);
   }
 
   bool get hasToken => _accessToken != null;
@@ -50,8 +69,11 @@ class ApiService {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        _accessToken = data['access_token'] as String?;
-        _refreshToken = data['refresh_token'] as String?;
+        final access = data['access_token'] as String?;
+        final refresh = data['refresh_token'] as String?;
+        if (access != null && refresh != null) {
+          await setTokens(access: access, refresh: refresh);
+        }
         return true;
       }
     } catch (_) {}
@@ -60,9 +82,7 @@ class ApiService {
 
   // ─── Authenticated request wrapper (auto-refresh on 401) ────────────────
 
-  Future<http.Response> _authed(
-    Future<http.Response> Function() fn,
-  ) async {
+  Future<http.Response> _authed(Future<http.Response> Function() fn) async {
     final resp = await fn();
     if (resp.statusCode == 401 && _refreshToken != null) {
       final refreshed = await refreshTokens();
@@ -90,7 +110,7 @@ class ApiService {
     );
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      setTokens(
+      await setTokens(
         access: data['access_token'] as String,
         refresh: data['refresh_token'] as String,
       );
@@ -124,7 +144,7 @@ class ApiService {
     if (response.statusCode == 201) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       if (data['access_token'] != null) {
-        setTokens(
+        await setTokens(
           access: data['access_token'] as String,
           refresh: data['refresh_token'] as String,
         );
@@ -138,11 +158,10 @@ class ApiService {
   Future<void> logout() async {
     try {
       await _authed(
-        () =>
-            http.post(Uri.parse(_url('/auth/logout')), headers: _authHeaders),
+        () => http.post(Uri.parse(_url('/auth/logout')), headers: _authHeaders),
       );
     } catch (_) {}
-    clearTokens();
+    await clearTokens();
   }
 
   // ─── Users ──────────────────────────────────────────────────────────────
@@ -209,11 +228,10 @@ class ApiService {
     if (limit != null) params['limit'] = limit.toString();
     if (offset != null) params['offset'] = offset.toString();
 
-    final uri = Uri.parse(_url('/loads/pending'))
-        .replace(queryParameters: params.isEmpty ? null : params);
-    final response = await _authed(
-      () => http.get(uri, headers: _authHeaders),
-    );
+    final uri = Uri.parse(
+      _url('/loads/pending'),
+    ).replace(queryParameters: params.isEmpty ? null : params);
+    final response = await _authed(() => http.get(uri, headers: _authHeaders));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -257,10 +275,8 @@ class ApiService {
   /// POST /loads/{id}/start
   Future<bool> startLoad(String id) async {
     final response = await _authed(
-      () => http.post(
-        Uri.parse(_url('/loads/$id/start')),
-        headers: _authHeaders,
-      ),
+      () =>
+          http.post(Uri.parse(_url('/loads/$id/start')), headers: _authHeaders),
     );
     return response.statusCode == 200;
   }

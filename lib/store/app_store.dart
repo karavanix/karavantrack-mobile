@@ -25,6 +25,16 @@ class AppStore extends ChangeNotifier {
   Timer? _clockTimer;
   DateTime _nowUtc = DateTime.now().toUtc();
 
+  Future<void> init() async {
+    await _api.init();
+    if (_api.hasToken) {
+      isLoggedIn = true;
+      notifyListeners();
+      await _loadProfile();
+      await fetchLoads();
+    }
+  }
+
   // ─── Auth state ─────────────────────────────────────────────────────────
 
   bool isLoggedIn = false;
@@ -90,8 +100,7 @@ class AppStore extends ChangeNotifier {
   TrackingPoint? lastLocalPoint(String loadId) => _lastLocalPoints[loadId];
   TrackingPoint? lastDeliveredPoint(String loadId) =>
       _lastDeliveredPoints[loadId];
-  int offlineBufferCount(String loadId) =>
-      _offlineBuffers[loadId]?.length ?? 0;
+  int offlineBufferCount(String loadId) => _offlineBuffers[loadId]?.length ?? 0;
   int get totalOfflineBufferCount {
     int total = 0;
     for (final buf in _offlineBuffers.values) {

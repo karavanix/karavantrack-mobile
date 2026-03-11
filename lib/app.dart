@@ -25,7 +25,6 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
   final GpsService _gps = GpsService();
   late final AppStore _store;
   bool _showSplash = true;
-  Timer? _splashTimer;
 
   void _handlePosition(Position position) {
     _store.onGpsPosition(position);
@@ -36,14 +35,19 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
     super.initState();
     _store = widget.store ?? AppStore();
     _gps.startPositionStream(_handlePosition);
-    _splashTimer = Timer(const Duration(milliseconds: 900), () {
-      if (mounted) setState(() => _showSplash = false);
-    });
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    await Future.wait([
+      _store.init(),
+      Future.delayed(const Duration(milliseconds: 900)),
+    ]);
+    if (mounted) setState(() => _showSplash = false);
   }
 
   @override
   void dispose() {
-    _splashTimer?.cancel();
     _store.dispose();
     _gps.stopPositionStream();
     super.dispose();
@@ -63,10 +67,10 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
             home: _showSplash
                 ? const SplashScreen()
                 : !_store.isLoggedIn
-                    ? LoginScreen(store: _store)
-                    : !_store.isProfileCompleted
-                        ? ProfileSetupScreen(store: _store)
-                        : MainShell(store: _store),
+                ? LoginScreen(store: _store)
+                : !_store.isProfileCompleted
+                ? ProfileSetupScreen(store: _store)
+                : MainShell(store: _store),
           ),
         );
       },
