@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../store/app_store.dart';
+import '../l10n/app_localizations.dart';
 
-/// Settings screen — user profile info, editable name, support contact, logout.
+/// Settings screen — user profile info, editable name, language, support, logout.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.store});
 
@@ -36,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _saveProfile() async {
     final messenger = ScaffoldMessenger.of(context);
+    final t = AppLocalizations.of(context);
     final error = await store.saveProfile(
       firstName: _firstNameCtrl.text,
       lastName: _lastNameCtrl.text,
@@ -46,7 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     } else {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Profile updated successfully')),
+        SnackBar(content: Text(t.tr('profileUpdated'))),
       );
       // Re-sync controllers with the updated profile
       setState(() {
@@ -60,6 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
+    final t = AppLocalizations.of(context);
 
     return ListenableBuilder(
       listenable: store,
@@ -69,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final loading = store.isLoading;
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Settings')),
+          appBar: AppBar(title: Text(t.tr('settings'))),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -97,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  profile?.fullName ?? 'Driver',
+                                  profile?.fullName ?? t.tr('driver'),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
@@ -127,6 +130,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: 12),
 
+              // ─── Language card ───────────────────────────────────────
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.language,
+                              size: 20, color: theme.colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            t.tr('language'),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<String>(
+                          segments: AppLocalizations.supportedLocales
+                              .map((code) => ButtonSegment<String>(
+                                    value: code,
+                                    label: Text(
+                                      AppLocalizations.languageNames[code]!,
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ))
+                              .toList(),
+                          selected: {store.locale},
+                          onSelectionChanged: (selected) {
+                            store.setLocale(selected.first);
+                          },
+                          showSelectedIcon: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
               // ─── Edit Profile card ─────────────────────────────────
               Card(
                 child: Padding(
@@ -139,9 +190,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           Icon(Icons.edit_outlined,
                               size: 20, color: theme.colorScheme.primary),
                           const SizedBox(width: 8),
-                          const Text(
-                            'Edit Profile',
-                            style: TextStyle(
+                          Text(
+                            t.tr('editProfile'),
+                            style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
@@ -152,9 +203,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       TextField(
                         controller: _firstNameCtrl,
                         enabled: !loading,
-                        decoration: const InputDecoration(
-                          labelText: 'First name',
-                          prefixIcon: Icon(Icons.person_outline),
+                        decoration: InputDecoration(
+                          labelText: t.tr('firstName'),
+                          prefixIcon: const Icon(Icons.person_outline),
                         ),
                         textInputAction: TextInputAction.next,
                       ),
@@ -162,9 +213,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       TextField(
                         controller: _lastNameCtrl,
                         enabled: !loading,
-                        decoration: const InputDecoration(
-                          labelText: 'Last name',
-                          prefixIcon: Icon(Icons.person_outline),
+                        decoration: InputDecoration(
+                          labelText: t.tr('lastName'),
+                          prefixIcon: const Icon(Icons.person_outline),
                         ),
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => _saveProfile(),
@@ -184,8 +235,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ),
                                 )
                               : const Icon(Icons.save_outlined),
-                          label:
-                              Text(loading ? 'Saving...' : 'Save Changes'),
+                          label: Text(
+                              loading ? t.tr('saving') : t.tr('saveChanges')),
                         ),
                       ),
                     ],
@@ -202,9 +253,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Support',
-                        style: TextStyle(
+                      Text(
+                        t.tr('support'),
+                        style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
                         ),
@@ -237,7 +288,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: theme.colorScheme.error,
                   ),
                   title: Text(
-                    'Sign out',
+                    t.tr('signOut'),
                     style: TextStyle(color: theme.colorScheme.error),
                   ),
                   onTap: store.logout,

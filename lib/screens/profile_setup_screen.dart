@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../store/app_store.dart';
+import '../l10n/app_localizations.dart';
 
 /// Profile setup screen — shown after login if profile is incomplete.
 class ProfileSetupScreen extends StatefulWidget {
@@ -25,12 +26,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+
     return ListenableBuilder(
       listenable: widget.store,
       builder: (context, child) {
         final loading = widget.store.isLoading;
         return Scaffold(
-          appBar: AppBar(title: const Text('Complete Profile')),
+          appBar: AppBar(title: Text(t.tr('completeProfile'))),
           body: SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -44,7 +47,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Set up your profile',
+                            t.tr('setUpYourProfile'),
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
@@ -53,26 +56,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Enter your name to continue.',
+                            t.tr('enterNameToContinue'),
                             style: TextStyle(
-                              color:
-                                  theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.5),
                             ),
                           ),
                           const SizedBox(height: 20),
                           TextField(
                             controller: _firstNameCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'First name *',
-                              prefixIcon: Icon(Icons.person_outline),
+                            decoration: InputDecoration(
+                              labelText: t.tr('firstNameRequired'),
+                              prefixIcon: const Icon(Icons.person_outline),
                             ),
                           ),
                           const SizedBox(height: 12),
                           TextField(
                             controller: _lastNameCtrl,
-                            decoration: const InputDecoration(
-                              labelText: 'Last name',
-                              prefixIcon: Icon(Icons.person_outline),
+                            decoration: InputDecoration(
+                              labelText: t.tr('lastName'),
+                              prefixIcon: const Icon(Icons.person_outline),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -104,7 +107,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text('Save & Continue'),
+                                  : Text(t.tr('saveAndContinue')),
                             ),
                           ),
                         ],

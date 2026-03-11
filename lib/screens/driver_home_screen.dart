@@ -4,10 +4,11 @@ import '../store/app_store.dart';
 import '../widgets/load_status_chip.dart';
 import '../widgets/status_pill.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import 'load_details_screen.dart';
 import 'active_load_screen.dart';
 
-/// Driver home screen with 3 tabs: Assigned, Active, Finished.
+/// Driver home screen with 3 tabs: Pending, Active, History.
 class DriverHomeScreen extends StatelessWidget {
   const DriverHomeScreen({super.key, required this.store});
 
@@ -15,6 +16,8 @@ class DriverHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+
     return ListenableBuilder(
       listenable: store,
       builder: (context, child) {
@@ -22,19 +25,19 @@ class DriverHomeScreen extends StatelessWidget {
           length: 3,
           child: Scaffold(
             appBar: AppBar(
-              title: const Text('YoolLive'),
+              title: Text(t.tr('appName')),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: store.fetchLoads,
-                  tooltip: 'Refresh',
+                  tooltip: t.tr('refresh'),
                 ),
               ],
-              bottom: const TabBar(
+              bottom: TabBar(
                 tabs: [
-                  Tab(text: 'Pending'),
-                  Tab(text: 'Active'),
-                  Tab(text: 'History'),
+                  Tab(text: t.tr('pending')),
+                  Tab(text: t.tr('active')),
+                  Tab(text: t.tr('history')),
                 ],
               ),
             ),
@@ -42,7 +45,7 @@ class DriverHomeScreen extends StatelessWidget {
               children: [
                 _LoadsList(
                   loads: store.pendingLoads,
-                  emptyMessage: 'No pending loads',
+                  emptyMessage: t.tr('noPendingLoads'),
                   store: store,
                   onTap: (load) => Navigator.of(context).push(
                     MaterialPageRoute(
@@ -54,7 +57,7 @@ class DriverHomeScreen extends StatelessWidget {
                 _ActiveLoadTab(store: store),
                 _LoadsList(
                   loads: store.finishedLoads,
-                  emptyMessage: 'No completed loads yet',
+                  emptyMessage: t.tr('noCompletedLoads'),
                   store: store,
                   onTap: (load) => Navigator.of(context).push(
                     MaterialPageRoute(
@@ -82,6 +85,7 @@ class _ActiveLoadTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
     final load = store.activeLoad;
 
     if (load == null) {
@@ -93,7 +97,7 @@ class _ActiveLoadTab extends StatelessWidget {
                 size: 48, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
             const SizedBox(height: 12),
             Text(
-              'No active load',
+              t.tr('noActiveLoad'),
               style: TextStyle(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
@@ -140,6 +144,7 @@ class _LoadsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
 
     if (loads.isEmpty) {
       return Center(
@@ -159,7 +164,7 @@ class _LoadsList extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: store.fetchLoads,
               icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Refresh'),
+              label: Text(t.tr('refresh')),
             ),
           ],
         ),
@@ -206,6 +211,7 @@ class _LoadCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
+    final t = AppLocalizations.of(context);
 
     return Card(
       child: InkWell(
@@ -229,7 +235,7 @@ class _LoadCard extends StatelessWidget {
                     ),
                   ),
                   LoadStatusChip(
-                    label: load.status.label,
+                    label: load.status.localizedLabel(t),
                     status: load.status.name,
                   ),
                 ],
@@ -245,7 +251,7 @@ class _LoadCard extends StatelessWidget {
                     child: Text(
                       load.pickupAddress.isNotEmpty
                           ? load.pickupAddress
-                          : 'Pickup location',
+                          : t.tr('pickupLocation'),
                       style: TextStyle(fontSize: 13, color: mutedColor),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -264,7 +270,7 @@ class _LoadCard extends StatelessWidget {
                     child: Text(
                       load.dropoffAddress.isNotEmpty
                           ? load.dropoffAddress
-                          : 'Dropoff location',
+                          : t.tr('dropoffLocation'),
                       style: TextStyle(fontSize: 13, color: mutedColor),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -291,12 +297,16 @@ class _LoadCard extends StatelessWidget {
                   runSpacing: 6,
                   children: [
                     StatusPill(
-                      label: store.networkOnline ? 'Online' : 'Offline',
-                      color:
-                          store.networkOnline ? AppColors.success : AppColors.warning,
+                      label: store.networkOnline
+                          ? t.tr('online')
+                          : t.tr('offline'),
+                      color: store.networkOnline
+                          ? AppColors.success
+                          : AppColors.warning,
                     ),
                     StatusPill(
-                      label: 'Buffer: ${store.offlineBufferCount(load.id)}',
+                      label:
+                          '${t.tr('buffer')}: ${store.offlineBufferCount(load.id)}',
                       color: store.offlineBufferCount(load.id) == 0
                           ? AppColors.primary
                           : AppColors.warning,
@@ -305,7 +315,7 @@ class _LoadCard extends StatelessWidget {
                       label: store.lastGpsPosition != null
                           ? 'GPS: ${store.lastGpsPosition!.latitude.toStringAsFixed(4)}, '
                               '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
-                          : 'GPS: Waiting...',
+                          : t.tr('gpsWaiting'),
                       color: store.lastGpsPosition != null
                           ? AppColors.success
                           : AppColors.warning,

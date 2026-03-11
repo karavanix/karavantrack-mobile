@@ -5,6 +5,7 @@ import '../widgets/load_status_chip.dart';
 import '../widgets/status_pill.dart';
 import '../widgets/info_row.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 /// Active load tracking screen — shows live tracking data and actions.
 class ActiveLoadScreen extends StatelessWidget {
@@ -20,16 +21,18 @@ class ActiveLoadScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+
     return ListenableBuilder(
       listenable: store,
       builder: (context, child) {
         final load = store.activeLoad?.id == loadId ? store.activeLoad : null;
         if (load == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Active Load')),
+            appBar: AppBar(title: Text(t.tr('activeLoad'))),
             body: Center(
               child: Text(
-                'Load not found or no longer active',
+                t.tr('loadNotFoundOrInactive'),
                 style: TextStyle(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
@@ -60,17 +63,17 @@ class ActiveLoadScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Tracking',
-                              style: TextStyle(
+                              t.tr('tracking'),
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                               ),
                             ),
                           ),
                           LoadStatusChip(
-                            label: load.status.label,
+                            label: load.status.localizedLabel(t),
                             status: load.status.name,
                           ),
                         ],
@@ -81,14 +84,16 @@ class ActiveLoadScreen extends StatelessWidget {
                         runSpacing: 6,
                         children: [
                           StatusPill(
-                            label:
-                                store.networkOnline ? 'Online' : 'Offline',
+                            label: store.networkOnline
+                                ? t.tr('online')
+                                : t.tr('offline'),
                             color: store.networkOnline
                                 ? AppColors.success
                                 : AppColors.warning,
                           ),
                           StatusPill(
-                            label: 'Buffer: $bufferCount',
+                            label:
+                                '${t.tr('buffer')}: $bufferCount',
                             color: bufferCount == 0
                                 ? AppColors.primary
                                 : AppColors.warning,
@@ -97,18 +102,17 @@ class ActiveLoadScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       InfoRow(
-                        label: 'Pickup',
+                        label: t.tr('pickup'),
                         value: load.pickupAddress,
                       ),
                       InfoRow(
-                        label: 'Dropoff',
+                        label: t.tr('dropoff'),
                         value: load.dropoffAddress,
                       ),
-                     
                       InfoRow(
-                        label: 'GPS Position',
+                        label: t.tr('gpsPosition'),
                         value: store.lastGpsPosition == null
-                            ? 'Waiting for GPS...'
+                            ? t.tr('waitingForGps')
                             : '${store.lastGpsPosition!.latitude.toStringAsFixed(6)}, '
                                 '${store.lastGpsPosition!.longitude.toStringAsFixed(6)}',
                       ),
@@ -126,9 +130,9 @@ class ActiveLoadScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        'Actions',
-                        style: TextStyle(
+                      Text(
+                        t.tr('actions'),
+                        style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
                         ),
@@ -140,7 +144,7 @@ class ActiveLoadScreen extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: () => store.startLoad(load.id),
                             icon: const Icon(Icons.play_arrow_outlined),
-                            label: const Text('Start Transit'),
+                            label: Text(t.tr('startTransit')),
                           ),
                         ),
                       SizedBox(
@@ -155,7 +159,7 @@ class ActiveLoadScreen extends StatelessWidget {
                                   }
                                 },
                                 icon: const Icon(Icons.check_circle_outline),
-                                label: const Text('Complete'),
+                                label: Text(t.tr('complete')),
                               ),
                       ),
                     ],

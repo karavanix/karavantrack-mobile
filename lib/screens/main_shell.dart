@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../store/app_store.dart';
+import '../l10n/app_localizations.dart';
 import 'driver_home_screen.dart';
 import 'settings_screen.dart';
 
@@ -19,6 +20,8 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+
     return ListenableBuilder(
       listenable: widget.store,
       builder: (context, child) {
@@ -38,16 +41,16 @@ class _MainShellState extends State<MainShell> {
             child: BottomNavigationBar(
               currentIndex: _tabIndex,
               onTap: (i) => setState(() => _tabIndex = i),
-              items: const [
+              items: [
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.local_shipping_outlined),
-                  activeIcon: Icon(Icons.local_shipping),
-                  label: 'Loads',
+                  icon: const Icon(Icons.local_shipping_outlined),
+                  activeIcon: const Icon(Icons.local_shipping),
+                  label: t.tr('loads'),
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.settings_outlined),
-                  activeIcon: Icon(Icons.settings),
-                  label: 'Settings',
+                  icon: const Icon(Icons.settings_outlined),
+                  activeIcon: const Icon(Icons.settings),
+                  label: t.tr('settings'),
                 ),
               ],
             ),

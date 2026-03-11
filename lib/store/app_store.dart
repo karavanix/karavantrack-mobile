@@ -6,6 +6,7 @@ import '../models/load.dart';
 import '../models/tracking_point.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
+import '../services/locale_service.dart';
 
 /// Central state management for the app.
 class AppStore extends ChangeNotifier {
@@ -16,6 +17,7 @@ class AppStore extends ChangeNotifier {
       _checkSilenceAlerts();
       notifyListeners();
     });
+    _loadSavedLocale();
   }
 
   final ApiService _api = ApiService.instance;
@@ -27,6 +29,24 @@ class AppStore extends ChangeNotifier {
 
   bool isLoggedIn = false;
   bool isLoading = false;
+
+  // ─── Locale ──────────────────────────────────────────────────────────
+
+  String _locale = 'en';
+
+  String get locale => _locale;
+
+  Future<void> _loadSavedLocale() async {
+    _locale = await LocaleService.loadLocale();
+    notifyListeners();
+  }
+
+  Future<void> setLocale(String code) async {
+    if (_locale == code) return;
+    _locale = code;
+    await LocaleService.saveLocale(code);
+    notifyListeners();
+  }
 
   // ─── Profile ────────────────────────────────────────────────────────────
 

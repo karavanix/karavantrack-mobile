@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../store/app_store.dart';
+import '../l10n/app_localizations.dart';
 
 /// Login screen with email/password. Toggles to register mode.
 class LoginScreen extends StatefulWidget {
@@ -32,11 +33,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    final t = AppLocalizations.of(context);
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
 
     if (email.isEmpty || password.isEmpty) {
-      _showError('Enter email and password');
+      _showError(t.tr('enterEmailAndPassword'));
       return;
     }
 
@@ -59,6 +61,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+
     return ListenableBuilder(
       listenable: widget.store,
       builder: (context, child) {
@@ -81,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'YoolLive',
+                        t.tr('appName'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 24,
@@ -91,10 +95,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _isRegister ? 'Create account' : 'Sign in',
+                        _isRegister
+                            ? t.tr('createAccount')
+                            : t.tr('signIn'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.5),
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -109,17 +116,19 @@ class _LoginScreenState extends State<LoginScreen> {
                               if (_isRegister) ...[
                                 TextField(
                                   controller: _firstNameCtrl,
-                                  decoration: const InputDecoration(
-                                    labelText: 'First name',
-                                    prefixIcon: Icon(Icons.person_outline),
+                                  decoration: InputDecoration(
+                                    labelText: t.tr('firstName'),
+                                    prefixIcon:
+                                        const Icon(Icons.person_outline),
                                   ),
                                 ),
                                 const SizedBox(height: 12),
                                 TextField(
                                   controller: _lastNameCtrl,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Last name',
-                                    prefixIcon: Icon(Icons.person_outline),
+                                  decoration: InputDecoration(
+                                    labelText: t.tr('lastName'),
+                                    prefixIcon:
+                                        const Icon(Icons.person_outline),
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -127,18 +136,20 @@ class _LoginScreenState extends State<LoginScreen> {
                               TextField(
                                 controller: _emailCtrl,
                                 keyboardType: TextInputType.emailAddress,
-                                decoration: const InputDecoration(
-                                  labelText: 'Email',
-                                  prefixIcon: Icon(Icons.email_outlined),
+                                decoration: InputDecoration(
+                                  labelText: t.tr('email'),
+                                  prefixIcon:
+                                      const Icon(Icons.email_outlined),
                                 ),
                               ),
                               const SizedBox(height: 12),
                               TextField(
                                 controller: _passwordCtrl,
                                 obscureText: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Password',
-                                  prefixIcon: Icon(Icons.lock_outline),
+                                decoration: InputDecoration(
+                                  labelText: t.tr('password'),
+                                  prefixIcon:
+                                      const Icon(Icons.lock_outline),
                                 ),
                               ),
                               const SizedBox(height: 20),
@@ -157,8 +168,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                         )
                                       : Text(
                                           _isRegister
-                                              ? 'Create account'
-                                              : 'Sign in',
+                                              ? t.tr('createAccount')
+                                              : t.tr('signIn'),
                                         ),
                                 ),
                               ),
@@ -169,8 +180,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 child: Text(
                                   _isRegister
-                                      ? 'Already have an account? Sign in'
-                                      : "Don't have an account? Sign up",
+                                      ? t.tr('alreadyHaveAccount')
+                                      : t.tr('dontHaveAccount'),
                                 ),
                               ),
                             ],

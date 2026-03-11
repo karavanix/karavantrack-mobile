@@ -1,3 +1,5 @@
+import '../l10n/app_localizations.dart';
+
 /// All backend load statuses.
 enum LoadStatus {
   created,
@@ -46,6 +48,25 @@ enum LoadStatus {
         return 'Confirmed';
       case LoadStatus.cancelled:
         return 'Cancelled';
+    }
+  }
+
+  String localizedLabel(AppLocalizations t) {
+    switch (this) {
+      case LoadStatus.created:
+        return t.tr('statusCreated');
+      case LoadStatus.assigned:
+        return t.tr('statusAssigned');
+      case LoadStatus.accepted:
+        return t.tr('statusAccepted');
+      case LoadStatus.inTransit:
+        return t.tr('statusInTransit');
+      case LoadStatus.completed:
+        return t.tr('statusCompleted');
+      case LoadStatus.confirmed:
+        return t.tr('statusConfirmed');
+      case LoadStatus.cancelled:
+        return t.tr('statusCancelled');
     }
   }
 

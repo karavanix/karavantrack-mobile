@@ -4,6 +4,7 @@ import '../store/app_store.dart';
 import '../widgets/load_status_chip.dart';
 import '../widgets/info_row.dart';
 import '../utils/formatters.dart';
+import '../l10n/app_localizations.dart';
 import 'active_load_screen.dart';
 
 /// Detail view for a load — shows info and Accept button for assigned loads.
@@ -30,16 +31,18 @@ class LoadDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+
     return ListenableBuilder(
       listenable: store,
       builder: (context, child) {
         final load = _find();
         if (load == null) {
           return Scaffold(
-            appBar: AppBar(title: const Text('Load')),
+            appBar: AppBar(title: Text(t.tr('load'))),
             body: Center(
               child: Text(
-                'Load not found',
+                t.tr('loadNotFound'),
                 style: TextStyle(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
@@ -68,38 +71,44 @@ class LoadDetailsScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Details',
-                              style: TextStyle(
+                              t.tr('details'),
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 16,
                               ),
                             ),
                           ),
                           LoadStatusChip(
-                            label: load.status.label,
+                            label: load.status.localizedLabel(t),
                             status: load.status.name,
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      InfoRow(label: 'Pickup', value: load.pickupAddress),
-                      InfoRow(label: 'Dropoff', value: load.dropoffAddress),
+                      InfoRow(
+                          label: t.tr('pickup'),
+                          value: load.pickupAddress),
+                      InfoRow(
+                          label: t.tr('dropoff'),
+                          value: load.dropoffAddress),
                       if (load.description.isNotEmpty)
-                        InfoRow(label: 'Description', value: load.description),
+                        InfoRow(
+                            label: t.tr('description'),
+                            value: load.description),
                       if (load.pickupAt != null)
                         InfoRow(
-                          label: 'Pickup time',
+                          label: t.tr('pickupTime'),
                           value: formatDateTime(load.pickupAt),
                         ),
                       if (load.dropoffAt != null)
                         InfoRow(
-                          label: 'Dropoff time',
+                          label: t.tr('dropoffTime'),
                           value: formatDateTime(load.dropoffAt),
                         ),
                       InfoRow(
-                        label: 'Created',
+                        label: t.tr('created'),
                         value: formatDateTime(load.createdAt),
                       ),
                     ],
@@ -128,7 +137,7 @@ class LoadDetailsScreen extends StatelessWidget {
                             );
                           },
                           icon: const Icon(Icons.check_circle_outline),
-                          label: const Text('Accept Load'),
+                          label: Text(t.tr('acceptLoad')),
                         ),
                 ),
               ],
