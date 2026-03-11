@@ -229,14 +229,14 @@ class AppLocalizations extends InheritedWidget {
 
     // Login
     'signIn': 'Kirish',
-    'createAccount': 'Hisob yaratish',
+    'createAccount': 'Akkaunt yaratish',
     'email': 'Elektron pochta',
     'password': 'Parol',
     'firstName': 'Ism',
     'lastName': 'Familiya',
     'enterEmailAndPassword': 'Pochta va parolni kiriting',
-    'alreadyHaveAccount': 'Hisobingiz bormi? Kirish',
-    'dontHaveAccount': "Hisobingiz yo'qmi? Ro'yxatdan o'ting",
+    'alreadyHaveAccount': 'Akkaunt bormi? Kirish',
+    'dontHaveAccount': "Akkaunt yo'qmi? Ro'yxatdan o'ting",
 
     // Profile setup
     'completeProfile': 'Profilni to\'ldirish',
