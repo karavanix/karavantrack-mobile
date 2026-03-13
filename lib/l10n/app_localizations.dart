@@ -104,6 +104,9 @@ class AppLocalizations extends InheritedWidget {
     'signOut': 'Sign out',
     'language': 'Language',
     'firstNameIsRequired': 'First name is required',
+    'theme': 'Theme',
+    'darkMode': 'Dark',
+    'lightMode': 'Light',
 
     // Bottom nav
     'loads': 'Loads',
@@ -196,6 +199,9 @@ class AppLocalizations extends InheritedWidget {
     'signOut': 'Выйти',
     'language': 'Язык',
     'firstNameIsRequired': 'Имя обязательно',
+    'theme': 'Тема',
+    'darkMode': 'Тёмная',
+    'lightMode': 'Светлая',
 
     // Bottom nav
     'loads': 'Грузы',
@@ -288,6 +294,9 @@ class AppLocalizations extends InheritedWidget {
     'signOut': 'Chiqish',
     'language': 'Til',
     'firstNameIsRequired': 'Ism kiritish shart',
+    'theme': 'Mavzu',
+    'darkMode': 'Qoʻngʻir',
+    'lightMode': 'Yorqin',
 
     // Bottom nav
     'loads': 'Yuklar',

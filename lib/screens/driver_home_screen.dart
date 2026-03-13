@@ -59,6 +59,7 @@ class DriverHomeScreen extends StatelessWidget {
                   loads: store.finishedLoads,
                   emptyMessage: t.tr('noCompletedLoads'),
                   store: store,
+                  showDate: true,
                   onTap: (load) => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) =>
@@ -134,12 +135,14 @@ class _LoadsList extends StatelessWidget {
     required this.emptyMessage,
     required this.store,
     required this.onTap,
+    this.showDate = false,
   });
 
   final List<LoadItem> loads;
   final String emptyMessage;
   final AppStore store;
   final void Function(LoadItem) onTap;
+  final bool showDate;
 
   @override
   Widget build(BuildContext context) {
@@ -184,6 +187,7 @@ class _LoadsList extends StatelessWidget {
               load: load,
               store: store,
               onTap: () => onTap(load),
+              showDate: showDate,
             ),
           );
         },
@@ -200,12 +204,28 @@ class _LoadCard extends StatelessWidget {
     required this.store,
     required this.onTap,
     this.isActive = false,
+    this.showDate = false,
   });
 
   final LoadItem load;
   final AppStore store;
   final VoidCallback onTap;
   final bool isActive;
+  final bool showDate;
+
+  /// Returns a human-readable date string like "Mar 14, 2026 02:05".
+  String _formatDate(DateTime dt) {
+    final local = dt.toLocal();
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final m = months[local.month - 1];
+    final d = local.day.toString().padLeft(2, '0');
+    final h = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    return '$m $d, ${local.year}  $h:$min';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -286,6 +306,24 @@ class _LoadCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 13, color: mutedColor),
+                ),
+              ],
+
+              // History: show completed / updated date
+              if (showDate) ...[
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.check_circle_outline,
+                        size: 14, color: AppColors.success),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatDate(load.dropoffAt ?? load.updatedAt ?? load.createdAt),
+                      style: TextStyle(fontSize: 12, color: mutedColor),
+                    ),
+                  ],
                 ),
               ],
 

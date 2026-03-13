@@ -178,7 +178,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               const SizedBox(height: 12),
 
+              // ─── Theme card ──────────────────────────────────────────
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.brightness_6_outlined,
+                              size: 20, color: theme.colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            t.tr('theme'),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<bool>(
+                          segments: [
+                            ButtonSegment<bool>(
+                              value: true,
+                              label: Text(t.tr('darkMode'),
+                                  style: const TextStyle(fontSize: 13)),
+                              icon: const Icon(Icons.dark_mode_outlined,
+                                  size: 16),
+                            ),
+                            ButtonSegment<bool>(
+                              value: false,
+                              label: Text(t.tr('lightMode'),
+                                  style: const TextStyle(fontSize: 13)),
+                              icon: const Icon(Icons.light_mode_outlined,
+                                  size: 16),
+                            ),
+                          ],
+                          selected: {store.isDarkTheme},
+                          onSelectionChanged: (selected) {
+                            store.setDarkTheme(selected.first);
+                          },
+                          showSelectedIcon: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
               // ─── Edit Profile card ─────────────────────────────────
+
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),

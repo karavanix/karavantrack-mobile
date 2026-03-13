@@ -7,6 +7,7 @@ import '../models/tracking_point.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/locale_service.dart';
+import '../services/theme_service.dart';
 
 /// Central state management for the app.
 class AppStore extends ChangeNotifier {
@@ -18,11 +19,13 @@ class AppStore extends ChangeNotifier {
       notifyListeners();
     });
     _loadSavedLocale();
+    _loadSavedTheme();
   }
 
   final ApiService _api = ApiService.instance;
 
   Timer? _clockTimer;
+  Timer? _locationTimer;
   DateTime _nowUtc = DateTime.now().toUtc();
 
   Future<void> init() async {
@@ -32,6 +35,7 @@ class AppStore extends ChangeNotifier {
       notifyListeners();
       await _loadProfile();
       await fetchLoads();
+      _startLocationTimer();
     }
   }
 
@@ -58,6 +62,24 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── Theme ───────────────────────────────────────────────────────────
+
+  bool _isDarkTheme = true;
+
+  bool get isDarkTheme => _isDarkTheme;
+
+  Future<void> _loadSavedTheme() async {
+    _isDarkTheme = await ThemeService.loadIsDark();
+    notifyListeners();
+  }
+
+  Future<void> setDarkTheme(bool isDark) async {
+    if (_isDarkTheme == isDark) return;
+    _isDarkTheme = isDark;
+    await ThemeService.saveIsDark(isDark);
+    notifyListeners();
+  }
+
   // ─── Profile ────────────────────────────────────────────────────────────
 
   UserProfile? profile;
@@ -69,6 +91,7 @@ class AppStore extends ChangeNotifier {
   final List<LoadItem> _pendingLoads = [];
   LoadItem? _activeLoad;
   final List<LoadItem> _allLoads = [];
+  final List<LoadItem> _historyLoads = [];
 
   // ─── Tracking ───────────────────────────────────────────────────────────
 
@@ -92,8 +115,7 @@ class AppStore extends ChangeNotifier {
 
   List<LoadItem> get allLoads => List.unmodifiable(_allLoads);
 
-  List<LoadItem> get finishedLoads =>
-      _allLoads.where((l) => l.status.isFinal).toList();
+  List<LoadItem> get finishedLoads => List.unmodifiable(_historyLoads);
 
   Position? get lastGpsPosition => _lastGpsPosition;
 
@@ -114,6 +136,7 @@ class AppStore extends ChangeNotifier {
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _locationTimer?.cancel();
     super.dispose();
   }
 
@@ -125,6 +148,24 @@ class AppStore extends ChangeNotifier {
     if (_activeLoad != null && _activeLoad!.status.isActive) {
       _sendGpsPointToApi(_activeLoad!, position);
     }
+  }
+
+  // ─── Periodic location reporting ────────────────────────────────────────
+
+  /// Starts (or restarts) a timer that sends the current GPS position to the
+  /// backend every 10 minutes, even when the device is stationary.
+  void _startLocationTimer() {
+    _locationTimer?.cancel();
+    _locationTimer = Timer.periodic(const Duration(minutes: 10), (_) {
+      _sendCurrentLocation();
+    });
+  }
+
+  /// Sends the most recent GPS fix for the active load, if one exists.
+  void _sendCurrentLocation() {
+    if (_activeLoad == null || !_activeLoad!.status.isActive) return;
+    if (_lastGpsPosition == null) return;
+    _sendGpsPointToApi(_activeLoad!, _lastGpsPosition!);
   }
 
   // ─── Auth ───────────────────────────────────────────────────────────────
@@ -194,12 +235,15 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _locationTimer?.cancel();
+    _locationTimer = null;
     await _api.logout();
     isLoggedIn = false;
     profile = null;
     _pendingLoads.clear();
     _activeLoad = null;
     _allLoads.clear();
+    _historyLoads.clear();
     _lastLocalPoints.clear();
     _lastDeliveredPoints.clear();
     _offlineBuffers.clear();
@@ -248,13 +292,28 @@ class AppStore extends ChangeNotifier {
 
   Future<void> fetchLoads() async {
     try {
-      // Fetch pending loads
-      final pendingResult = await _api.getPendingLoads(limit: 50);
-      final rawList = pendingResult['result'] as List<dynamic>? ?? [];
+      // Fetch all loads the carrier has ever received (limit=100 to capture history).
+      final allResult = await _api.getPendingLoads(limit: 100);
+      final rawList = allResult['result'] as List<dynamic>? ?? [];
+
       _pendingLoads.clear();
+      _historyLoads.clear();
+
       for (final item in rawList) {
-        _pendingLoads.add(LoadItem.fromJson(item as Map<String, dynamic>));
+        final load = LoadItem.fromJson(item as Map<String, dynamic>);
+        if (load.status.isFinal) {
+          _historyLoads.add(load);
+        } else {
+          _pendingLoads.add(load);
+        }
       }
+
+      // Sort history: most recently updated/created first.
+      _historyLoads.sort((a, b) {
+        final aTime = a.updatedAt ?? a.createdAt;
+        final bTime = b.updatedAt ?? b.createdAt;
+        return bTime.compareTo(aTime);
+      });
 
       // Fetch active load
       final activeResult = await _api.getActiveLoad();
@@ -264,10 +323,11 @@ class AppStore extends ChangeNotifier {
         _activeLoad = null;
       }
 
-      // Build combined list
+      // Build combined list for internal lookups
       _allLoads.clear();
       if (_activeLoad != null) _allLoads.add(_activeLoad!);
       _allLoads.addAll(_pendingLoads);
+      _allLoads.addAll(_historyLoads);
 
       notifyListeners();
     } catch (_) {}
@@ -280,10 +340,10 @@ class AppStore extends ChangeNotifier {
       final success = await _api.acceptLoad(loadId);
       if (success) {
         await fetchLoads();
-        // Send initial GPS point if available
-        if (_activeLoad != null && _lastGpsPosition != null) {
-          _sendGpsPointToApi(_activeLoad!, _lastGpsPosition!);
-        }
+        // Immediately report location on load acceptance.
+        _sendCurrentLocation();
+        // (Re)start the 10-min periodic timer now that a load is active.
+        _startLocationTimer();
       }
     } catch (_) {}
     isLoading = false;
@@ -305,8 +365,13 @@ class AppStore extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
+      // Send a final location point before marking the load as complete.
+      _sendCurrentLocation();
       final success = await _api.completeLoad(loadId);
       if (success) {
+        // Stop the periodic timer — no active load to report for.
+        _locationTimer?.cancel();
+        _locationTimer = null;
         _offlineBuffers.remove(loadId);
         _lastLocalPoints.remove(loadId);
         _lastDeliveredPoints.remove(loadId);
@@ -420,7 +485,7 @@ class AppStore extends ChangeNotifier {
     if (lastSeen == null) return;
 
     final silence = _nowUtc.difference(lastSeen);
-    if (silence >= const Duration(minutes: 10) &&
+    if (silence >= const Duration(seconds: 10) &&
         _silenceAlertSent[loadId] != true) {
       _silenceAlertSent[loadId] = true;
       _silenceAlertAt[loadId] = _nowUtc;

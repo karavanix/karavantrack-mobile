@@ -63,7 +63,9 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
           child: MaterialApp(
             title: 'YoolLive',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.dark,
+            theme: AppTheme.light,
+            darkTheme: AppTheme.dark,
+            themeMode: _store.isDarkTheme ? ThemeMode.dark : ThemeMode.light,
             home: _showSplash
                 ? const SplashScreen()
                 : !_store.isLoggedIn
