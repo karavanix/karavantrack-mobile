@@ -6,6 +6,7 @@ import '../models/load.dart';
 import '../models/tracking_point.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
+import '../services/background_service.dart';
 import '../services/locale_service.dart';
 import '../services/theme_service.dart';
 
@@ -237,6 +238,8 @@ class AppStore extends ChangeNotifier {
   Future<void> logout() async {
     _locationTimer?.cancel();
     _locationTimer = null;
+    await stopBackgroundService();
+    await clearBgActiveLoad();
     await _api.logout();
     isLoggedIn = false;
     profile = null;
@@ -340,6 +343,15 @@ class AppStore extends ChangeNotifier {
       final success = await _api.acceptLoad(loadId);
       if (success) {
         await fetchLoads();
+        // Persist context for background service
+        if (profile != null && _api.accessToken != null) {
+          await setBgActiveLoad(
+            loadId: _activeLoad?.id ?? loadId,
+            carrierId: profile!.id,
+            token: _api.accessToken!,
+          );
+          await startBackgroundService();
+        }
         // Immediately report location on load acceptance.
         _sendCurrentLocation();
         // (Re)start the 10-min periodic timer now that a load is active.
@@ -372,6 +384,9 @@ class AppStore extends ChangeNotifier {
         // Stop the periodic timer — no active load to report for.
         _locationTimer?.cancel();
         _locationTimer = null;
+        // Stop background service and clear persisted context
+        await stopBackgroundService();
+        await clearBgActiveLoad();
         _offlineBuffers.remove(loadId);
         _lastLocalPoints.remove(loadId);
         _lastDeliveredPoints.remove(loadId);

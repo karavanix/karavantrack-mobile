@@ -125,6 +125,12 @@ class AppLocalizations extends InheritedWidget {
     'registrationError': 'Registration error',
     'networkError': 'Network error',
     'failedToSaveProfile': 'Failed to save profile',
+
+    // GPS dialog
+    'gpsOffTitle': 'GPS is Off',
+    'gpsOffMessage':
+        'Location services are disabled. Please turn on GPS so your position can be tracked.',
+    'turnOnGps': 'Turn On GPS',
   };
 
   // ── Russian ────────────────────────────────────────────────────────────
@@ -220,6 +226,12 @@ class AppLocalizations extends InheritedWidget {
     'registrationError': 'Ошибка регистрации',
     'networkError': 'Ошибка сети',
     'failedToSaveProfile': 'Не удалось сохранить профиль',
+
+    // GPS dialog
+    'gpsOffTitle': 'GPS выключен',
+    'gpsOffMessage':
+        'Службы геолокации отключены. Включите GPS, чтобы ваше местоположение отслеживалось.',
+    'turnOnGps': 'Включить GPS',
   };
 
   // ── Uzbek ──────────────────────────────────────────────────────────────
@@ -315,6 +327,12 @@ class AppLocalizations extends InheritedWidget {
     'registrationError': 'Ro\'yxatdan o\'tish xatosi',
     'networkError': 'Tarmoq xatosi',
     'failedToSaveProfile': 'Profilni saqlash amalga oshmadi',
+
+    // GPS dialog
+    'gpsOffTitle': 'GPS o\'chiq',
+    'gpsOffMessage':
+        'Joylashuv xizmatlari o\'chirilgan. GPS ni yoqing, shunda joylashuvingiz kuzatiladi.',
+    'turnOnGps': 'GPS ni yoqish',
   };
 
   /// Language display names for the language picker.

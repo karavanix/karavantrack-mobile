@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/load.dart';
 import '../store/app_store.dart';
+import '../widgets/internet_status_banner.dart';
 import '../widgets/load_status_chip.dart';
 import '../widgets/status_pill.dart';
 import '../theme/app_theme.dart';
@@ -33,12 +34,22 @@ class DriverHomeScreen extends StatelessWidget {
                   tooltip: t.tr('refresh'),
                 ),
               ],
-              bottom: TabBar(
-                tabs: [
-                  Tab(text: t.tr('pending')),
-                  Tab(text: t.tr('active')),
-                  Tab(text: t.tr('history')),
-                ],
+              bottom: PreferredSize(
+                // 34 px for the banner (may be 0 when hidden) + 46 px for TabBar
+                preferredSize: const Size.fromHeight(80),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InternetStatusBanner(store: store),
+                    TabBar(
+                      tabs: [
+                        Tab(text: t.tr('pending')),
+                        Tab(text: t.tr('active')),
+                        Tab(text: t.tr('history')),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             body: TabBarView(
