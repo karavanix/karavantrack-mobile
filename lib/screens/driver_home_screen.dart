@@ -10,76 +10,96 @@ import 'load_details_screen.dart';
 import 'active_load_screen.dart';
 
 /// Driver home screen with 3 tabs: Pending, Active, History.
-class DriverHomeScreen extends StatelessWidget {
+class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key, required this.store});
 
   final AppStore store;
 
   @override
+  State<DriverHomeScreen> createState() => _DriverHomeScreenState();
+}
+
+class _DriverHomeScreenState extends State<DriverHomeScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
 
+    // ListenableBuilder only rebuilds the *contents*, not the TabController.
     return ListenableBuilder(
-      listenable: store,
+      listenable: widget.store,
       builder: (context, child) {
-        return DefaultTabController(
-          length: 3,
-          child: Scaffold(
-            appBar: AppBar(
-              title: Text(t.tr('appName')),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: store.fetchLoads,
-                  tooltip: t.tr('refresh'),
-                ),
-              ],
-              bottom: PreferredSize(
-                // 34 px for the banner (may be 0 when hidden) + 46 px for TabBar
-                preferredSize: const Size.fromHeight(80),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    InternetStatusBanner(store: store),
-                    TabBar(
-                      tabs: [
-                        Tab(text: t.tr('pending')),
-                        Tab(text: t.tr('active')),
-                        Tab(text: t.tr('history')),
-                      ],
-                    ),
-                  ],
-                ),
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(t.tr('appName')),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: widget.store.fetchLoads,
+                tooltip: t.tr('refresh'),
+              ),
+            ],
+            bottom: PreferredSize(
+              // 34 px for the banner (may be 0 when hidden) + 46 px for TabBar
+              preferredSize: const Size.fromHeight(80),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InternetStatusBanner(store: widget.store),
+                  TabBar(
+                    controller: _tabController,
+                    tabs: [
+                      Tab(text: t.tr('pending')),
+                      Tab(text: t.tr('active')),
+                      Tab(text: t.tr('history')),
+                    ],
+                  ),
+                ],
               ),
             ),
-            body: TabBarView(
-              children: [
-                _LoadsList(
-                  loads: store.pendingLoads,
-                  emptyMessage: t.tr('noPendingLoads'),
-                  store: store,
-                  onTap: (load) => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          LoadDetailsScreen(store: store, loadId: load.id),
-                    ),
+          ),
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              _LoadsList(
+                loads: widget.store.pendingLoads,
+                emptyMessage: t.tr('noPendingLoads'),
+                store: widget.store,
+                onTap: (load) => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        LoadDetailsScreen(store: widget.store, loadId: load.id),
                   ),
                 ),
-                _ActiveLoadTab(store: store),
-                _LoadsList(
-                  loads: store.finishedLoads,
-                  emptyMessage: t.tr('noCompletedLoads'),
-                  store: store,
-                  showDate: true,
-                  onTap: (load) => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          LoadDetailsScreen(store: store, loadId: load.id),
-                    ),
+              ),
+              _ActiveLoadTab(store: widget.store),
+              _LoadsList(
+                loads: widget.store.finishedLoads,
+                emptyMessage: t.tr('noCompletedLoads'),
+                store: widget.store,
+                showDate: true,
+                onTap: (load) => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        LoadDetailsScreen(store: widget.store, loadId: load.id),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },

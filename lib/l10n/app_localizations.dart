@@ -84,6 +84,8 @@ class AppLocalizations extends InheritedWidget {
     'dropoffTime': 'Dropoff time',
     'created': 'Created',
     'acceptLoad': 'Accept Load',
+    'loadAccepted': 'Load accepted! Go to the Active tab.',
+
 
     // Active load
     'activeLoad': 'Active Load',
@@ -185,6 +187,8 @@ class AppLocalizations extends InheritedWidget {
     'dropoffTime': 'Время разгрузки',
     'created': 'Создан',
     'acceptLoad': 'Принять груз',
+    'loadAccepted': 'Груз принят! Перейдите на вкладку «Активные».',
+
 
     // Active load
     'activeLoad': 'Активный груз',
@@ -286,6 +290,8 @@ class AppLocalizations extends InheritedWidget {
     'dropoffTime': 'Tushirish vaqti',
     'created': 'Yaratilgan',
     'acceptLoad': 'Yukni qabul qilish',
+    'loadAccepted': 'Yuk qabul qilindi! Faol tabga o\'ting.',
+
 
     // Active load
     'activeLoad': 'Faol yuk',

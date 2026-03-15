@@ -5,7 +5,6 @@ import '../widgets/load_status_chip.dart';
 import '../widgets/info_row.dart';
 import '../utils/formatters.dart';
 import '../l10n/app_localizations.dart';
-import 'active_load_screen.dart';
 
 /// Detail view for a load — shows info and Accept button for assigned loads.
 class LoadDetailsScreen extends StatelessWidget {
@@ -127,12 +126,17 @@ class LoadDetailsScreen extends StatelessWidget {
                           onPressed: () async {
                             await store.acceptLoad(load.id);
                             if (!context.mounted) return;
-                            Navigator.of(context).pushReplacement(
-                              MaterialPageRoute(
-                                builder: (_) => ActiveLoadScreen(
-                                  store: store,
-                                  loadId: load.id,
-                                ),
+                            // Pop back to MainShell.  The reactive ListenableBuilder
+                            // in app.dart rebuilds MaterialApp.home on every
+                            // notifyListeners() call, so pushing a new route here
+                            // would conflict with that rebuild and close the app.
+                            // Instead we pop to MainShell and let the user open
+                            // the Active tab (or navigate from there).
+                            Navigator.of(context).pop();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(t.tr('loadAccepted')),
+                                behavior: SnackBarBehavior.floating,
                               ),
                             );
                           },

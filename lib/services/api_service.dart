@@ -204,8 +204,8 @@ class ApiService {
       final body = <String, dynamic>{
         'device_id': deviceId,
         'device_token': deviceToken,
-        if (deviceName != null) 'device_name': deviceName,
-        if (deviceType != null) 'device_type': deviceType,
+        'device_name': ?deviceName,
+        'device_type': ?deviceType,
       };
       await _authed(
         () => http.post(

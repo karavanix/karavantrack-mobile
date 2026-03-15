@@ -24,7 +24,8 @@ class DriverTrackingApp extends StatefulWidget {
 class _DriverTrackingAppState extends State<DriverTrackingApp> {
   final GpsService _gps = GpsService();
   late final AppStore _store;
-  bool _showSplash = true;
+  // ValueNotifier so _HomeRouter can listen directly without rebuilding MaterialApp.
+  final ValueNotifier<bool> _showSplash = ValueNotifier(true);
 
   // Navigator key — gives us a context that is INSIDE MaterialApp so that
   // showDialog / Navigator.pop work correctly from timer callbacks.
@@ -56,7 +57,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
       _store.init(),
       Future.delayed(const Duration(milliseconds: 900)),
     ]);
-    if (mounted) setState(() => _showSplash = false);
+    if (mounted) _showSplash.value = false;
 
     // Start polling GPS status every 2 seconds
     _startGpsPolling();
@@ -132,33 +133,66 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
   void dispose() {
     _gpsPoller?.cancel();
     _store.dispose();
+    _showSplash.dispose();
     _gps.stopPositionStream();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _store,
+    // Build MaterialApp ONCE — do NOT wrap in ListenableBuilder.
+    // Rebuilding MaterialApp resets its internal Navigator, which wipes the
+    // navigation stack.  Theme/locale/auth changes are handled by
+    // AnimatedBuilder widgets inside the widget tree below MaterialApp.
+    return MaterialApp(
+      navigatorKey: _navigatorKey,
+      title: 'YoolLive',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      // Wrap with localizations via builder so locale/theme changes propagate
+      // without rebuilding MaterialApp itself.
       builder: (context, child) {
-        return AppLocalizations(
-          locale: _store.locale,
-          child: MaterialApp(
-            navigatorKey: _navigatorKey,
-            title: 'YoolLive',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.light,
-            darkTheme: AppTheme.dark,
-            themeMode: _store.isDarkTheme ? ThemeMode.dark : ThemeMode.light,
-            home: _showSplash
-                ? const SplashScreen()
-                : !_store.isLoggedIn
-                ? LoginScreen(store: _store)
-                : !_store.isProfileCompleted
-                ? ProfileSetupScreen(store: _store)
-                : MainShell(store: _store),
-          ),
+        return AnimatedBuilder(
+          animation: _store,
+          builder: (context, _) {
+            return AppLocalizations(
+              locale: _store.locale,
+              child: Theme(
+                data: _store.isDarkTheme ? AppTheme.dark : AppTheme.light,
+                child: child!,
+              ),
+            );
+          },
         );
+      },
+      home: _HomeRouter(
+        store: _store,
+        showSplash: _showSplash,
+      ),
+    );
+  }
+}
+
+/// Lightweight widget that routes between Splash / Login / ProfileSetup / Main.
+/// Listens to both [store] (auth/profile state) and [showSplash] (splash timer)
+/// so it rebuilds only when routing actually needs to change.
+class _HomeRouter extends StatelessWidget {
+  const _HomeRouter({required this.store, required this.showSplash});
+
+  final AppStore store;
+  final ValueNotifier<bool> showSplash;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      // Merge both listenables so we react to either changing.
+      animation: Listenable.merge([store, showSplash]),
+      builder: (context, _) {
+        if (showSplash.value) return const SplashScreen();
+        if (!store.isLoggedIn) return LoginScreen(store: store);
+        if (!store.isProfileCompleted) return ProfileSetupScreen(store: store);
+        return MainShell(store: store);
       },
     );
   }
