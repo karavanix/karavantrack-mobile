@@ -27,6 +27,17 @@ class UserProfile {
 
   bool get isProfileComplete => firstName.isNotEmpty;
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'first_name': firstName,
+        'last_name': lastName,
+        if (email != null) 'email': email,
+        if (phone != null) 'phone': phone,
+        if (role != null) 'role': role,
+        if (status != null) 'status': status,
+        if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+      };
+
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id'] as String? ?? '',

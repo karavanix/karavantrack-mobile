@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../models/load.dart';
@@ -46,6 +48,8 @@ class AppStore extends ChangeNotifier {
   bool isLoading = false;
 
   // ─── Locale ──────────────────────────────────────────────────────────
+
+  static const String _profileKey = 'cached_profile';
 
   String _locale = 'en';
 
@@ -241,6 +245,9 @@ class AppStore extends ChangeNotifier {
     await stopBackgroundService();
     await clearBgActiveLoad();
     await _api.logout();
+    // Clear cached profile
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_profileKey);
     isLoggedIn = false;
     profile = null;
     _pendingLoads.clear();
@@ -258,10 +265,35 @@ class AppStore extends ChangeNotifier {
   // ─── Profile ────────────────────────────────────────────────────────────
 
   Future<void> _loadProfile() async {
-    final me = await _api.getMe();
-    if (me == null) return;
-    profile = UserProfile.fromJson(me);
-    notifyListeners();
+    try {
+      final me = await _api.getMe();
+      if (me != null) {
+        profile = UserProfile.fromJson(me);
+        // Cache profile locally for offline access
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_profileKey, jsonEncode(profile!.toJson()));
+        notifyListeners();
+        return;
+      }
+    } catch (_) {
+      // Network error — fall through to cached profile
+    }
+    // Fallback: load cached profile if network failed
+    await _loadCachedProfile();
+  }
+
+  Future<void> _loadCachedProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cached = prefs.getString(_profileKey);
+    if (cached != null) {
+      try {
+        final json = jsonDecode(cached) as Map<String, dynamic>;
+        profile = UserProfile.fromJson(json);
+        notifyListeners();
+      } catch (_) {
+        // Corrupted cache — ignore
+      }
+    }
   }
 
   Future<String?> saveProfile({
