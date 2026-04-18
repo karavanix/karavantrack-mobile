@@ -32,9 +32,21 @@ class LoadStatusChip extends StatelessWidget {
         return (Color.fromARGB(255, 129, 140, 248), AppColors.foreground);
       case 'accepted':
         return (AppColors.primary, AppColors.primaryForeground);
+      case 'pickingUp':
+      case 'picking_up':
+        return (Color.fromARGB(255, 251, 146, 60), AppColors.foreground);
+      case 'pickedUp':
+      case 'picked_up':
+        return (Color.fromARGB(255, 96, 165, 250), AppColors.foreground);
       case 'in_transit':
       case 'inTransit':
         return (AppColors.warning, AppColors.foreground);
+      case 'droppingOff':
+      case 'dropping_off':
+        return (Color.fromARGB(255, 245, 158, 11), AppColors.foreground);
+      case 'droppedOff':
+      case 'dropped_off':
+        return (Color.fromARGB(255, 52, 211, 153), AppColors.foreground);
       case 'completed':
         return (AppColors.success, AppColors.foreground);
       case 'confirmed':

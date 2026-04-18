@@ -281,11 +281,44 @@ class ApiService {
     return response.statusCode == 200;
   }
 
-  /// POST /loads/{id}/complete
-  Future<bool> completeLoad(String id) async {
+  /// POST /loads/{id}/pickup/begin  (accepted → picking_up)
+  Future<bool> beginPickup(String id) async {
     final response = await _authed(
       () => http.post(
-        Uri.parse(_url('/loads/$id/complete')),
+        Uri.parse(_url('/loads/$id/pickup/begin')),
+        headers: _authHeaders,
+      ),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// POST /loads/{id}/pickup/confirm  (picking_up → picked_up)
+  Future<bool> confirmPickup(String id) async {
+    final response = await _authed(
+      () => http.post(
+        Uri.parse(_url('/loads/$id/pickup/confirm')),
+        headers: _authHeaders,
+      ),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// POST /loads/{id}/dropoff/begin  (in_transit → dropping_off)
+  Future<bool> beginDropoff(String id) async {
+    final response = await _authed(
+      () => http.post(
+        Uri.parse(_url('/loads/$id/dropoff/begin')),
+        headers: _authHeaders,
+      ),
+    );
+    return response.statusCode == 200;
+  }
+
+  /// POST /loads/{id}/dropoff/confirm  (dropping_off → dropped_off)
+  Future<bool> confirmDropoff(String id) async {
+    final response = await _authed(
+      () => http.post(
+        Uri.parse(_url('/loads/$id/dropoff/confirm')),
         headers: _authHeaders,
       ),
     );

@@ -47,6 +47,11 @@ class AppStore extends ChangeNotifier {
   bool isLoggedIn = false;
   bool isLoading = false;
 
+  // Per-load loading state — keyed by load id.
+  final Set<String> _loadingIds = {};
+
+  bool isLoadingId(String id) => _loadingIds.contains(id);
+
   // ─── Locale ──────────────────────────────────────────────────────────
 
   static const String _profileKey = 'cached_profile';
@@ -369,13 +374,12 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> acceptLoad(String loadId) async {
-    isLoading = true;
+    _loadingIds.add(loadId);
     notifyListeners();
     try {
       final success = await _api.acceptLoad(loadId);
       if (success) {
         await fetchLoads();
-        // Persist context for background service
         if (profile != null && _api.accessToken != null) {
           await setBgActiveLoad(
             loadId: _activeLoad?.id ?? loadId,
@@ -384,39 +388,67 @@ class AppStore extends ChangeNotifier {
           );
           await startBackgroundService();
         }
-        // Immediately report location on load acceptance.
         _sendCurrentLocation();
-        // (Re)start the 10-min periodic timer now that a load is active.
         _startLocationTimer();
       }
     } catch (_) {}
-    isLoading = false;
+    _loadingIds.remove(loadId);
+    notifyListeners();
+  }
+
+  Future<void> beginPickup(String loadId) async {
+    _loadingIds.add(loadId);
+    notifyListeners();
+    try {
+      final success = await _api.beginPickup(loadId);
+      if (success) await fetchLoads();
+    } catch (_) {}
+    _loadingIds.remove(loadId);
+    notifyListeners();
+  }
+
+  Future<void> confirmPickup(String loadId) async {
+    _loadingIds.add(loadId);
+    notifyListeners();
+    try {
+      final success = await _api.confirmPickup(loadId);
+      if (success) await fetchLoads();
+    } catch (_) {}
+    _loadingIds.remove(loadId);
     notifyListeners();
   }
 
   Future<void> startLoad(String loadId) async {
-    isLoading = true;
+    _loadingIds.add(loadId);
     notifyListeners();
     try {
       final success = await _api.startLoad(loadId);
       if (success) await fetchLoads();
     } catch (_) {}
-    isLoading = false;
+    _loadingIds.remove(loadId);
     notifyListeners();
   }
 
-  Future<void> completeLoad(String loadId) async {
-    isLoading = true;
+  Future<void> beginDropoff(String loadId) async {
+    _loadingIds.add(loadId);
     notifyListeners();
     try {
-      // Send a final location point before marking the load as complete.
+      final success = await _api.beginDropoff(loadId);
+      if (success) await fetchLoads();
+    } catch (_) {}
+    _loadingIds.remove(loadId);
+    notifyListeners();
+  }
+
+  Future<void> confirmDropoff(String loadId) async {
+    _loadingIds.add(loadId);
+    notifyListeners();
+    try {
       _sendCurrentLocation();
-      final success = await _api.completeLoad(loadId);
+      final success = await _api.confirmDropoff(loadId);
       if (success) {
-        // Stop the periodic timer — no active load to report for.
         _locationTimer?.cancel();
         _locationTimer = null;
-        // Stop background service and clear persisted context
         await stopBackgroundService();
         await clearBgActiveLoad();
         _offlineBuffers.remove(loadId);
@@ -427,7 +459,7 @@ class AppStore extends ChangeNotifier {
         await fetchLoads();
       }
     } catch (_) {}
-    isLoading = false;
+    _loadingIds.remove(loadId);
     notifyListeners();
   }
 
@@ -472,12 +504,6 @@ class AppStore extends ChangeNotifier {
         _lastDeliveredPoints[load.id] = point;
         _silenceAlertSent[load.id] = false;
         _silenceAlertAt[load.id] = null;
-
-        // Auto-transition: accepted → in_transit when moving
-        if (load.status == LoadStatus.accepted && point.speedKmh > 1) {
-          await _api.startLoad(load.id);
-          load.status = LoadStatus.inTransit;
-        }
       }
     } catch (_) {
       _offlineBuffers.putIfAbsent(load.id, () => []).add(point);

@@ -4,265 +4,290 @@ import '../store/app_store.dart';
 import '../widgets/internet_status_banner.dart';
 import '../widgets/load_status_chip.dart';
 import '../widgets/status_pill.dart';
+import '../widgets/status_stepper.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 import 'load_details_screen.dart';
-import 'active_load_screen.dart';
 
-/// Driver home screen with 3 tabs: Pending, Active, History.
-class DriverHomeScreen extends StatefulWidget {
+/// Driver home screen — active load panel on top, pending loads below.
+class DriverHomeScreen extends StatelessWidget {
   const DriverHomeScreen({super.key, required this.store});
 
   final AppStore store;
 
-  @override
-  State<DriverHomeScreen> createState() => _DriverHomeScreenState();
-}
-
-class _DriverHomeScreenState extends State<DriverHomeScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  void _openDetails(BuildContext context, String loadId) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LoadDetailsScreen(store: store, loadId: loadId),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
 
-    // ListenableBuilder only rebuilds the *contents*, not the TabController.
     return ListenableBuilder(
-      listenable: widget.store,
+      listenable: store,
       builder: (context, child) {
+        final active = store.activeLoad;
+        final pending = store.pendingLoads;
+        final hasAny = active != null || pending.isNotEmpty;
+
         return Scaffold(
           appBar: AppBar(
             title: Text(t.tr('appName')),
             actions: [
               IconButton(
                 icon: const Icon(Icons.refresh),
-                onPressed: widget.store.fetchLoads,
+                onPressed: store.fetchLoads,
                 tooltip: t.tr('refresh'),
               ),
             ],
             bottom: PreferredSize(
-              // 34 px for the banner (may be 0 when hidden) + 46 px for TabBar
-              preferredSize: const Size.fromHeight(80),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  InternetStatusBanner(store: widget.store),
-                  TabBar(
-                    controller: _tabController,
-                    tabs: [
-                      Tab(text: t.tr('pending')),
-                      Tab(text: t.tr('active')),
-                      Tab(text: t.tr('history')),
-                    ],
-                  ),
-                ],
-              ),
+              preferredSize: const Size.fromHeight(34),
+              child: InternetStatusBanner(store: store),
             ),
           ),
-          body: TabBarView(
-            controller: _tabController,
-            children: [
-              _LoadsList(
-                loads: widget.store.pendingLoads,
-                emptyMessage: t.tr('noPendingLoads'),
-                store: widget.store,
-                onTap: (load) => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        LoadDetailsScreen(store: widget.store, loadId: load.id),
-                  ),
+          body: !hasAny
+              ? _EmptyState(store: store)
+              : CustomScrollView(
+                  slivers: [
+                    if (active != null)
+                      SliverToBoxAdapter(
+                        child: _ActiveLoadPanel(
+                          load: active,
+                          store: store,
+                          onTap: () => _openDetails(context, active.id),
+                        ),
+                      ),
+
+                    if (pending.isNotEmpty) ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+                          child: Row(
+                            children: [
+                              Text(
+                                t.tr('pending'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${pending.length}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final load = pending[index];
+                            return Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                  16, 0, 16, index == pending.length - 1 ? 24 : 12),
+                              child: _PendingLoadCard(
+                                load: load,
+                                store: store,
+                                onTap: () => _openDetails(context, load.id),
+                              ),
+                            );
+                          },
+                          childCount: pending.length,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ),
-              _ActiveLoadTab(store: widget.store),
-              _LoadsList(
-                loads: widget.store.finishedLoads,
-                emptyMessage: t.tr('noCompletedLoads'),
-                store: widget.store,
-                showDate: true,
-                onTap: (load) => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        LoadDetailsScreen(store: widget.store, loadId: load.id),
-                  ),
-                ),
-              ),
-            ],
-          ),
         );
       },
     );
   }
 }
 
-// ─── Active load tab ────────────────────────────────────────────────────────
+// ─── Active load panel ───────────────────────────────────────────────────────
 
-class _ActiveLoadTab extends StatelessWidget {
-  const _ActiveLoadTab({required this.store});
-
-  final AppStore store;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = AppLocalizations.of(context);
-    final load = store.activeLoad;
-
-    if (load == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.inbox_outlined,
-                size: 48, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
-            const SizedBox(height: 12),
-            Text(
-              t.tr('noActiveLoad'),
-              style: TextStyle(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _LoadCard(
-          load: load,
-          store: store,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  ActiveLoadScreen(store: store, loadId: load.id),
-            ),
-          ),
-          isActive: true,
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Loads list ─────────────────────────────────────────────────────────────
-
-class _LoadsList extends StatelessWidget {
-  const _LoadsList({
-    required this.loads,
-    required this.emptyMessage,
-    required this.store,
-    required this.onTap,
-    this.showDate = false,
-  });
-
-  final List<LoadItem> loads;
-  final String emptyMessage;
-  final AppStore store;
-  final void Function(LoadItem) onTap;
-  final bool showDate;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = AppLocalizations.of(context);
-
-    if (loads.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.inbox_outlined,
-                size: 48, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
-            const SizedBox(height: 12),
-            Text(
-              emptyMessage,
-              style: TextStyle(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-              ),
-            ),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: store.fetchLoads,
-              icon: const Icon(Icons.refresh, size: 18),
-              label: Text(t.tr('refresh')),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: store.fetchLoads,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: loads.length,
-        itemBuilder: (context, index) {
-          final load = loads[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _LoadCard(
-              load: load,
-              store: store,
-              onTap: () => onTap(load),
-              showDate: showDate,
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-// ─── Load card ──────────────────────────────────────────────────────────────
-
-class _LoadCard extends StatelessWidget {
-  const _LoadCard({
+class _ActiveLoadPanel extends StatelessWidget {
+  const _ActiveLoadPanel({
     required this.load,
     required this.store,
     required this.onTap,
-    this.isActive = false,
-    this.showDate = false,
   });
 
   final LoadItem load;
   final AppStore store;
   final VoidCallback onTap;
-  final bool isActive;
-  final bool showDate;
 
-  /// Returns a human-readable date string like "Mar 14, 2026 02:05".
-  String _formatDate(DateTime dt) {
-    final local = dt.toLocal();
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    final m = months[local.month - 1];
-    final d = local.day.toString().padLeft(2, '0');
-    final h = local.hour.toString().padLeft(2, '0');
-    final min = local.minute.toString().padLeft(2, '0');
-    return '$m $d, ${local.year}  $h:$min';
+  Future<void> _handleAction(BuildContext context, AppStore store) async {
+    final key = load.status.nextActionKey;
+    if (key == null) return;
+    switch (load.status) {
+      case LoadStatus.accepted:
+        await store.beginPickup(load.id);
+      case LoadStatus.pickingUp:
+        await store.confirmPickup(load.id);
+      case LoadStatus.pickedUp:
+        await store.startLoad(load.id);
+      case LoadStatus.inTransit:
+        await store.beginDropoff(load.id);
+      case LoadStatus.droppingOff:
+        await store.confirmDropoff(load.id);
+      default:
+        break;
+    }
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+    final isLoading = store.isLoadingId(load.id);
+    final actionKey = load.status.nextActionKey;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: AppColors.primary.withValues(alpha: 0.35),
+            width: 1.5,
+          ),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        load.title.isNotEmpty
+                            ? load.title
+                            : 'Load #${load.id.substring(0, 8)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    LoadStatusChip(
+                      label: load.status.localizedLabel(t),
+                      status: load.status.name,
+                    ),
+                  ],
+                ),
+
+                if (load.referenceId != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    load.referenceId!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+
+                // Status stepper
+                const SizedBox(height: 14),
+                StatusStepper(
+                  currentStepIndex: load.status.stepIndex,
+                  compact: true,
+                ),
+
+                // GPS / network pills
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    StatusPill(
+                      label: store.networkOnline ? t.tr('online') : t.tr('offline'),
+                      color: store.networkOnline ? AppColors.success : AppColors.warning,
+                    ),
+                    StatusPill(
+                      label: store.lastGpsPosition != null
+                          ? 'GPS: ${store.lastGpsPosition!.latitude.toStringAsFixed(4)}, '
+                              '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
+                          : t.tr('gpsWaiting'),
+                      color: store.lastGpsPosition != null
+                          ? AppColors.success
+                          : AppColors.warning,
+                    ),
+                    StatusPill(
+                      label: '${t.tr('buffer')}: ${store.offlineBufferCount(load.id)}',
+                      color: store.offlineBufferCount(load.id) == 0
+                          ? AppColors.primary
+                          : AppColors.warning,
+                    ),
+                  ],
+                ),
+
+                // Action button
+                if (actionKey != null) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : ElevatedButton(
+                            onPressed: () => _handleAction(context, store),
+                            child: Text(t.tr(actionKey)),
+                          ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Pending load card ────────────────────────────────────────────────────────
+
+class _PendingLoadCard extends StatelessWidget {
+  const _PendingLoadCard({
+    required this.load,
+    required this.store,
+    required this.onTap,
+  });
+
+  final LoadItem load;
+  final AppStore store;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
     final t = AppLocalizations.of(context);
+    final isLoading = store.isLoadingId(load.id);
 
     return Card(
       child: InkWell(
@@ -277,11 +302,12 @@ class _LoadCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      load.title.isNotEmpty ? load.title : 'Load #${load.id.substring(0, 8)}',
-                      style: TextStyle(
+                      load.title.isNotEmpty
+                          ? load.title
+                          : 'Load #${load.id.substring(0, 8)}',
+                      style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
-                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -291,9 +317,7 @@ class _LoadCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-
-              // Pickup
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Icon(Icons.circle, size: 8, color: AppColors.success),
@@ -311,8 +335,6 @@ class _LoadCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-
-              // Dropoff
               Row(
                 children: [
                   Icon(Icons.circle, size: 8, color: AppColors.destructive),
@@ -329,72 +351,62 @@ class _LoadCard extends StatelessWidget {
                   ),
                 ],
               ),
-
-              if (load.description.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  load.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 13, color: mutedColor),
-                ),
-              ],
-
-              // History: show completed / updated date
-              if (showDate) ...[
-                const SizedBox(height: 10),
-                const Divider(height: 1),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.check_circle_outline,
-                        size: 14, color: AppColors.success),
-                    const SizedBox(width: 6),
-                    Text(
-                      _formatDate(load.dropoffAt ?? load.updatedAt ?? load.createdAt),
-                      style: TextStyle(fontSize: 12, color: mutedColor),
-                    ),
-                  ],
-                ),
-              ],
-
-              // Active load tracking info
-              if (isActive) ...[
+              if (load.status == LoadStatus.assigned) ...[
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    StatusPill(
-                      label: store.networkOnline
-                          ? t.tr('online')
-                          : t.tr('offline'),
-                      color: store.networkOnline
-                          ? AppColors.success
-                          : AppColors.warning,
-                    ),
-                    StatusPill(
-                      label:
-                          '${t.tr('buffer')}: ${store.offlineBufferCount(load.id)}',
-                      color: store.offlineBufferCount(load.id) == 0
-                          ? AppColors.primary
-                          : AppColors.warning,
-                    ),
-                    StatusPill(
-                      label: store.lastGpsPosition != null
-                          ? 'GPS: ${store.lastGpsPosition!.latitude.toStringAsFixed(4)}, '
-                              '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
-                          : t.tr('gpsWaiting'),
-                      color: store.lastGpsPosition != null
-                          ? AppColors.success
-                          : AppColors.warning,
-                    ),
-                  ],
+                SizedBox(
+                  width: double.infinity,
+                  height: 40,
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : OutlinedButton(
+                          onPressed: () => store.acceptLoad(load.id),
+                          child: Text(t.tr('acceptLoad')),
+                        ),
                 ),
               ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Empty state ─────────────────────────────────────────────────────────────
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.store});
+
+  final AppStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: 52,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            t.tr('noPendingLoads'),
+            style: TextStyle(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: store.fetchLoads,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: Text(t.tr('refresh')),
+          ),
+        ],
       ),
     );
   }

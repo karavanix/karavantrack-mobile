@@ -84,7 +84,12 @@ class AppLocalizations extends InheritedWidget {
     'dropoffTime': 'Dropoff time',
     'created': 'Created',
     'acceptLoad': 'Accept Load',
-    'loadAccepted': 'Load accepted! Go to the Active tab.',
+    'loadAccepted': 'Load accepted!',
+    'actionBeginPickup': 'Begin Pickup',
+    'actionConfirmPickup': 'Confirm Cargo Loaded',
+    'actionStartTransit': 'Start Transit',
+    'actionBeginDropoff': 'Begin Dropoff',
+    'actionConfirmDropoff': 'Confirm Delivery',
 
 
     // Active load
@@ -117,7 +122,11 @@ class AppLocalizations extends InheritedWidget {
     'statusCreated': 'Created',
     'statusAssigned': 'Assigned',
     'statusAccepted': 'Accepted',
+    'statusPickingUp': 'Picking Up',
+    'statusPickedUp': 'Picked Up',
     'statusInTransit': 'In Transit',
+    'statusDroppingOff': 'Dropping Off',
+    'statusDroppedOff': 'Dropped Off',
     'statusCompleted': 'Completed',
     'statusConfirmed': 'Confirmed',
     'statusCancelled': 'Cancelled',
@@ -187,7 +196,12 @@ class AppLocalizations extends InheritedWidget {
     'dropoffTime': 'Время разгрузки',
     'created': 'Создан',
     'acceptLoad': 'Принять груз',
-    'loadAccepted': 'Груз принят! Перейдите на вкладку «Активные».',
+    'loadAccepted': 'Груз принят!',
+    'actionBeginPickup': 'Начать забор',
+    'actionConfirmPickup': 'Груз загружен',
+    'actionStartTransit': 'Начать перевозку',
+    'actionBeginDropoff': 'Начать разгрузку',
+    'actionConfirmDropoff': 'Подтвердить доставку',
 
 
     // Active load
@@ -220,7 +234,11 @@ class AppLocalizations extends InheritedWidget {
     'statusCreated': 'Создан',
     'statusAssigned': 'Назначен',
     'statusAccepted': 'Принят',
+    'statusPickingUp': 'Забор',
+    'statusPickedUp': 'Загружен',
     'statusInTransit': 'В пути',
+    'statusDroppingOff': 'Разгрузка',
+    'statusDroppedOff': 'Доставлен',
     'statusCompleted': 'Завершён',
     'statusConfirmed': 'Подтверждён',
     'statusCancelled': 'Отменён',
@@ -290,7 +308,12 @@ class AppLocalizations extends InheritedWidget {
     'dropoffTime': 'Tushirish vaqti',
     'created': 'Yaratilgan',
     'acceptLoad': 'Yukni qabul qilish',
-    'loadAccepted': 'Yuk qabul qilindi! Faol tabga o\'ting.',
+    'loadAccepted': 'Yuk qabul qilindi!',
+    'actionBeginPickup': 'Yuklashni boshlash',
+    'actionConfirmPickup': 'Yuk yuklandi',
+    'actionStartTransit': 'Tashishni boshlash',
+    'actionBeginDropoff': 'Tushirishni boshlash',
+    'actionConfirmDropoff': 'Yetkazishni tasdiqlash',
 
 
     // Active load
@@ -323,7 +346,11 @@ class AppLocalizations extends InheritedWidget {
     'statusCreated': 'Yaratilgan',
     'statusAssigned': 'Tayinlangan',
     'statusAccepted': 'Qabul qilingan',
+    'statusPickingUp': 'Yuklanmoqda',
+    'statusPickedUp': 'Yuklandi',
     'statusInTransit': 'Yo\'lda',
+    'statusDroppingOff': 'Tushirilmoqda',
+    'statusDroppedOff': 'Yetkazildi',
     'statusCompleted': 'Tugallangan',
     'statusConfirmed': 'Tasdiqlangan',
     'statusCancelled': 'Bekor qilingan',

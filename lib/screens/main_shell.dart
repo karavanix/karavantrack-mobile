@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
 import 'driver_home_screen.dart';
+import 'load_history_screen.dart';
 import 'settings_screen.dart';
 
-/// Main app shell with 2-tab bottom navigation: Home + Settings.
+/// Main app shell with 3-tab bottom navigation: Loads / History / Settings.
 class MainShell extends StatefulWidget {
   const MainShell({super.key, required this.store});
 
@@ -22,41 +23,42 @@ class _MainShellState extends State<MainShell> {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
 
-    return ListenableBuilder(
-      listenable: widget.store,
-      builder: (context, child) {
-        final screens = <Widget>[
-          DriverHomeScreen(store: widget.store),
-          SettingsScreen(store: widget.store),
-        ];
+    final screens = <Widget>[
+      DriverHomeScreen(store: widget.store),
+      LoadHistoryScreen(store: widget.store),
+      SettingsScreen(store: widget.store),
+    ];
 
-        return Scaffold(
-          body: IndexedStack(index: _tabIndex, children: screens),
-          bottomNavigationBar: Container(
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: theme.colorScheme.outline, width: 1),
-              ),
-            ),
-            child: BottomNavigationBar(
-              currentIndex: _tabIndex,
-              onTap: (i) => setState(() => _tabIndex = i),
-              items: [
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.local_shipping_outlined),
-                  activeIcon: const Icon(Icons.local_shipping),
-                  label: t.tr('loads'),
-                ),
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.settings_outlined),
-                  activeIcon: const Icon(Icons.settings),
-                  label: t.tr('settings'),
-                ),
-              ],
-            ),
+    return Scaffold(
+      body: IndexedStack(index: _tabIndex, children: screens),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: theme.colorScheme.outline, width: 1),
           ),
-        );
-      },
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _tabIndex,
+          onTap: (i) => setState(() => _tabIndex = i),
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.local_shipping_outlined),
+              activeIcon: const Icon(Icons.local_shipping),
+              label: t.tr('loads'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.history_outlined),
+              activeIcon: const Icon(Icons.history),
+              label: t.tr('history'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.settings_outlined),
+              activeIcon: const Icon(Icons.settings),
+              label: t.tr('settings'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

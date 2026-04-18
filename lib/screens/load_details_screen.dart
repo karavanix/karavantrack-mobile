@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import '../models/load.dart';
+import '../services/api_service.dart';
 import '../store/app_store.dart';
 import '../widgets/load_status_chip.dart';
 import '../widgets/info_row.dart';
+import '../widgets/status_stepper.dart';
 import '../utils/formatters.dart';
+import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 
-/// Detail view for a load — shows info and Accept button for assigned loads.
-class LoadDetailsScreen extends StatelessWidget {
+/// Detail view for any load — shows full stepper, info, inline action, and history.
+class LoadDetailsScreen extends StatefulWidget {
   const LoadDetailsScreen({
     super.key,
     required this.store,
@@ -17,14 +20,75 @@ class LoadDetailsScreen extends StatelessWidget {
   final AppStore store;
   final String loadId;
 
+  @override
+  State<LoadDetailsScreen> createState() => _LoadDetailsScreenState();
+}
+
+class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
+  List<LoadHistoryItem> _history = [];
+  bool _historyLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDetail();
+  }
+
+  Future<void> _fetchDetail() async {
+    setState(() => _historyLoading = true);
+    try {
+      final data = await ApiService.instance.getLoad(widget.loadId);
+      if (data != null && mounted) {
+        final rawHistory = data['history'] as List<dynamic>? ?? [];
+        setState(() {
+          _history = rawHistory
+              .map((e) => LoadHistoryItem.fromJson(e as Map<String, dynamic>))
+              .toList();
+        });
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _historyLoading = false);
+  }
+
   LoadItem? _find() {
-    for (final l in store.allLoads) {
-      if (l.id == loadId) return l;
+    for (final l in widget.store.allLoads) {
+      if (l.id == widget.loadId) return l;
     }
-    for (final l in store.pendingLoads) {
-      if (l.id == loadId) return l;
+    for (final l in widget.store.pendingLoads) {
+      if (l.id == widget.loadId) return l;
     }
-    return store.activeLoad?.id == loadId ? store.activeLoad : null;
+    return widget.store.activeLoad?.id == widget.loadId
+        ? widget.store.activeLoad
+        : null;
+  }
+
+  Future<void> _handleAction(BuildContext context, LoadItem load) async {
+    switch (load.status) {
+      case LoadStatus.assigned:
+        await widget.store.acceptLoad(load.id);
+      case LoadStatus.accepted:
+        await widget.store.beginPickup(load.id);
+      case LoadStatus.pickingUp:
+        await widget.store.confirmPickup(load.id);
+      case LoadStatus.pickedUp:
+        await widget.store.startLoad(load.id);
+      case LoadStatus.inTransit:
+        await widget.store.beginDropoff(load.id);
+      case LoadStatus.droppingOff:
+        await widget.store.confirmDropoff(load.id);
+      default:
+        break;
+    }
+    // Re-fetch history after status change
+    _fetchDetail();
+  }
+
+  String _relativeTime(DateTime dt) {
+    final diff = DateTime.now().toUtc().difference(dt.toUtc());
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inDays < 1) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 
   @override
@@ -33,9 +97,10 @@ class LoadDetailsScreen extends StatelessWidget {
     final t = AppLocalizations.of(context);
 
     return ListenableBuilder(
-      listenable: store,
+      listenable: widget.store,
       builder: (context, child) {
         final load = _find();
+
         if (load == null) {
           return Scaffold(
             appBar: AppBar(title: Text(t.tr('load'))),
@@ -50,6 +115,11 @@ class LoadDetailsScreen extends StatelessWidget {
           );
         }
 
+        final isLoading = widget.store.isLoadingId(load.id);
+        final actionKey = load.status.nextActionKey;
+        final stepIndex = load.status.stepIndex;
+        final historyToShow = _history.isNotEmpty ? _history : load.history;
+
         return Scaffold(
           appBar: AppBar(
             title: Text(
@@ -61,7 +131,7 @@ class LoadDetailsScreen extends StatelessWidget {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Status card
+              // ─── Header card ──────────────────────────────────────────
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -72,9 +142,11 @@ class LoadDetailsScreen extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              t.tr('details'),
+                              load.title.isNotEmpty
+                                  ? load.title
+                                  : 'Load #${load.id.substring(0, 8)}',
                               style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                                 fontSize: 16,
                               ),
                             ),
@@ -85,17 +157,56 @@ class LoadDetailsScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      InfoRow(
-                          label: t.tr('pickup'),
-                          value: load.pickupAddress),
-                      InfoRow(
-                          label: t.tr('dropoff'),
-                          value: load.dropoffAddress),
+                      if (load.referenceId != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          load.referenceId!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              // ─── Status stepper ───────────────────────────────────────
+              if (stepIndex >= 0) ...[
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                    child: StatusStepper(
+                      currentStepIndex: stepIndex,
+                      compact: false,
+                    ),
+                  ),
+                ),
+              ],
+
+              // ─── Info card ────────────────────────────────────────────
+              const SizedBox(height: 12),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t.tr('details'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      InfoRow(label: t.tr('pickup'), value: load.pickupAddress),
+                      InfoRow(label: t.tr('dropoff'), value: load.dropoffAddress),
                       if (load.description.isNotEmpty)
-                        InfoRow(
-                            label: t.tr('description'),
-                            value: load.description),
+                        InfoRow(label: t.tr('description'), value: load.description),
                       if (load.pickupAt != null)
                         InfoRow(
                           label: t.tr('pickupTime'),
@@ -115,36 +226,88 @@ class LoadDetailsScreen extends StatelessWidget {
                 ),
               ),
 
-              // Accept button for assigned loads
-              if (load.status == LoadStatus.assigned) ...[
+              // ─── Action button ────────────────────────────────────────
+              if (actionKey != null) ...[
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 48,
-                  child: store.isLoading
+                  height: 52,
+                  child: isLoading
                       ? const Center(child: CircularProgressIndicator())
-                      : ElevatedButton.icon(
-                          onPressed: () async {
-                            await store.acceptLoad(load.id);
-                            if (!context.mounted) return;
-                            // Pop back to MainShell.  The reactive ListenableBuilder
-                            // in app.dart rebuilds MaterialApp.home on every
-                            // notifyListeners() call, so pushing a new route here
-                            // would conflict with that rebuild and close the app.
-                            // Instead we pop to MainShell and let the user open
-                            // the Active tab (or navigate from there).
-                            Navigator.of(context).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(t.tr('loadAccepted')),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.check_circle_outline),
-                          label: Text(t.tr('acceptLoad')),
+                      : ElevatedButton(
+                          onPressed: () => _handleAction(context, load),
+                          child: Text(t.tr(actionKey)),
                         ),
                 ),
               ],
+
+              // ─── Status history ───────────────────────────────────────
+              if (historyToShow.isNotEmpty || _historyLoading) ...[
+                const SizedBox(height: 16),
+                Card(
+                  child: ExpansionTile(
+                    title: Text(
+                      'Status History',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    initiallyExpanded: false,
+                    children: [
+                      if (_historyLoading)
+                        const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else
+                        for (final item in historyToShow.reversed)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  margin: const EdgeInsets.only(top: 5),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${item.fromStatus} → ${item.toStatus}',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _relativeTime(item.changedAt),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.5),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 24),
             ],
           ),
         );
