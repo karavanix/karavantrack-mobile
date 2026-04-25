@@ -47,6 +47,12 @@
 			</array>
 		</dict>
 	</dict>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>YoolLive uses your location to track active cargo deliveries and share your position with the dispatcher.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>YoolLive uses your location in the background to continuously track active cargo deliveries, even when the app is minimized.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
