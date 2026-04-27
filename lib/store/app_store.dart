@@ -10,6 +10,7 @@ import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/background_service.dart';
 import '../services/locale_service.dart';
+import '../services/notification_service.dart';
 import '../services/theme_service.dart';
 
 /// Central state management for the app.
@@ -39,6 +40,7 @@ class AppStore extends ChangeNotifier {
       await _loadProfile();
       await fetchLoads();
       _startLocationTimer();
+      NotificationService.instance.initialize().catchError((_) {});
     }
   }
 
@@ -197,6 +199,7 @@ class AppStore extends ChangeNotifier {
         isLoggedIn = true;
         await _loadProfile();
         await fetchLoads();
+        NotificationService.instance.initialize().catchError((_) {});
         notifyListeners();
         return null;
       }
@@ -232,6 +235,7 @@ class AppStore extends ChangeNotifier {
         isLoggedIn = true;
         await _loadProfile();
         await fetchLoads();
+        NotificationService.instance.initialize().catchError((_) {});
         notifyListeners();
         return null;
       }

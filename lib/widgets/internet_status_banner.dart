@@ -119,8 +119,8 @@ class _InternetStatusBannerState extends State<InternetStatusBanner>
     final isConnecting = _banner == _BannerState.connecting;
 
     final bgColor = isConnecting
-        ? const Color.fromARGB(255, 18, 144, 248) // amber
-        : const Color(0xFF2ECC71); // green
+        ? const Color.fromARGB(255, 18, 144, 248) // blue (connecting)
+        : const Color(0xFF2ECC71); // green (connected)
 
     return SlideTransition(
       position: _slideAnim,

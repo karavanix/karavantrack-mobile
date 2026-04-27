@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>driver_tracking_app</string>
+	<string>YoolLive</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -53,6 +53,19 @@
 	<string>YoolLive uses your location to track active cargo deliveries and share your position with the dispatcher.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>YoolLive uses your location in the background to continuously track active cargo deliveries, even when the app is minimized.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>location</string>
+		<string>processing</string>
+		<string>remote-notification</string>
+	</array>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>YoolLive uses your location in the background to continuously track active cargo deliveries, even when the app is minimized.</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>dev.flutter.background_service</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

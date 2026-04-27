@@ -83,12 +83,12 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
     _fetchDetail();
   }
 
-  String _relativeTime(DateTime dt) {
+  String _relativeTime(DateTime dt, AppLocalizations t) {
     final diff = DateTime.now().toUtc().difference(dt.toUtc());
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+    if (diff.inMinutes < 1) return t.tr('justNow');
+    if (diff.inHours < 1) return '${diff.inMinutes}${t.tr('minutesAgo')}';
+    if (diff.inDays < 1) return '${diff.inHours}${t.tr('hoursAgo')}';
+    return '${diff.inDays}${t.tr('daysAgo')}';
   }
 
   @override
@@ -117,7 +117,15 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
 
         final isLoading = widget.store.isLoadingId(load.id);
         final actionKey = load.status.nextActionKey;
-        final stepIndex = load.status.stepIndex;
+        // For completed/confirmed show all steps done (index 6 = past last step).
+        // For cancelled or pre-active statuses hide the stepper (null).
+        final rawStep = load.status.stepIndex;
+        final displayStep = rawStep >= 0
+            ? rawStep
+            : (load.status == LoadStatus.completed ||
+                    load.status == LoadStatus.confirmed)
+                ? 6
+                : null;
         final historyToShow = _history.isNotEmpty ? _history : load.history;
 
         return Scaffold(
@@ -174,15 +182,68 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
               ),
 
               // ─── Status stepper ───────────────────────────────────────
-              if (stepIndex >= 0) ...[
+              if (displayStep != null) ...[
                 const SizedBox(height: 12),
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                     child: StatusStepper(
-                      currentStepIndex: stepIndex,
+                      currentStepIndex: displayStep,
                       compact: false,
+                      isAwaitingConfirmation:
+                          load.status == LoadStatus.droppedOff,
                     ),
+                  ),
+                ),
+              ],
+
+              // ─── Awaiting confirmation banner ─────────────────────────
+              if (load.status == LoadStatus.droppedOff) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.statusDroppedOff.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.statusDroppedOff.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.hourglass_top_rounded,
+                        color: AppColors.statusDroppedOff,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t.tr('awaitingShipperConfirmation'),
+                              style: TextStyle(
+                                color: AppColors.statusDroppedOff,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              t.tr('awaitingConfirmationDetail'),
+                              style: TextStyle(
+                                color: AppColors.statusDroppedOff
+                                    .withValues(alpha: 0.85),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -246,13 +307,13 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                 Card(
                   child: ExpansionTile(
                     title: Text(
-                      'Status History',
+                      t.tr('statusHistory'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
                     ),
-                    initiallyExpanded: false,
+                    initiallyExpanded: true,
                     children: [
                       if (_historyLoading)
                         const Padding(
@@ -281,7 +342,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        '${item.fromStatus} → ${item.toStatus}',
+                                        '${LoadStatus.fromString(item.fromStatus).localizedLabel(t)} → ${LoadStatus.fromString(item.toStatus).localizedLabel(t)}',
                                         style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
@@ -289,7 +350,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        _relativeTime(item.changedAt),
+                                        _relativeTime(item.changedAt, t),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: theme.colorScheme.onSurface

@@ -216,42 +216,63 @@ class _ActiveLoadPanel extends StatelessWidget {
                 StatusStepper(
                   currentStepIndex: load.status.stepIndex,
                   compact: true,
+                  isAwaitingConfirmation:
+                      load.status == LoadStatus.droppedOff,
                 ),
 
-                // GPS / network pills
+                // GPS / network pills — hidden when awaiting shipper confirmation
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    StatusPill(
-                      label: store.networkOnline ? t.tr('online') : t.tr('offline'),
-                      color: store.networkOnline ? AppColors.success : AppColors.warning,
-                    ),
-                    StatusPill(
-                      label: store.lastGpsPosition != null
-                          ? 'GPS: ${store.lastGpsPosition!.latitude.toStringAsFixed(4)}, '
-                              '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
-                          : t.tr('gpsWaiting'),
-                      color: store.lastGpsPosition != null
-                          ? AppColors.success
-                          : AppColors.warning,
-                    ),
-                    StatusPill(
-                      label: '${t.tr('buffer')}: ${store.offlineBufferCount(load.id)}',
-                      color: store.offlineBufferCount(load.id) == 0
-                          ? AppColors.primary
-                          : AppColors.warning,
-                    ),
-                  ],
-                ),
+                if (load.status == LoadStatus.droppedOff)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.hourglass_top_rounded,
+                        size: 14,
+                        color: AppColors.statusDroppedOff,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        t.tr('awaitingShipperConfirmation'),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.statusDroppedOff,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      StatusPill(
+                        label: store.networkOnline ? t.tr('online') : t.tr('offline'),
+                        color: store.networkOnline ? AppColors.success : AppColors.warning,
+                      ),
+                      StatusPill(
+                        label: store.lastGpsPosition != null
+                            ? 'GPS: ${store.lastGpsPosition!.latitude.toStringAsFixed(4)}, '
+                                '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
+                            : t.tr('gpsWaiting'),
+                        color: store.lastGpsPosition != null
+                            ? AppColors.success
+                            : AppColors.warning,
+                      ),
+                      StatusPill(
+                        label: '${t.tr('buffer')}: ${store.offlineBufferCount(load.id)}',
+                        color: store.offlineBufferCount(load.id) == 0
+                            ? AppColors.primary
+                            : AppColors.warning,
+                      ),
+                    ],
+                  ),
 
                 // Action button
                 if (actionKey != null) ...[
                   const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
-                    height: 44,
                     child: isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : ElevatedButton(
@@ -362,6 +383,26 @@ class _PendingLoadCard extends StatelessWidget {
                           onPressed: () => store.acceptLoad(load.id),
                           child: Text(t.tr('acceptLoad')),
                         ),
+                ),
+              ],
+              if (load.status == LoadStatus.droppedOff) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.hourglass_top_rounded,
+                      size: 13,
+                      color: AppColors.statusDroppedOff,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      t.tr('awaitingShipperConfirmation'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.statusDroppedOff,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],

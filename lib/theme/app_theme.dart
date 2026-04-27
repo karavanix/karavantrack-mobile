@@ -54,6 +54,13 @@ class AppColors {
   static Color get destructive => _darkDestructive;
   static Color get success => _darkSuccess;
   static Color get warning => _darkWarning;
+
+  // Semantic status colors for load status chips
+  static const Color statusAssigned   = Color.fromARGB(255, 129, 140, 248);
+  static const Color statusPickingUp  = Color.fromARGB(255, 251, 146,  60);
+  static const Color statusPickedUp   = Color.fromARGB(255,  96, 165, 250);
+  static const Color statusDroppingOff= Color.fromARGB(255, 245, 158,  11);
+  static const Color statusDroppedOff = Color.fromARGB(255,  52, 211, 153);
 }
 
 // ─── Theme data ─────────────────────────────────────────────────────────────
