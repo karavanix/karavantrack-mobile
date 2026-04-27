@@ -125,9 +125,20 @@ jobs:
           echo "$API_KEY_P8" | base64 --decode \
             > ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8
 
+          # Find the IPA wherever it ended up
+          IPA_PATH=$(find $PWD/build/output -name "*.ipa" | head -1)
+
+          echo "📦 Found IPA at: $IPA_PATH"
+
+          if [ -z "$IPA_PATH" ]; then
+            echo "❌ No IPA found! Listing build/output contents:"
+            ls -la $PWD/build/output/ || echo "Directory does not exist"
+            exit 1
+          fi
+
           xcrun altool --upload-app \
             --type ios \
-            --file $PWD/build/output/Runner.ipa \
+            --file "$IPA_PATH" \
             --apiKey "$API_KEY_ID" \
             --apiIssuer "$API_ISSUER_ID" \
             --verbose
