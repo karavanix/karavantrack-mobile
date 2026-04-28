@@ -10,7 +10,7 @@ class LoadStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor(context, status);
+    final (bg, fg) = _colors(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -19,7 +19,7 @@ class LoadStatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
+        style: TextStyle(color: bg, fontWeight: FontWeight.w600, fontSize: 12),
       ),
     );
   }
@@ -30,28 +30,28 @@ class LoadStatusChip extends StatelessWidget {
       case 'created':
         return colors.mutedForeground;
       case 'assigned':
-        return const Color.fromARGB(255, 129, 140, 248);
+        return (Color.fromARGB(255, 129, 140, 248), AppColors.foreground);
       case 'accepted':
         return colors.primary;
       case 'pickingUp':
       case 'picking_up':
-        return const Color.fromARGB(255, 251, 146, 60);
+        return (Color.fromARGB(255, 251, 146, 60), AppColors.foreground);
       case 'pickedUp':
       case 'picked_up':
-        return const Color.fromARGB(255, 96, 165, 250);
+        return (Color.fromARGB(255, 96, 165, 250), AppColors.foreground);
       case 'in_transit':
       case 'inTransit':
         return colors.warning;
       case 'droppingOff':
       case 'dropping_off':
-        return const Color.fromARGB(255, 245, 158, 11);
+        return (Color.fromARGB(255, 245, 158, 11), AppColors.foreground);
       case 'droppedOff':
       case 'dropped_off':
-        return const Color.fromARGB(255, 52, 211, 153);
+        return (Color.fromARGB(255, 52, 211, 153), AppColors.foreground);
       case 'completed':
         return colors.success;
       case 'confirmed':
-        return const Color.fromARGB(255, 52, 211, 153);
+        return (Color.fromARGB(255, 52, 211, 153), AppColors.foreground);
       case 'cancelled':
         return colors.destructive;
       default:

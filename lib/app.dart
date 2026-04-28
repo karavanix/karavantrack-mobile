@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/app_theme.dart';
 import 'services/gps_service.dart';
+import 'services/notification_service.dart';
 import 'store/app_store.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -46,6 +47,17 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
   }
 
   Future<void> _initializeApp() async {
+    // Wire foreground FCM message display before store.init() fires initialize()
+    NotificationService.instance.onForegroundMessage = (message) {
+      final ctx = _navigatorKey.currentContext;
+      if (ctx == null) return;
+      final n = message.notification;
+      if (n == null) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(content: Text(n.title ?? n.body ?? '')),
+      );
+    };
+
     // Initial GPS check
     _gpsEnabled = await Geolocator.isLocationServiceEnabled();
 

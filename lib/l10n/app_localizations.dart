@@ -130,6 +130,8 @@ class AppLocalizations extends InheritedWidget {
     'statusCompleted': 'Completed',
     'statusConfirmed': 'Confirmed',
     'statusCancelled': 'Cancelled',
+    'awaitingShipperConfirmation': 'Awaiting shipper confirmation',
+    'awaitingConfirmationDetail': 'Your delivery has been confirmed. Waiting for the shipper to verify and close the load.',
 
     // Errors (from store)
     'loginError': 'Login error',
@@ -155,6 +157,21 @@ class AppLocalizations extends InheritedWidget {
     'gpsOffMessage':
         'Location services are disabled. Please turn on GPS so your position can be tracked.',
     'turnOnGps': 'Turn On GPS',
+
+    // Status history
+    'statusHistory': 'Status History',
+    'justNow': 'just now',
+    'minutesAgo': 'm ago',
+    'hoursAgo': 'h ago',
+    'daysAgo': 'd ago',
+
+    // Stepper labels (short)
+    'stepAccepted': 'Accepted',
+    'stepPickup': 'Pickup',
+    'stepLoaded': 'Loaded',
+    'stepTransit': 'Transit',
+    'stepDropoff': 'Dropoff',
+    'stepDelivered': 'Delivered',
   };
 
   // ── Russian ────────────────────────────────────────────────────────────
@@ -255,6 +272,8 @@ class AppLocalizations extends InheritedWidget {
     'statusCompleted': 'Завершён',
     'statusConfirmed': 'Подтверждён',
     'statusCancelled': 'Отменён',
+    'awaitingShipperConfirmation': 'Ожидание подтверждения грузоотправителя',
+    'awaitingConfirmationDetail': 'Доставка подтверждена. Ожидаем подтверждения от грузоотправителя.',
 
     // Errors
     'loginError': 'Ошибка входа',
@@ -280,6 +299,21 @@ class AppLocalizations extends InheritedWidget {
     'gpsOffMessage':
         'Службы геолокации отключены. Включите GPS, чтобы ваше местоположение отслеживалось.',
     'turnOnGps': 'Включить GPS',
+
+    // Status history
+    'statusHistory': 'История статусов',
+    'justNow': 'только что',
+    'minutesAgo': 'мин. назад',
+    'hoursAgo': 'ч. назад',
+    'daysAgo': 'д. назад',
+
+    // Stepper labels (short)
+    'stepAccepted': 'Принят',
+    'stepPickup': 'Погрузка',
+    'stepLoaded': 'Загружен',
+    'stepTransit': 'В пути',
+    'stepDropoff': 'Разгрузка',
+    'stepDelivered': 'Доставлен',
   };
 
   // ── Uzbek ──────────────────────────────────────────────────────────────
@@ -380,6 +414,8 @@ class AppLocalizations extends InheritedWidget {
     'statusCompleted': 'Tugallangan',
     'statusConfirmed': 'Tasdiqlangan',
     'statusCancelled': 'Bekor qilingan',
+    'awaitingShipperConfirmation': "Jo'natuvchi tasdig'ini kutmoqda",
+    'awaitingConfirmationDetail': "Yetkazib berish tasdiqlandi. Jo'natuvchi yopishini kutmoqdamiz.",
 
     // Errors
     'loginError': 'Kirish xatosi',
@@ -405,6 +441,21 @@ class AppLocalizations extends InheritedWidget {
     'gpsOffMessage':
         'Joylashuv xizmatlari o\'chirilgan. GPS ni yoqing, shunda joylashuvingiz kuzatiladi.',
     'turnOnGps': 'GPS ni yoqish',
+
+    // Status history
+    'statusHistory': 'Holat tarixi',
+    'justNow': 'hozir',
+    'minutesAgo': 'daq. oldin',
+    'hoursAgo': 'soat oldin',
+    'daysAgo': 'kun oldin',
+
+    // Stepper labels (short)
+    'stepAccepted': 'Qabul',
+    'stepPickup': 'Yuklash',
+    'stepLoaded': 'Yuklandi',
+    'stepTransit': 'Yo\'lda',
+    'stepDropoff': 'Tushirish',
+    'stepDelivered': 'Yetkazildi',
   };
 
   /// Language display names for the language picker.

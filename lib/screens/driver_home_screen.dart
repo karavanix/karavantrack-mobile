@@ -81,9 +81,13 @@ class DriverHomeScreen extends StatelessWidget {
                                   final colors = AppColors.of(context);
                                   return Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 2),
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: colors.primary.withValues(alpha: 0.15),
+                                      color: colors.primary.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
@@ -102,21 +106,22 @@ class DriverHomeScreen extends StatelessWidget {
                         ),
                       ),
                       SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final load = pending[index];
-                            return Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                  16, 0, 16, index == pending.length - 1 ? 24 : 12),
-                              child: _PendingLoadCard(
-                                load: load,
-                                store: store,
-                                onTap: () => _openDetails(context, load.id),
-                              ),
-                            );
-                          },
-                          childCount: pending.length,
-                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final load = pending[index];
+                          return Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              16,
+                              0,
+                              16,
+                              index == pending.length - 1 ? 24 : 12,
+                            ),
+                            child: _PendingLoadCard(
+                              load: load,
+                              store: store,
+                              onTap: () => _openDetails(context, load.id),
+                            ),
+                          );
+                        }, childCount: pending.length),
                       ),
                     ],
                   ],
@@ -222,32 +227,38 @@ class _ActiveLoadPanel extends StatelessWidget {
                 StatusStepper(
                   currentStepIndex: load.status.stepIndex,
                   compact: true,
+                  isAwaitingConfirmation: load.status == LoadStatus.droppedOff,
                 ),
 
-                // GPS / network pills
+                // GPS / network pills — hidden when awaiting shipper confirmation
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 6,
                   children: [
                     StatusPill(
-                      label: store.networkOnline ? t.tr('online') : t.tr('offline'),
-                      color: store.networkOnline ? colors.success : colors.warning,
+                      label: store.networkOnline
+                          ? t.tr('online')
+                          : t.tr('offline'),
+                      color: store.networkOnline
+                          ? AppColors.success
+                          : AppColors.warning,
                     ),
                     StatusPill(
                       label: store.lastGpsPosition != null
                           ? 'GPS: ${store.lastGpsPosition!.latitude.toStringAsFixed(4)}, '
-                              '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
+                                '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
                           : t.tr('gpsWaiting'),
                       color: store.lastGpsPosition != null
-                          ? colors.success
-                          : colors.warning,
+                          ? AppColors.success
+                          : AppColors.warning,
                     ),
                     StatusPill(
-                      label: '${t.tr('buffer')}: ${store.offlineBufferCount(load.id)}',
+                      label:
+                          '${t.tr('buffer')}: ${store.offlineBufferCount(load.id)}',
                       color: store.offlineBufferCount(load.id) == 0
-                          ? colors.primary
-                          : colors.warning,
+                          ? AppColors.primary
+                          : AppColors.warning,
                     ),
                   ],
                 ),
@@ -257,7 +268,6 @@ class _ActiveLoadPanel extends StatelessWidget {
                   const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
-                    height: 44,
                     child: isLoading
                         ? const Center(child: CircularProgressIndicator())
                         : ElevatedButton(
@@ -369,6 +379,26 @@ class _PendingLoadCard extends StatelessWidget {
                           onPressed: () => store.acceptLoad(load.id),
                           child: Text(t.tr('acceptLoad')),
                         ),
+                ),
+              ],
+              if (load.status == LoadStatus.droppedOff) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.hourglass_top_rounded,
+                      size: 13,
+                      color: AppColors.statusDroppedOff,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      t.tr('awaitingShipperConfirmation'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.statusDroppedOff,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ],

@@ -127,7 +127,7 @@ class _InternetStatusBannerState extends State<InternetStatusBanner>
     final isConnecting = _banner == _BannerState.connecting;
 
     final bgColor = isConnecting
-        ? const Color(0xFFF59E0B) // amber — warning color for offline
+        ? const Color.fromARGB(255, 18, 144, 248) // amber
         : const Color(0xFF2ECC71); // green
 
     return SlideTransition(
@@ -181,7 +181,7 @@ class _ConnectingLabel extends StatelessWidget {
 
 class _AnimatedDots extends AnimatedWidget {
   const _AnimatedDots({required AnimationController controller})
-      : super(listenable: controller);
+    : super(listenable: controller);
 
   @override
   Widget build(BuildContext context) {

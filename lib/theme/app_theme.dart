@@ -114,9 +114,17 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       muted: Color.lerp(muted, other.muted, t)!,
       mutedForeground: Color.lerp(mutedForeground, other.mutedForeground, t)!,
       primary: Color.lerp(primary, other.primary, t)!,
-      primaryForeground: Color.lerp(primaryForeground, other.primaryForeground, t)!,
+      primaryForeground: Color.lerp(
+        primaryForeground,
+        other.primaryForeground,
+        t,
+      )!,
       secondary: Color.lerp(secondary, other.secondary, t)!,
-      secondaryForeground: Color.lerp(secondaryForeground, other.secondaryForeground, t)!,
+      secondaryForeground: Color.lerp(
+        secondaryForeground,
+        other.secondaryForeground,
+        t,
+      )!,
       destructive: Color.lerp(destructive, other.destructive, t)!,
       success: Color.lerp(success, other.success, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
@@ -130,9 +138,20 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
 class AppColors {
   AppColors._();
 
-  static AppSemanticColors of(BuildContext context) {
-    return Theme.of(context).extension<AppSemanticColors>()!;
-  }
+  // Dark mode
+  static Color get background => _darkBackground;
+  static Color get foreground => _darkForeground;
+  static Color get card => _darkCard;
+  static Color get border => _darkBorder;
+  static Color get muted => _darkMuted;
+  static Color get mutedForeground => _darkMutedFg;
+  static Color get primary => _darkPrimary;
+  static Color get primaryForeground => _darkPrimaryFg;
+  static Color get secondary => _darkSecondary;
+  static Color get secondaryForeground => _darkSecondaryFg;
+  static Color get destructive => _darkDestructive;
+  static Color get success => _darkSuccess;
+  static Color get warning => _darkWarning;
 }
 
 // ─── Theme data ─────────────────────────────────────────────────────────────
@@ -141,38 +160,38 @@ class AppTheme {
   AppTheme._();
 
   static ThemeData get dark => _buildTheme(
-        brightness: Brightness.dark,
-        background: _darkBackground,
-        foreground: _darkForeground,
-        card: _darkCard,
-        border: _darkBorder,
-        muted: _darkMuted,
-        mutedFg: _darkMutedFg,
-        primary: _darkPrimary,
-        primaryFg: _darkPrimaryFg,
-        secondary: _darkSecondary,
-        secondaryFg: _darkSecondaryFg,
-        destructive: _darkDestructive,
-        success: _darkSuccess,
-        warning: _darkWarning,
-      );
+    brightness: Brightness.dark,
+    background: _darkBackground,
+    foreground: _darkForeground,
+    card: _darkCard,
+    border: _darkBorder,
+    muted: _darkMuted,
+    mutedFg: _darkMutedFg,
+    primary: _darkPrimary,
+    primaryFg: _darkPrimaryFg,
+    secondary: _darkSecondary,
+    secondaryFg: _darkSecondaryFg,
+    destructive: _darkDestructive,
+    success: _darkSuccess,
+    warning: _darkWarning,
+  );
 
   static ThemeData get light => _buildTheme(
-        brightness: Brightness.light,
-        background: _lightBackground,
-        foreground: _lightForeground,
-        card: _lightCard,
-        border: _lightBorder,
-        muted: _lightSecondary,
-        mutedFg: _lightMutedFg,
-        primary: _lightPrimary,
-        primaryFg: _lightPrimaryFg,
-        secondary: _lightSecondary,
-        secondaryFg: _lightSecondaryFg,
-        destructive: _lightDestructive,
-        success: _lightSuccess,
-        warning: _lightWarning,
-      );
+    brightness: Brightness.light,
+    background: _lightBackground,
+    foreground: _lightForeground,
+    card: _lightCard,
+    border: _lightBorder,
+    muted: _lightSecondary,
+    mutedFg: _lightMutedFg,
+    primary: _lightPrimary,
+    primaryFg: _lightPrimaryFg,
+    secondary: _lightSecondary,
+    secondaryFg: _lightSecondaryFg,
+    destructive: _lightDestructive,
+    success: _lightSuccess,
+    warning: _lightWarning,
+  );
 
   static ThemeData _buildTheme({
     required Brightness brightness,
@@ -267,8 +286,10 @@ class AppTheme {
         labelStyle: TextStyle(color: mutedFg),
         hintStyle: TextStyle(color: mutedFg),
         prefixIconColor: mutedFg,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -276,9 +297,7 @@ class AppTheme {
           foregroundColor: primaryFg,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w600,
@@ -291,9 +310,7 @@ class AppTheme {
           foregroundColor: foreground,
           side: BorderSide(color: border),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(
             fontFamily: 'Inter',
             fontWeight: FontWeight.w600,
