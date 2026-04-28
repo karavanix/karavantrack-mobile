@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:783346390803:android:ef93dec3a92f5b3384ece6",
+        "mobilesdk_app_id": "1:783346390803:android:be421f8b3551f77c84ece6",
         "android_client_info": {
-          "package_name": "com.example.driver_tracking_app"
+          "package_name": "yool.live.app"
         }
       },
       "oauth_client": [],
