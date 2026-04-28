@@ -76,21 +76,26 @@ class DriverHomeScreen extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '${pending.length}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.primary,
-                                  ),
-                                ),
+                              Builder(
+                                builder: (context) {
+                                  final colors = AppColors.of(context);
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: colors.primary.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '${pending.length}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.primary,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -158,6 +163,7 @@ class _ActiveLoadPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
+    final colors = AppColors.of(context);
     final isLoading = store.isLoadingId(load.id);
     final actionKey = load.status.nextActionKey;
 
@@ -167,7 +173,7 @@ class _ActiveLoadPanel extends StatelessWidget {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(
-            color: AppColors.primary.withValues(alpha: 0.35),
+            color: colors.primary.withValues(alpha: 0.35),
             width: 1.5,
           ),
         ),
@@ -226,7 +232,7 @@ class _ActiveLoadPanel extends StatelessWidget {
                   children: [
                     StatusPill(
                       label: store.networkOnline ? t.tr('online') : t.tr('offline'),
-                      color: store.networkOnline ? AppColors.success : AppColors.warning,
+                      color: store.networkOnline ? colors.success : colors.warning,
                     ),
                     StatusPill(
                       label: store.lastGpsPosition != null
@@ -234,14 +240,14 @@ class _ActiveLoadPanel extends StatelessWidget {
                               '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
                           : t.tr('gpsWaiting'),
                       color: store.lastGpsPosition != null
-                          ? AppColors.success
-                          : AppColors.warning,
+                          ? colors.success
+                          : colors.warning,
                     ),
                     StatusPill(
                       label: '${t.tr('buffer')}: ${store.offlineBufferCount(load.id)}',
                       color: store.offlineBufferCount(load.id) == 0
-                          ? AppColors.primary
-                          : AppColors.warning,
+                          ? colors.primary
+                          : colors.warning,
                     ),
                   ],
                 ),
@@ -287,6 +293,7 @@ class _PendingLoadCard extends StatelessWidget {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
     final t = AppLocalizations.of(context);
+    final colors = AppColors.of(context);
     final isLoading = store.isLoadingId(load.id);
 
     return Card(
@@ -320,7 +327,7 @@ class _PendingLoadCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Icon(Icons.circle, size: 8, color: AppColors.success),
+                  Icon(Icons.circle, size: 8, color: colors.success),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -337,7 +344,7 @@ class _PendingLoadCard extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Icon(Icons.circle, size: 8, color: AppColors.destructive),
+                  Icon(Icons.circle, size: 8, color: colors.destructive),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

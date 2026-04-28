@@ -7,11 +7,13 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.background, AppColors.primary],
+            colors: [colors.background, colors.primary],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

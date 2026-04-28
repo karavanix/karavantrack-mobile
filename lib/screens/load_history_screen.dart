@@ -92,6 +92,7 @@ class _HistoryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
     final t = AppLocalizations.of(context);
+    final colors = AppColors.of(context);
 
     final isCancelled = load.status == LoadStatus.cancelled;
     final date = load.dropoffAt ?? load.updatedAt ?? load.createdAt;
@@ -127,7 +128,7 @@ class _HistoryCard extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.circle, size: 8, color: AppColors.destructive),
+                  Icon(Icons.circle, size: 8, color: colors.destructive),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -149,7 +150,7 @@ class _HistoryCard extends StatelessWidget {
                   Icon(
                     isCancelled ? Icons.cancel_outlined : Icons.check_circle_outline,
                     size: 14,
-                    color: isCancelled ? AppColors.destructive : AppColors.success,
+                    color: isCancelled ? colors.destructive : colors.success,
                   ),
                   const SizedBox(width: 6),
                   Text(

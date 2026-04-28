@@ -55,6 +55,7 @@ class _StatusStepperState extends State<StatusStepper>
   Widget build(BuildContext context) {
     final nodeSize = widget.compact ? 20.0 : 26.0;
     const stepCount = 6;
+    final colors = AppColors.of(context);
 
     return SizedBox(
       height: widget.compact ? nodeSize : nodeSize + 22,
@@ -75,8 +76,8 @@ class _StatusStepperState extends State<StatusStepper>
                   height: 2,
                   child: Container(
                     color: i < widget.currentStepIndex
-                        ? AppColors.success
-                        : const Color(0xFF2C3546),
+                        ? colors.success
+                        : colors.border,
                   ),
                 ),
 
@@ -91,6 +92,7 @@ class _StatusStepperState extends State<StatusStepper>
                     nodeSize: nodeSize,
                     pulseAnim: _pulseAnim,
                     label: widget.compact ? null : _labels[i],
+                    colors: colors,
                   ),
                 ),
             ],
@@ -107,6 +109,7 @@ class _StepNode extends StatelessWidget {
     required this.currentIndex,
     required this.nodeSize,
     required this.pulseAnim,
+    required this.colors,
     this.label,
   });
 
@@ -114,6 +117,7 @@ class _StepNode extends StatelessWidget {
   final int currentIndex;
   final double nodeSize;
   final Animation<double> pulseAnim;
+  final AppSemanticColors colors;
   final String? label;
 
   @override
@@ -138,7 +142,7 @@ class _StepNode extends StatelessWidget {
                 height: glowSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(
+                  color: colors.primary.withValues(
                     alpha: 0.25 - pulseAnim.value * 0.15,
                   ),
                 ),
@@ -148,7 +152,7 @@ class _StepNode extends StatelessWidget {
                     height: nodeSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primary,
+                      color: colors.primary,
                     ),
                     child: Icon(
                       Icons.circle,
@@ -168,7 +172,7 @@ class _StepNode extends StatelessWidget {
         height: nodeSize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: AppColors.success,
+          color: colors.success,
         ),
         child: Icon(Icons.check, size: nodeSize * 0.55, color: Colors.white),
       );
@@ -179,7 +183,7 @@ class _StepNode extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.transparent,
-          border: Border.all(color: const Color(0xFF2C3546), width: 2),
+          border: Border.all(color: colors.border, width: 2),
         ),
       );
     }
@@ -203,10 +207,10 @@ class _StepNode extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               color: isPending
-                  ? const Color(0xFF2C3546)
+                  ? colors.border
                   : isDone
-                      ? AppColors.success
-                      : AppColors.primary,
+                      ? colors.success
+                      : colors.primary,
               fontWeight:
                   isCurrent ? FontWeight.w600 : FontWeight.normal,
             ),

@@ -51,15 +51,20 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
   }
 
   LoadItem? _find() {
+    // allLoads already includes activeLoad, pendingLoads, and historyLoads
     for (final l in widget.store.allLoads) {
       if (l.id == widget.loadId) return l;
     }
-    for (final l in widget.store.pendingLoads) {
-      if (l.id == widget.loadId) return l;
-    }
-    return widget.store.activeLoad?.id == widget.loadId
-        ? widget.store.activeLoad
-        : null;
+    return null;
+  }
+
+  String _relativeTime(BuildContext context, DateTime dt) {
+    final t = AppLocalizations.of(context);
+    final diff = DateTime.now().toUtc().difference(dt.toUtc());
+    if (diff.inMinutes < 1) return t.tr('justNow');
+    if (diff.inHours < 1) return '${diff.inMinutes}${t.tr('minutesAgoShort')}';
+    if (diff.inDays < 1) return '${diff.inHours}${t.tr('hoursAgoShort')}';
+    return '${diff.inDays}${t.tr('daysAgoShort')}';
   }
 
   Future<void> _handleAction(BuildContext context, LoadItem load) async {
@@ -83,18 +88,11 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
     _fetchDetail();
   }
 
-  String _relativeTime(DateTime dt) {
-    final diff = DateTime.now().toUtc().difference(dt.toUtc());
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
+    final colors = AppColors.of(context);
 
     return ListenableBuilder(
       listenable: widget.store,
@@ -246,7 +244,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                 Card(
                   child: ExpansionTile(
                     title: Text(
-                      'Status History',
+                      t.tr('statusHistory'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -272,7 +270,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                                   margin: const EdgeInsets.only(top: 5),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: AppColors.primary,
+                                    color: colors.primary,
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -289,7 +287,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        _relativeTime(item.changedAt),
+                                        _relativeTime(context, item.changedAt),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: theme.colorScheme.onSurface

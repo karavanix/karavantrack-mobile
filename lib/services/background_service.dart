@@ -9,10 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // ─── SharedPreferences keys (shared between UI and background isolate) ─────
 const String kBgActiveLoadId = 'bg_active_load_id';
-const String kBgCarrierId    = 'bg_carrier_id';
-const String kBgAuthToken    = 'bg_auth_token';
+const String kBgCarrierId = 'bg_carrier_id';
+const String kBgAuthToken = 'bg_auth_token';
 
-const String _kBaseUrl  = 'https://api.yool.live';
+const String _kBaseUrl = 'https://api.yool.live';
 const String _kBasePath = '/api/v1';
 
 // ─── Service configuration ──────────────────────────────────────────────────
@@ -80,13 +80,13 @@ Future<void> _tick(ServiceInstance service) async {
   }
 
   // Read context written by UI isolate via SharedPreferences
-  final prefs   = await SharedPreferences.getInstance();
-  final loadId  = prefs.getString(kBgActiveLoadId);
+  final prefs = await SharedPreferences.getInstance();
+  final loadId = prefs.getString(kBgActiveLoadId);
   final carrierId = prefs.getString(kBgCarrierId);
-  final token   = prefs.getString(kBgAuthToken);
+  final token = prefs.getString(kBgAuthToken);
 
   if (loadId == null || loadId.isEmpty) return;
-  if (token  == null || token.isEmpty)  return;
+  if (token == null || token.isEmpty) return;
 
   // Verify GPS is available
   try {
@@ -95,7 +95,9 @@ Future<void> _tick(ServiceInstance service) async {
 
     final perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied ||
-        perm == LocationPermission.deniedForever) return;
+        perm == LocationPermission.deniedForever) {
+      return;
+    }
 
     final pos = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
@@ -104,10 +106,10 @@ Future<void> _tick(ServiceInstance service) async {
     );
 
     await _postLocation(
-      token:     token,
-      loadId:    loadId,
+      token: token,
+      loadId: loadId,
       carrierId: carrierId ?? '',
-      pos:       pos,
+      pos: pos,
     );
   } catch (_) {
     // Silently skip — will retry on next tick
@@ -128,12 +130,12 @@ Future<void> _postLocation({
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode({
-        'load_id':     loadId,
-        'carrier_id':  carrierId,
-        'lat':         pos.latitude,
-        'lng':         pos.longitude,
-        'speed_mps':   pos.speed,
-        'accuracy_m':  pos.accuracy,
+        'load_id': loadId,
+        'carrier_id': carrierId,
+        'lat': pos.latitude,
+        'lng': pos.longitude,
+        'speed_mps': pos.speed,
+        'accuracy_m': pos.accuracy,
         'heading_deg': pos.heading,
         'recorded_at': DateTime.now().toUtc().toIso8601String(),
       }),
@@ -164,8 +166,8 @@ Future<void> setBgActiveLoad({
 }) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString(kBgActiveLoadId, loadId);
-  await prefs.setString(kBgCarrierId,    carrierId);
-  await prefs.setString(kBgAuthToken,    token);
+  await prefs.setString(kBgCarrierId, carrierId);
+  await prefs.setString(kBgAuthToken, token);
 }
 
 /// Clear active-load context (call on complete or logout).

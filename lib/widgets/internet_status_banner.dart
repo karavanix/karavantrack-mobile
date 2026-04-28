@@ -3,6 +3,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
 import '../store/app_store.dart';
+import '../l10n/app_localizations.dart';
 
 /// Telegram-style connectivity banner.
 ///
@@ -30,6 +31,7 @@ class _InternetStatusBannerState extends State<InternetStatusBanner>
   StreamSubscription<List<ConnectivityResult>>? _sub;
 
   _BannerState _banner = _BannerState.hidden;
+  bool _wasOnline = true; // Assume online initially
   bool _initialized = false;
   Timer? _hideTimer;
 
@@ -61,24 +63,30 @@ class _InternetStatusBannerState extends State<InternetStatusBanner>
     // Seed initial state
     _connectivity.checkConnectivity().then((results) {
       if (!mounted) return;
-      _apply(results, force: true);
+      _apply(results);
     });
 
     _sub = _connectivity.onConnectivityChanged.listen(_apply);
   }
 
-  void _apply(List<ConnectivityResult> results, {bool force = false}) {
+  void _apply(List<ConnectivityResult> results) {
     final isOnline = results.any((r) => r != ConnectivityResult.none);
 
-    if (!_initialized || isOnline != (_banner != _BannerState.connecting)) {
-      _initialized = true;
-      widget.store.setNetworkOnline(isOnline);
+    // Skip if state hasn't changed (after initial check)
+    if (_initialized && isOnline == _wasOnline) return;
 
-      if (!isOnline) {
-        _showConnecting();
-      } else {
-        _showOnline();
-      }
+    final wasFirstCheck = !_initialized;
+    _initialized = true;
+    _wasOnline = isOnline;
+    widget.store.setNetworkOnline(isOnline);
+
+    if (!isOnline) {
+      _showConnecting();
+    } else if (wasFirstCheck) {
+      // First check came back online — don't show banner
+      setState(() => _banner = _BannerState.hidden);
+    } else {
+      _showOnline();
     }
   }
 
@@ -119,7 +127,7 @@ class _InternetStatusBannerState extends State<InternetStatusBanner>
     final isConnecting = _banner == _BannerState.connecting;
 
     final bgColor = isConnecting
-        ? const Color.fromARGB(255, 18, 144, 248) // amber
+        ? const Color(0xFFF59E0B) // amber — warning color for offline
         : const Color(0xFF2ECC71); // green
 
     return SlideTransition(
@@ -150,14 +158,15 @@ class _ConnectingLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 14),
         const SizedBox(width: 6),
-        const Text(
-          'Connecting',
-          style: TextStyle(
+        Text(
+          t.tr('connecting'),
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -200,22 +209,23 @@ class _OnlineLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    final t = AppLocalizations.of(context);
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.wifi_rounded, color: Colors.white, size: 14),
-        SizedBox(width: 6),
+        const Icon(Icons.wifi_rounded, color: Colors.white, size: 14),
+        const SizedBox(width: 6),
         Text(
-          'Online',
-          style: TextStyle(
+          t.tr('onlineStatus'),
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 12,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.3,
           ),
         ),
-        SizedBox(width: 4),
-        Icon(Icons.check_rounded, color: Colors.white, size: 13),
+        const SizedBox(width: 4),
+        const Icon(Icons.check_rounded, color: Colors.white, size: 13),
       ],
     );
   }

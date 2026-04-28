@@ -33,27 +33,106 @@ final _lightPrimaryFg = _hsl(0, 0, 100);
 final _lightSecondary = _hsl(214, 20, 93);
 final _lightSecondaryFg = _hsl(222, 25, 12);
 final _lightDestructive = _hsl(0, 72, 46);
+final _lightSuccess = _hsl(142, 71, 35);
+final _lightWarning = _hsl(38, 92, 42);
 
+// ─── Semantic color extension ───────────────────────────────────────────────
 
-// ─── Semantic color accessors ───────────────────────────────────────────────
+/// Theme-aware semantic colors accessible via [AppColors.of].
+class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
+  const AppSemanticColors({
+    required this.background,
+    required this.foreground,
+    required this.card,
+    required this.border,
+    required this.muted,
+    required this.mutedForeground,
+    required this.primary,
+    required this.primaryForeground,
+    required this.secondary,
+    required this.secondaryForeground,
+    required this.destructive,
+    required this.success,
+    required this.warning,
+  });
 
+  final Color background;
+  final Color foreground;
+  final Color card;
+  final Color border;
+  final Color muted;
+  final Color mutedForeground;
+  final Color primary;
+  final Color primaryForeground;
+  final Color secondary;
+  final Color secondaryForeground;
+  final Color destructive;
+  final Color success;
+  final Color warning;
+
+  @override
+  AppSemanticColors copyWith({
+    Color? background,
+    Color? foreground,
+    Color? card,
+    Color? border,
+    Color? muted,
+    Color? mutedForeground,
+    Color? primary,
+    Color? primaryForeground,
+    Color? secondary,
+    Color? secondaryForeground,
+    Color? destructive,
+    Color? success,
+    Color? warning,
+  }) {
+    return AppSemanticColors(
+      background: background ?? this.background,
+      foreground: foreground ?? this.foreground,
+      card: card ?? this.card,
+      border: border ?? this.border,
+      muted: muted ?? this.muted,
+      mutedForeground: mutedForeground ?? this.mutedForeground,
+      primary: primary ?? this.primary,
+      primaryForeground: primaryForeground ?? this.primaryForeground,
+      secondary: secondary ?? this.secondary,
+      secondaryForeground: secondaryForeground ?? this.secondaryForeground,
+      destructive: destructive ?? this.destructive,
+      success: success ?? this.success,
+      warning: warning ?? this.warning,
+    );
+  }
+
+  @override
+  AppSemanticColors lerp(AppSemanticColors? other, double t) {
+    if (other is! AppSemanticColors) return this;
+    return AppSemanticColors(
+      background: Color.lerp(background, other.background, t)!,
+      foreground: Color.lerp(foreground, other.foreground, t)!,
+      card: Color.lerp(card, other.card, t)!,
+      border: Color.lerp(border, other.border, t)!,
+      muted: Color.lerp(muted, other.muted, t)!,
+      mutedForeground: Color.lerp(mutedForeground, other.mutedForeground, t)!,
+      primary: Color.lerp(primary, other.primary, t)!,
+      primaryForeground: Color.lerp(primaryForeground, other.primaryForeground, t)!,
+      secondary: Color.lerp(secondary, other.secondary, t)!,
+      secondaryForeground: Color.lerp(secondaryForeground, other.secondaryForeground, t)!,
+      destructive: Color.lerp(destructive, other.destructive, t)!,
+      success: Color.lerp(success, other.success, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
+    );
+  }
+}
+
+// ─── Convenience accessor ───────────────────────────────────────────────────
+
+/// Use `AppColors.of(context).primary` etc. to get theme-aware semantic colors.
 class AppColors {
   AppColors._();
 
-  // Dark mode
-  static Color get background => _darkBackground;
-  static Color get foreground => _darkForeground;
-  static Color get card => _darkCard;
-  static Color get border => _darkBorder;
-  static Color get muted => _darkMuted;
-  static Color get mutedForeground => _darkMutedFg;
-  static Color get primary => _darkPrimary;
-  static Color get primaryForeground => _darkPrimaryFg;
-  static Color get secondary => _darkSecondary;
-  static Color get secondaryForeground => _darkSecondaryFg;
-  static Color get destructive => _darkDestructive;
-  static Color get success => _darkSuccess;
-  static Color get warning => _darkWarning;
+  static AppSemanticColors of(BuildContext context) {
+    return Theme.of(context).extension<AppSemanticColors>()!;
+  }
 }
 
 // ─── Theme data ─────────────────────────────────────────────────────────────
@@ -74,6 +153,8 @@ class AppTheme {
         secondary: _darkSecondary,
         secondaryFg: _darkSecondaryFg,
         destructive: _darkDestructive,
+        success: _darkSuccess,
+        warning: _darkWarning,
       );
 
   static ThemeData get light => _buildTheme(
@@ -89,6 +170,8 @@ class AppTheme {
         secondary: _lightSecondary,
         secondaryFg: _lightSecondaryFg,
         destructive: _lightDestructive,
+        success: _lightSuccess,
+        warning: _lightWarning,
       );
 
   static ThemeData _buildTheme({
@@ -104,6 +187,8 @@ class AppTheme {
     required Color secondary,
     required Color secondaryFg,
     required Color destructive,
+    required Color success,
+    required Color warning,
   }) {
     final colorScheme = ColorScheme(
       brightness: brightness,
@@ -125,6 +210,23 @@ class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: background,
       fontFamily: 'Inter',
+      extensions: [
+        AppSemanticColors(
+          background: background,
+          foreground: foreground,
+          card: card,
+          border: border,
+          muted: muted,
+          mutedForeground: mutedFg,
+          primary: primary,
+          primaryForeground: primaryFg,
+          secondary: secondary,
+          secondaryForeground: secondaryFg,
+          destructive: destructive,
+          success: success,
+          warning: warning,
+        ),
+      ],
       appBarTheme: AppBarTheme(
         backgroundColor: background,
         foregroundColor: foreground,

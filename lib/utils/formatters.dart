@@ -2,10 +2,10 @@
 
 String formatDateTime(DateTime? dt) {
   if (dt == null) return '-';
-  final utc = dt.toUtc();
+  final local = dt.toLocal();
   String two(int v) => v.toString().padLeft(2, '0');
-  return '${utc.year}-${two(utc.month)}-${two(utc.day)} '
-      '${two(utc.hour)}:${two(utc.minute)}:${two(utc.second)}';
+  return '${local.year}-${two(local.month)}-${two(local.day)} '
+      '${two(local.hour)}:${two(local.minute)}:${two(local.second)}';
 }
 
 String formatRelativeTime(DateTime nowUtc, DateTime thenUtc) {

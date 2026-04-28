@@ -10,51 +10,52 @@ class LoadStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg) = _colors(status);
+    final color = _statusColor(context, status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: bg.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: TextStyle(color: bg, fontWeight: FontWeight.w600, fontSize: 12),
+        style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
       ),
     );
   }
 
-  static (Color, Color) _colors(String status) {
+  static Color _statusColor(BuildContext context, String status) {
+    final colors = AppColors.of(context);
     switch (status) {
       case 'created':
-        return (AppColors.mutedForeground, AppColors.foreground);
+        return colors.mutedForeground;
       case 'assigned':
-        return (Color.fromARGB(255, 129, 140, 248), AppColors.foreground);
+        return const Color.fromARGB(255, 129, 140, 248);
       case 'accepted':
-        return (AppColors.primary, AppColors.primaryForeground);
+        return colors.primary;
       case 'pickingUp':
       case 'picking_up':
-        return (Color.fromARGB(255, 251, 146, 60), AppColors.foreground);
+        return const Color.fromARGB(255, 251, 146, 60);
       case 'pickedUp':
       case 'picked_up':
-        return (Color.fromARGB(255, 96, 165, 250), AppColors.foreground);
+        return const Color.fromARGB(255, 96, 165, 250);
       case 'in_transit':
       case 'inTransit':
-        return (AppColors.warning, AppColors.foreground);
+        return colors.warning;
       case 'droppingOff':
       case 'dropping_off':
-        return (Color.fromARGB(255, 245, 158, 11), AppColors.foreground);
+        return const Color.fromARGB(255, 245, 158, 11);
       case 'droppedOff':
       case 'dropped_off':
-        return (Color.fromARGB(255, 52, 211, 153), AppColors.foreground);
+        return const Color.fromARGB(255, 52, 211, 153);
       case 'completed':
-        return (AppColors.success, AppColors.foreground);
+        return colors.success;
       case 'confirmed':
-        return (Color.fromARGB(255, 52, 211, 153), AppColors.foreground);
+        return const Color.fromARGB(255, 52, 211, 153);
       case 'cancelled':
-        return (AppColors.destructive, AppColors.foreground);
+        return colors.destructive;
       default:
-        return (AppColors.mutedForeground, AppColors.foreground);
+        return colors.mutedForeground;
     }
   }
 }

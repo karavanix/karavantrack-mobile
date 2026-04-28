@@ -137,6 +137,19 @@ class AppLocalizations extends InheritedWidget {
     'networkError': 'Network error',
     'failedToSaveProfile': 'Failed to save profile',
 
+    // Connectivity banner
+    'connecting': 'Connecting',
+    'onlineStatus': 'Online',
+
+    // Status history
+    'statusHistory': 'Status History',
+
+    // Relative time
+    'justNow': 'just now',
+    'minutesAgoShort': 'm ago',
+    'hoursAgoShort': 'h ago',
+    'daysAgoShort': 'd ago',
+
     // GPS dialog
     'gpsOffTitle': 'GPS is Off',
     'gpsOffMessage':
@@ -249,6 +262,19 @@ class AppLocalizations extends InheritedWidget {
     'networkError': 'Ошибка сети',
     'failedToSaveProfile': 'Не удалось сохранить профиль',
 
+    // Connectivity banner
+    'connecting': 'Подключение',
+    'onlineStatus': 'В сети',
+
+    // Status history
+    'statusHistory': 'История статусов',
+
+    // Relative time
+    'justNow': 'только что',
+    'minutesAgoShort': ' мин назад',
+    'hoursAgoShort': ' ч назад',
+    'daysAgoShort': ' дн назад',
+
     // GPS dialog
     'gpsOffTitle': 'GPS выключен',
     'gpsOffMessage':
@@ -360,6 +386,19 @@ class AppLocalizations extends InheritedWidget {
     'registrationError': 'Ro\'yxatdan o\'tish xatosi',
     'networkError': 'Tarmoq xatosi',
     'failedToSaveProfile': 'Profilni saqlash amalga oshmadi',
+
+    // Connectivity banner
+    'connecting': 'Ulanmoqda',
+    'onlineStatus': 'Onlayn',
+
+    // Status history
+    'statusHistory': 'Status tarixi',
+
+    // Relative time
+    'justNow': 'hozirgina',
+    'minutesAgoShort': ' daq oldin',
+    'hoursAgoShort': ' soat oldin',
+    'daysAgoShort': ' kun oldin',
 
     // GPS dialog
     'gpsOffTitle': 'GPS o\'chiq',
