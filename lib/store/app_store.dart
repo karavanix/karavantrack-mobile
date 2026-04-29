@@ -253,6 +253,7 @@ class AppStore extends ChangeNotifier {
     _locationTimer = null;
     await stopBackgroundService();
     await clearBgActiveLoad();
+    await NotificationService.instance.deactivate();
     await _api.logout();
     // Clear cached profile
     final prefs = await SharedPreferences.getInstance();
