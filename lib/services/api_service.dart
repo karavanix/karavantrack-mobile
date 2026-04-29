@@ -344,7 +344,7 @@ class ApiService {
       'speed_mps': speedMps,
       'accuracy_m': accuracyM,
       'recorded_at': recordedAt.toUtc().toIso8601String(),
-      if (headingDeg != null) 'heading_deg': headingDeg,
+      'heading_deg': ?headingDeg,
     };
     final response = await _authed(
       () => http.post(
