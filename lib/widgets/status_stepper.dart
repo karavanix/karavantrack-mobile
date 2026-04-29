@@ -60,21 +60,22 @@ class _StatusStepperState extends State<StatusStepper>
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    final l10n = AppLocalizations.of(context);
     final nodeSize = widget.compact ? 20.0 : 26.0;
-    const stepCount = 6;
 
     return SizedBox(
       height: widget.compact ? nodeSize : nodeSize + 22,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final totalWidth = constraints.maxWidth;
-          final spacing = (totalWidth - nodeSize * stepCount) / (stepCount - 1);
+          final spacing = (totalWidth - nodeSize * _stepCount) / (_stepCount - 1);
 
           return Stack(
             clipBehavior: Clip.none,
             children: [
               // Connecting lines
-              for (int i = 0; i < stepCount - 1; i++)
+              for (int i = 0; i < _stepCount - 1; i++)
                 Positioned(
                   left: nodeSize * i + spacing * i + nodeSize,
                   top: nodeSize / 2 - 1,
@@ -82,13 +83,13 @@ class _StatusStepperState extends State<StatusStepper>
                   height: 2,
                   child: Container(
                     color: i < widget.currentStepIndex
-                        ? AppColors.success
-                        : const Color(0xFF2C3546),
+                        ? colors.success
+                        : colors.border,
                   ),
                 ),
 
               // Step nodes
-              for (int i = 0; i < stepCount; i++)
+              for (int i = 0; i < _stepCount; i++)
                 Positioned(
                   left: (nodeSize + spacing) * i,
                   top: 0,
@@ -97,51 +98,16 @@ class _StatusStepperState extends State<StatusStepper>
                     currentIndex: widget.currentStepIndex,
                     nodeSize: nodeSize,
                     pulseAnim: _pulseAnim,
-                    label: widget.compact ? null : _labels[i],
+                    isAwaitingConfirmation: widget.isAwaitingConfirmation,
+                    label: widget.compact ? null : l10n.tr(_labelKeys[i]),
                   ),
                 ),
             ],
-          ),
-        ],
-      ],
+          );
+        },
+      ),
     );
   }
-}
-
-// Draws the horizontal connecting lines between node centers
-class _LinePainter extends CustomPainter {
-  const _LinePainter({
-    required this.stepCount,
-    required this.currentStepIndex,
-    required this.nodeSize,
-  });
-
-  final int stepCount;
-  final int currentStepIndex;
-  final double nodeSize;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final slotWidth = size.width / stepCount;
-    final centerY = size.height / 2;
-    final lineY = centerY;
-
-    for (int i = 0; i < stepCount - 1; i++) {
-      final startX = slotWidth * i + slotWidth / 2 + nodeSize / 2;
-      final endX = slotWidth * (i + 1) + slotWidth / 2 - nodeSize / 2;
-
-      final paint = Paint()
-        ..color = i < currentStepIndex ? AppColors.success : AppColors.border
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round;
-
-      canvas.drawLine(Offset(startX, lineY), Offset(endX, lineY), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_LinePainter old) =>
-      old.currentStepIndex != currentStepIndex || old.nodeSize != nodeSize;
 }
 
 class _StepNode extends StatelessWidget {
@@ -150,6 +116,7 @@ class _StepNode extends StatelessWidget {
     required this.currentIndex,
     required this.nodeSize,
     required this.pulseAnim,
+    required this.isAwaitingConfirmation,
     this.label,
   });
 
@@ -157,16 +124,21 @@ class _StepNode extends StatelessWidget {
   final int currentIndex;
   final double nodeSize;
   final Animation<double> pulseAnim;
+  final bool isAwaitingConfirmation;
   final String? label;
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final isDone = index < currentIndex;
     final isCurrent = index == currentIndex;
+    final isPending = !isDone && !isCurrent;
+
+    Widget node;
 
     if (isCurrent && isAwaitingConfirmation) {
       // Amber pulsing hourglass — "done on driver's side, waiting on shipper"
-      return AnimatedBuilder(
+      node = AnimatedBuilder(
         animation: pulseAnim,
         builder: (context, child) {
           final glowSize = nodeSize + 6 + pulseAnim.value * 6;
@@ -179,7 +151,7 @@ class _StepNode extends StatelessWidget {
                 height: glowSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.statusDroppedOff.withValues(
+                  color: colors.warning.withValues(
                     alpha: 0.25 - pulseAnim.value * 0.15,
                   ),
                 ),
@@ -189,7 +161,7 @@ class _StepNode extends StatelessWidget {
                     height: nodeSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.statusDroppedOff,
+                      color: colors.warning,
                     ),
                     child: Icon(
                       Icons.hourglass_top_rounded,
@@ -203,10 +175,8 @@ class _StepNode extends StatelessWidget {
           );
         },
       );
-    }
-
-    if (isCurrent) {
-      return AnimatedBuilder(
+    } else if (isCurrent) {
+      node = AnimatedBuilder(
         animation: pulseAnim,
         builder: (context, child) {
           final glowSize = nodeSize + 6 + pulseAnim.value * 6;
@@ -243,10 +213,8 @@ class _StepNode extends StatelessWidget {
           );
         },
       );
-    }
-
-    if (isDone) {
-      return Container(
+    } else if (isDone) {
+      node = Container(
         width: nodeSize,
         height: nodeSize,
         decoration: BoxDecoration(
@@ -262,7 +230,7 @@ class _StepNode extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.transparent,
-          border: Border.all(color: const Color(0xFF2C3546), width: 2),
+          border: Border.all(color: colors.border, width: 2),
         ),
       );
     }
@@ -286,10 +254,10 @@ class _StepNode extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               color: isPending
-                  ? const Color(0xFF2C3546)
+                  ? colors.mutedForeground
                   : isDone
-                      ? AppColors.success
-                      : AppColors.primary,
+                      ? colors.success
+                      : colors.primary,
               fontWeight:
                   isCurrent ? FontWeight.w600 : FontWeight.normal,
             ),

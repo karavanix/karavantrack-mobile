@@ -88,14 +88,6 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
     _fetchDetail();
   }
 
-  String _relativeTime(DateTime dt) {
-    final diff = DateTime.now().toUtc().difference(dt.toUtc());
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -211,10 +203,10 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.statusDroppedOff.withValues(alpha: 0.12),
+                    color: colors.warning.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppColors.statusDroppedOff.withValues(alpha: 0.35),
+                      color: colors.warning.withValues(alpha: 0.35),
                     ),
                   ),
                   child: Row(
@@ -222,7 +214,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                     children: [
                       Icon(
                         Icons.hourglass_top_rounded,
-                        color: AppColors.statusDroppedOff,
+                        color: colors.warning,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -233,7 +225,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                             Text(
                               t.tr('awaitingShipperConfirmation'),
                               style: TextStyle(
-                                color: AppColors.statusDroppedOff,
+                                color: colors.warning,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                               ),
@@ -242,7 +234,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                             Text(
                               t.tr('awaitingConfirmationDetail'),
                               style: TextStyle(
-                                color: AppColors.statusDroppedOff.withValues(
+                                color: colors.warning.withValues(
                                   alpha: 0.85,
                                 ),
                                 fontSize: 13,
@@ -365,7 +357,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        _relativeTime(item.changedAt),
+                                        _relativeTime(context, item.changedAt),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: theme.colorScheme.onSurface

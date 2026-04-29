@@ -143,11 +143,7 @@ class AppLocalizations extends InheritedWidget {
     'connecting': 'Connecting',
     'onlineStatus': 'Online',
 
-    // Status history
-    'statusHistory': 'Status History',
-
     // Relative time
-    'justNow': 'just now',
     'minutesAgoShort': 'm ago',
     'hoursAgoShort': 'h ago',
     'daysAgoShort': 'd ago',
@@ -285,11 +281,7 @@ class AppLocalizations extends InheritedWidget {
     'connecting': 'Подключение',
     'onlineStatus': 'В сети',
 
-    // Status history
-    'statusHistory': 'История статусов',
-
     // Relative time
-    'justNow': 'только что',
     'minutesAgoShort': ' мин назад',
     'hoursAgoShort': ' ч назад',
     'daysAgoShort': ' дн назад',
@@ -427,11 +419,7 @@ class AppLocalizations extends InheritedWidget {
     'connecting': 'Ulanmoqda',
     'onlineStatus': 'Onlayn',
 
-    // Status history
-    'statusHistory': 'Status tarixi',
-
     // Relative time
-    'justNow': 'hozirgina',
     'minutesAgoShort': ' daq oldin',
     'hoursAgoShort': ' soat oldin',
     'daysAgoShort': ' kun oldin',
