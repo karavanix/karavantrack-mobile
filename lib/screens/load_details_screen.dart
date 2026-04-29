@@ -210,10 +210,10 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: awaitingColor.withValues(alpha: 0.12),
+                    color: AppColors.statusDroppedOff.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: awaitingColor.withValues(alpha: 0.35),
+                      color: AppColors.statusDroppedOff.withValues(alpha: 0.35),
                     ),
                   ),
                   child: Row(
@@ -221,7 +221,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                     children: [
                       Icon(
                         Icons.hourglass_top_rounded,
-                        color: awaitingColor,
+                        color: AppColors.statusDroppedOff,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -232,7 +232,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                             Text(
                               t.tr('awaitingShipperConfirmation'),
                               style: TextStyle(
-                                color: awaitingColor,
+                                color: AppColors.statusDroppedOff,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                               ),
@@ -241,7 +241,9 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                             Text(
                               t.tr('awaitingConfirmationDetail'),
                               style: TextStyle(
-                                color: awaitingColor.withValues(alpha: 0.85),
+                                color: AppColors.statusDroppedOff.withValues(
+                                  alpha: 0.85,
+                                ),
                                 fontSize: 13,
                               ),
                             ),

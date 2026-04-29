@@ -148,31 +148,6 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
 class AppColors {
   AppColors._();
 
-  static AppSemanticColors of(BuildContext context) {
-    final theme = Theme.of(context);
-    return theme.extension<AppSemanticColors>() ??
-        AppSemanticColors(
-          background: theme.scaffoldBackgroundColor,
-          foreground: theme.colorScheme.onSurface,
-          card: theme.colorScheme.surface,
-          border: theme.colorScheme.outline,
-          muted: theme.colorScheme.surfaceContainerHighest,
-          mutedForeground: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-          primary: theme.colorScheme.primary,
-          primaryForeground: theme.colorScheme.onPrimary,
-          secondary: theme.colorScheme.secondary,
-          secondaryForeground: theme.colorScheme.onSecondary,
-          destructive: theme.colorScheme.error,
-          success: theme.brightness == Brightness.dark
-              ? _darkSuccess
-              : _lightSuccess,
-          warning: theme.brightness == Brightness.dark
-              ? _darkWarning
-              : _lightWarning,
-          statusDroppedOff: _statusDroppedOff,
-        );
-  }
-
   // Dark mode
   static Color get background => _darkBackground;
   static Color get foreground => _darkForeground;

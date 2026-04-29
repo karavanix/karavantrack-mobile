@@ -393,14 +393,14 @@ class _PendingLoadCard extends StatelessWidget {
                     Icon(
                       Icons.hourglass_top_rounded,
                       size: 13,
-                      color: colors.statusDroppedOff,
+                      color: AppColors.statusDroppedOff,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       t.tr('awaitingShipperConfirmation'),
                       style: TextStyle(
                         fontSize: 12,
-                        color: colors.statusDroppedOff,
+                        color: AppColors.statusDroppedOff,
                       ),
                     ),
                   ],
