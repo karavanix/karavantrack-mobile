@@ -71,16 +71,22 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
     switch (load.status) {
       case LoadStatus.assigned:
         await widget.store.acceptLoad(load.id);
+        break;
       case LoadStatus.accepted:
         await widget.store.beginPickup(load.id);
+        break;
       case LoadStatus.pickingUp:
         await widget.store.confirmPickup(load.id);
+        break;
       case LoadStatus.pickedUp:
         await widget.store.startLoad(load.id);
+        break;
       case LoadStatus.inTransit:
         await widget.store.beginDropoff(load.id);
+        break;
       case LoadStatus.droppingOff:
         await widget.store.confirmDropoff(load.id);
+        break;
       default:
         break;
     }
@@ -88,19 +94,12 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
     _fetchDetail();
   }
 
-  String _relativeTime(DateTime dt) {
-    final diff = DateTime.now().toUtc().difference(dt.toUtc());
-    if (diff.inMinutes < 1) return 'just now';
-    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
-    if (diff.inDays < 1) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
     final colors = AppColors.of(context);
+    final awaitingColor = colors.statusDroppedOff;
 
     return ListenableBuilder(
       listenable: widget.store,
@@ -211,10 +210,10 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.statusDroppedOff.withValues(alpha: 0.12),
+                    color: awaitingColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppColors.statusDroppedOff.withValues(alpha: 0.35),
+                      color: awaitingColor.withValues(alpha: 0.35),
                     ),
                   ),
                   child: Row(
@@ -222,7 +221,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                     children: [
                       Icon(
                         Icons.hourglass_top_rounded,
-                        color: AppColors.statusDroppedOff,
+                        color: awaitingColor,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -233,7 +232,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                             Text(
                               t.tr('awaitingShipperConfirmation'),
                               style: TextStyle(
-                                color: AppColors.statusDroppedOff,
+                                color: awaitingColor,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                               ),
@@ -242,9 +241,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                             Text(
                               t.tr('awaitingConfirmationDetail'),
                               style: TextStyle(
-                                color: AppColors.statusDroppedOff.withValues(
-                                  alpha: 0.85,
-                                ),
+                                color: awaitingColor.withValues(alpha: 0.85),
                                 fontSize: 13,
                               ),
                             ),
@@ -365,7 +362,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        _relativeTime(item.changedAt),
+                                        _relativeTime(context, item.changedAt),
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: theme.colorScheme.onSurface

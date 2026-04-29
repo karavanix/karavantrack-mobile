@@ -20,6 +20,7 @@ final _darkSecondaryFg = _hsl(210, 20, 96);
 final _darkDestructive = _hsl(0, 72, 51);
 final _darkSuccess = _hsl(142, 71, 45);
 final _darkWarning = _hsl(38, 92, 50);
+const _statusDroppedOff = Color(0xFF34D399);
 
 // ─── Light palette ──────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     required this.destructive,
     required this.success,
     required this.warning,
+    required this.statusDroppedOff,
   });
 
   final Color background;
@@ -69,6 +71,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   final Color destructive;
   final Color success;
   final Color warning;
+  final Color statusDroppedOff;
 
   @override
   AppSemanticColors copyWith({
@@ -85,6 +88,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
     Color? destructive,
     Color? success,
     Color? warning,
+    Color? statusDroppedOff,
   }) {
     return AppSemanticColors(
       background: background ?? this.background,
@@ -100,6 +104,7 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       destructive: destructive ?? this.destructive,
       success: success ?? this.success,
       warning: warning ?? this.warning,
+      statusDroppedOff: statusDroppedOff ?? this.statusDroppedOff,
     );
   }
 
@@ -128,6 +133,11 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
       destructive: Color.lerp(destructive, other.destructive, t)!,
       success: Color.lerp(success, other.success, t)!,
       warning: Color.lerp(warning, other.warning, t)!,
+      statusDroppedOff: Color.lerp(
+        statusDroppedOff,
+        other.statusDroppedOff,
+        t,
+      )!,
     );
   }
 }
@@ -137,6 +147,31 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
 /// Use `AppColors.of(context).primary` etc. to get theme-aware semantic colors.
 class AppColors {
   AppColors._();
+
+  static AppSemanticColors of(BuildContext context) {
+    final theme = Theme.of(context);
+    return theme.extension<AppSemanticColors>() ??
+        AppSemanticColors(
+          background: theme.scaffoldBackgroundColor,
+          foreground: theme.colorScheme.onSurface,
+          card: theme.colorScheme.surface,
+          border: theme.colorScheme.outline,
+          muted: theme.colorScheme.surfaceContainerHighest,
+          mutedForeground: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+          primary: theme.colorScheme.primary,
+          primaryForeground: theme.colorScheme.onPrimary,
+          secondary: theme.colorScheme.secondary,
+          secondaryForeground: theme.colorScheme.onSecondary,
+          destructive: theme.colorScheme.error,
+          success: theme.brightness == Brightness.dark
+              ? _darkSuccess
+              : _lightSuccess,
+          warning: theme.brightness == Brightness.dark
+              ? _darkWarning
+              : _lightWarning,
+          statusDroppedOff: _statusDroppedOff,
+        );
+  }
 
   // Dark mode
   static Color get background => _darkBackground;
@@ -152,6 +187,7 @@ class AppColors {
   static Color get destructive => _darkDestructive;
   static Color get success => _darkSuccess;
   static Color get warning => _darkWarning;
+  static Color get statusDroppedOff => _statusDroppedOff;
 }
 
 // ─── Theme data ─────────────────────────────────────────────────────────────
@@ -244,6 +280,7 @@ class AppTheme {
           destructive: destructive,
           success: success,
           warning: warning,
+          statusDroppedOff: _statusDroppedOff,
         ),
       ],
       appBarTheme: AppBarTheme(

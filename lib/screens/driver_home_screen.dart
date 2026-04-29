@@ -151,14 +151,19 @@ class _ActiveLoadPanel extends StatelessWidget {
     switch (load.status) {
       case LoadStatus.accepted:
         await store.beginPickup(load.id);
+        break;
       case LoadStatus.pickingUp:
         await store.confirmPickup(load.id);
+        break;
       case LoadStatus.pickedUp:
         await store.startLoad(load.id);
+        break;
       case LoadStatus.inTransit:
         await store.beginDropoff(load.id);
+        break;
       case LoadStatus.droppingOff:
         await store.confirmDropoff(load.id);
+        break;
       default:
         break;
     }
@@ -241,8 +246,8 @@ class _ActiveLoadPanel extends StatelessWidget {
                           ? t.tr('online')
                           : t.tr('offline'),
                       color: store.networkOnline
-                          ? AppColors.success
-                          : AppColors.warning,
+                          ? colors.success
+                          : colors.warning,
                     ),
                     StatusPill(
                       label: store.lastGpsPosition != null
@@ -250,15 +255,15 @@ class _ActiveLoadPanel extends StatelessWidget {
                                 '${store.lastGpsPosition!.longitude.toStringAsFixed(4)}'
                           : t.tr('gpsWaiting'),
                       color: store.lastGpsPosition != null
-                          ? AppColors.success
-                          : AppColors.warning,
+                          ? colors.success
+                          : colors.warning,
                     ),
                     StatusPill(
                       label:
                           '${t.tr('buffer')}: ${store.offlineBufferCount(load.id)}',
                       color: store.offlineBufferCount(load.id) == 0
-                          ? AppColors.primary
-                          : AppColors.warning,
+                          ? colors.primary
+                          : colors.warning,
                     ),
                   ],
                 ),
@@ -388,14 +393,14 @@ class _PendingLoadCard extends StatelessWidget {
                     Icon(
                       Icons.hourglass_top_rounded,
                       size: 13,
-                      color: AppColors.statusDroppedOff,
+                      color: colors.statusDroppedOff,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       t.tr('awaitingShipperConfirmation'),
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.statusDroppedOff,
+                        color: colors.statusDroppedOff,
                       ),
                     ),
                   ],

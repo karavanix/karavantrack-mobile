@@ -91,7 +91,6 @@ class AppLocalizations extends InheritedWidget {
     'actionBeginDropoff': 'Begin Dropoff',
     'actionConfirmDropoff': 'Confirm Delivery',
 
-
     // Active load
     'activeLoad': 'Active Load',
     'loadNotFoundOrInactive': 'Load not found or no longer active',
@@ -131,7 +130,8 @@ class AppLocalizations extends InheritedWidget {
     'statusConfirmed': 'Confirmed',
     'statusCancelled': 'Cancelled',
     'awaitingShipperConfirmation': 'Awaiting shipper confirmation',
-    'awaitingConfirmationDetail': 'Your delivery has been confirmed. Waiting for the shipper to verify and close the load.',
+    'awaitingConfirmationDetail':
+        'Your delivery has been confirmed. Waiting for the shipper to verify and close the load.',
 
     // Errors (from store)
     'loginError': 'Login error',
@@ -157,13 +157,6 @@ class AppLocalizations extends InheritedWidget {
     'gpsOffMessage':
         'Location services are disabled. Please turn on GPS so your position can be tracked.',
     'turnOnGps': 'Turn On GPS',
-
-    // Status history
-    'statusHistory': 'Status History',
-    'justNow': 'just now',
-    'minutesAgo': 'm ago',
-    'hoursAgo': 'h ago',
-    'daysAgo': 'd ago',
 
     // Stepper labels (short)
     'stepAccepted': 'Accepted',
@@ -233,7 +226,6 @@ class AppLocalizations extends InheritedWidget {
     'actionBeginDropoff': 'Начать разгрузку',
     'actionConfirmDropoff': 'Подтвердить доставку',
 
-
     // Active load
     'activeLoad': 'Активный груз',
     'loadNotFoundOrInactive': 'Груз не найден или больше не активен',
@@ -273,7 +265,8 @@ class AppLocalizations extends InheritedWidget {
     'statusConfirmed': 'Подтверждён',
     'statusCancelled': 'Отменён',
     'awaitingShipperConfirmation': 'Ожидание подтверждения грузоотправителя',
-    'awaitingConfirmationDetail': 'Доставка подтверждена. Ожидаем подтверждения от грузоотправителя.',
+    'awaitingConfirmationDetail':
+        'Доставка подтверждена. Ожидаем подтверждения от грузоотправителя.',
 
     // Errors
     'loginError': 'Ошибка входа',
@@ -299,13 +292,6 @@ class AppLocalizations extends InheritedWidget {
     'gpsOffMessage':
         'Службы геолокации отключены. Включите GPS, чтобы ваше местоположение отслеживалось.',
     'turnOnGps': 'Включить GPS',
-
-    // Status history
-    'statusHistory': 'История статусов',
-    'justNow': 'только что',
-    'minutesAgo': 'мин. назад',
-    'hoursAgo': 'ч. назад',
-    'daysAgo': 'д. назад',
 
     // Stepper labels (short)
     'stepAccepted': 'Принят',
@@ -375,7 +361,6 @@ class AppLocalizations extends InheritedWidget {
     'actionBeginDropoff': 'Tushirishni boshlash',
     'actionConfirmDropoff': 'Yetkazishni tasdiqlash',
 
-
     // Active load
     'activeLoad': 'Faol yuk',
     'loadNotFoundOrInactive': 'Yuk topilmadi yoki faol emas',
@@ -415,7 +400,8 @@ class AppLocalizations extends InheritedWidget {
     'statusConfirmed': 'Tasdiqlangan',
     'statusCancelled': 'Bekor qilingan',
     'awaitingShipperConfirmation': "Jo'natuvchi tasdig'ini kutmoqda",
-    'awaitingConfirmationDetail': "Yetkazib berish tasdiqlandi. Jo'natuvchi yopishini kutmoqdamiz.",
+    'awaitingConfirmationDetail':
+        "Yetkazib berish tasdiqlandi. Jo'natuvchi yopishini kutmoqdamiz.",
 
     // Errors
     'loginError': 'Kirish xatosi',
@@ -441,13 +427,6 @@ class AppLocalizations extends InheritedWidget {
     'gpsOffMessage':
         'Joylashuv xizmatlari o\'chirilgan. GPS ni yoqing, shunda joylashuvingiz kuzatiladi.',
     'turnOnGps': 'GPS ni yoqish',
-
-    // Status history
-    'statusHistory': 'Holat tarixi',
-    'justNow': 'hozir',
-    'minutesAgo': 'daq. oldin',
-    'hoursAgo': 'soat oldin',
-    'daysAgo': 'kun oldin',
 
     // Stepper labels (short)
     'stepAccepted': 'Qabul',
