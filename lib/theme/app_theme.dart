@@ -148,7 +148,10 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
 class AppColors {
   AppColors._();
 
-  // Dark mode
+  static AppSemanticColors of(BuildContext context) =>
+      Theme.of(context).extension<AppSemanticColors>()!;
+
+  // Dark mode (fallback statics — prefer AppColors.of(context) for theme-aware access)
   static Color get background => _darkBackground;
   static Color get foreground => _darkForeground;
   static Color get card => _darkCard;

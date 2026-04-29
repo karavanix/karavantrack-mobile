@@ -10,52 +10,48 @@ class LoadStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg) = _colors(status);
+    final accent = _accent(status, context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: accent.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
-        style: TextStyle(color: bg, fontWeight: FontWeight.w600, fontSize: 12),
+        style: TextStyle(color: accent, fontWeight: FontWeight.w600, fontSize: 12),
       ),
     );
   }
 
-  static Color _statusColor(BuildContext context, String status) {
+  static Color _accent(String status, BuildContext context) {
     final colors = AppColors.of(context);
-
-    ({Color background, Color foreground}) tinted(Color accent) =>
-        (background: accent.withValues(alpha: 0.15), foreground: accent);
-
     switch (status) {
       case 'created':
         return colors.mutedForeground;
       case 'assigned':
-        return (Color.fromARGB(255, 129, 140, 248), AppColors.foreground);
+        return const Color(0xFF818CF8);
       case 'accepted':
         return colors.primary;
       case 'pickingUp':
       case 'picking_up':
-        return (Color.fromARGB(255, 251, 146, 60), AppColors.foreground);
+        return const Color(0xFFFB923C);
       case 'pickedUp':
       case 'picked_up':
-        return (Color.fromARGB(255, 96, 165, 250), AppColors.foreground);
+        return const Color(0xFF60A5FA);
       case 'in_transit':
       case 'inTransit':
         return colors.warning;
       case 'droppingOff':
       case 'dropping_off':
-        return (Color.fromARGB(255, 245, 158, 11), AppColors.foreground);
+        return const Color(0xFFF59E0B);
       case 'droppedOff':
       case 'dropped_off':
-        return (Color.fromARGB(255, 52, 211, 153), AppColors.foreground);
+        return const Color(0xFF34D399);
       case 'completed':
         return colors.success;
       case 'confirmed':
-        return (Color.fromARGB(255, 52, 211, 153), AppColors.foreground);
+        return const Color(0xFF34D399);
       case 'cancelled':
         return colors.destructive;
       default:
