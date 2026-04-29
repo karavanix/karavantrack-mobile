@@ -36,11 +36,14 @@ class NotificationService {
     // On iOS, FCM tokens depend on APNs tokens which may not be ready immediately.
     // Wait for the APNs token before requesting the FCM token.
     if (Platform.isIOS) {
-      var apnsToken = await messaging.getAPNSToken();
-      if (apnsToken == null) {
-        await Future.delayed(const Duration(seconds: 3));
+      String? apnsToken;
+      for (int i = 0; i < 5 && apnsToken == null; i++) {
         apnsToken = await messaging.getAPNSToken();
+        if (apnsToken == null) {
+          await Future.delayed(const Duration(seconds: 3));
+        }
       }
+      if (apnsToken == null) return;
     }
 
     final token = await messaging.getToken();
