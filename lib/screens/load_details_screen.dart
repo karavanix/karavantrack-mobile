@@ -71,16 +71,22 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
     switch (load.status) {
       case LoadStatus.assigned:
         await widget.store.acceptLoad(load.id);
+        break;
       case LoadStatus.accepted:
         await widget.store.beginPickup(load.id);
+        break;
       case LoadStatus.pickingUp:
         await widget.store.confirmPickup(load.id);
+        break;
       case LoadStatus.pickedUp:
         await widget.store.startLoad(load.id);
+        break;
       case LoadStatus.inTransit:
         await widget.store.beginDropoff(load.id);
+        break;
       case LoadStatus.droppingOff:
         await widget.store.confirmDropoff(load.id);
+        break;
       default:
         break;
     }
@@ -93,6 +99,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
     final colors = AppColors.of(context);
+    final awaitingColor = colors.statusDroppedOff;
 
     return ListenableBuilder(
       listenable: widget.store,
@@ -203,10 +210,10 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: colors.warning.withValues(alpha: 0.12),
+                    color: AppColors.statusDroppedOff.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: colors.warning.withValues(alpha: 0.35),
+                      color: AppColors.statusDroppedOff.withValues(alpha: 0.35),
                     ),
                   ),
                   child: Row(
@@ -214,7 +221,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                     children: [
                       Icon(
                         Icons.hourglass_top_rounded,
-                        color: colors.warning,
+                        color: AppColors.statusDroppedOff,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -225,7 +232,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                             Text(
                               t.tr('awaitingShipperConfirmation'),
                               style: TextStyle(
-                                color: colors.warning,
+                                color: AppColors.statusDroppedOff,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                               ),
@@ -234,7 +241,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                             Text(
                               t.tr('awaitingConfirmationDetail'),
                               style: TextStyle(
-                                color: colors.warning.withValues(
+                                color: AppColors.statusDroppedOff.withValues(
                                   alpha: 0.85,
                                 ),
                                 fontSize: 13,
