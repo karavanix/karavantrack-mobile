@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "783346390803",
+    "project_id": "yoollive-7a6ff",
+    "storage_bucket": "yoollive-7a6ff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:783346390803:android:be421f8b3551f77c84ece6",
+        "android_client_info": {
+          "package_name": "yool.live.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCOu8B8nqgxHUfborftylnTBiV3chdTIs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

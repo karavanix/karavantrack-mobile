@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 
 /// Horizontal 6-step status stepper.
 ///
 /// [currentStepIndex] — 0–5 for the active step, -1 for no highlight.
 /// [compact] — true = small nodes without labels (home card), false = with labels (details).
+/// [isAwaitingConfirmation] — when true, the current node renders as an amber
+/// hourglass instead of the blue pulse, signaling "done on driver side, waiting on shipper."
 class StatusStepper extends StatefulWidget {
   const StatusStepper({
     super.key,
     required this.currentStepIndex,
     this.compact = false,
+    this.isAwaitingConfirmation = false,
   });
 
   final int currentStepIndex;
   final bool compact;
+  final bool isAwaitingConfirmation;
 
   @override
   State<StatusStepper> createState() => _StatusStepperState();
@@ -24,14 +29,16 @@ class _StatusStepperState extends State<StatusStepper>
   late final AnimationController _pulse;
   late final Animation<double> _pulseAnim;
 
-  static const _labels = [
-    'Accepted',
-    'Pickup',
-    'Loaded',
-    'Transit',
-    'Dropoff',
-    'Delivered',
+  static const _labelKeys = [
+    'stepAccepted',
+    'stepPickup',
+    'stepLoaded',
+    'stepTransit',
+    'stepDropoff',
+    'stepDelivered',
   ];
+
+  static const _stepCount = 6;
 
   @override
   void initState() {
@@ -94,11 +101,47 @@ class _StatusStepperState extends State<StatusStepper>
                   ),
                 ),
             ],
-          );
-        },
-      ),
+          ),
+        ],
+      ],
     );
   }
+}
+
+// Draws the horizontal connecting lines between node centers
+class _LinePainter extends CustomPainter {
+  const _LinePainter({
+    required this.stepCount,
+    required this.currentStepIndex,
+    required this.nodeSize,
+  });
+
+  final int stepCount;
+  final int currentStepIndex;
+  final double nodeSize;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final slotWidth = size.width / stepCount;
+    final centerY = size.height / 2;
+    final lineY = centerY;
+
+    for (int i = 0; i < stepCount - 1; i++) {
+      final startX = slotWidth * i + slotWidth / 2 + nodeSize / 2;
+      final endX = slotWidth * (i + 1) + slotWidth / 2 - nodeSize / 2;
+
+      final paint = Paint()
+        ..color = i < currentStepIndex ? AppColors.success : AppColors.border
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round;
+
+      canvas.drawLine(Offset(startX, lineY), Offset(endX, lineY), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LinePainter old) =>
+      old.currentStepIndex != currentStepIndex || old.nodeSize != nodeSize;
 }
 
 class _StepNode extends StatelessWidget {
@@ -120,12 +163,10 @@ class _StepNode extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDone = index < currentIndex;
     final isCurrent = index == currentIndex;
-    final isPending = index > currentIndex;
 
-    Widget node;
-
-    if (isCurrent) {
-      node = AnimatedBuilder(
+    if (isCurrent && isAwaitingConfirmation) {
+      // Amber pulsing hourglass — "done on driver's side, waiting on shipper"
+      return AnimatedBuilder(
         animation: pulseAnim,
         builder: (context, child) {
           final glowSize = nodeSize + 6 + pulseAnim.value * 6;
@@ -138,7 +179,7 @@ class _StepNode extends StatelessWidget {
                 height: glowSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(
+                  color: AppColors.statusDroppedOff.withValues(
                     alpha: 0.25 - pulseAnim.value * 0.15,
                   ),
                 ),
@@ -148,7 +189,47 @@ class _StepNode extends StatelessWidget {
                     height: nodeSize,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primary,
+                      color: AppColors.statusDroppedOff,
+                    ),
+                    child: Icon(
+                      Icons.hourglass_top_rounded,
+                      size: nodeSize * 0.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    if (isCurrent) {
+      return AnimatedBuilder(
+        animation: pulseAnim,
+        builder: (context, child) {
+          final glowSize = nodeSize + 6 + pulseAnim.value * 6;
+          return SizedBox(
+            width: nodeSize + 12,
+            height: nodeSize + 12,
+            child: Center(
+              child: Container(
+                width: glowSize,
+                height: glowSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors.primary.withValues(
+                    alpha: 0.25 - pulseAnim.value * 0.15,
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: nodeSize,
+                    height: nodeSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: colors.primary,
                     ),
                     child: Icon(
                       Icons.circle,
@@ -162,13 +243,15 @@ class _StepNode extends StatelessWidget {
           );
         },
       );
-    } else if (isDone) {
-      node = Container(
+    }
+
+    if (isDone) {
+      return Container(
         width: nodeSize,
         height: nodeSize,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: AppColors.success,
+          color: colors.success,
         ),
         child: Icon(Icons.check, size: nodeSize * 0.55, color: Colors.white),
       );

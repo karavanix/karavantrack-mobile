@@ -318,12 +318,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'info.support@yool.live',
-                        style: TextStyle(color: mutedColor, fontSize: 14),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '+998 12 345 67 89',
+                        'support@yool.live',
                         style: TextStyle(color: mutedColor, fontSize: 14),
                       ),
                     ],

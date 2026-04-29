@@ -51,15 +51,20 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
   }
 
   LoadItem? _find() {
+    // allLoads already includes activeLoad, pendingLoads, and historyLoads
     for (final l in widget.store.allLoads) {
       if (l.id == widget.loadId) return l;
     }
-    for (final l in widget.store.pendingLoads) {
-      if (l.id == widget.loadId) return l;
-    }
-    return widget.store.activeLoad?.id == widget.loadId
-        ? widget.store.activeLoad
-        : null;
+    return null;
+  }
+
+  String _relativeTime(BuildContext context, DateTime dt) {
+    final t = AppLocalizations.of(context);
+    final diff = DateTime.now().toUtc().difference(dt.toUtc());
+    if (diff.inMinutes < 1) return t.tr('justNow');
+    if (diff.inHours < 1) return '${diff.inMinutes}${t.tr('minutesAgoShort')}';
+    if (diff.inDays < 1) return '${diff.inHours}${t.tr('hoursAgoShort')}';
+    return '${diff.inDays}${t.tr('daysAgoShort')}';
   }
 
   Future<void> _handleAction(BuildContext context, LoadItem load) async {
@@ -95,6 +100,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
+    final colors = AppColors.of(context);
 
     return ListenableBuilder(
       listenable: widget.store,
@@ -117,7 +123,15 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
 
         final isLoading = widget.store.isLoadingId(load.id);
         final actionKey = load.status.nextActionKey;
-        final stepIndex = load.status.stepIndex;
+        // For completed/confirmed show all steps done (index 6 = past last step).
+        // For cancelled or pre-active statuses hide the stepper (null).
+        final rawStep = load.status.stepIndex;
+        final displayStep = rawStep >= 0
+            ? rawStep
+            : (load.status == LoadStatus.completed ||
+                  load.status == LoadStatus.confirmed)
+            ? 6
+            : null;
         final historyToShow = _history.isNotEmpty ? _history : load.history;
 
         return Scaffold(
@@ -163,8 +177,9 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                           load.referenceId!,
                           style: TextStyle(
                             fontSize: 12,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.5),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                         ),
                       ],
@@ -174,15 +189,69 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
               ),
 
               // ─── Status stepper ───────────────────────────────────────
-              if (stepIndex >= 0) ...[
+              if (displayStep != null) ...[
                 const SizedBox(height: 12),
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                     child: StatusStepper(
-                      currentStepIndex: stepIndex,
+                      currentStepIndex: displayStep,
                       compact: false,
+                      isAwaitingConfirmation:
+                          load.status == LoadStatus.droppedOff,
                     ),
+                  ),
+                ),
+              ],
+
+              // ─── Awaiting confirmation banner ─────────────────────────
+              if (load.status == LoadStatus.droppedOff) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.statusDroppedOff.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.statusDroppedOff.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.hourglass_top_rounded,
+                        color: AppColors.statusDroppedOff,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              t.tr('awaitingShipperConfirmation'),
+                              style: TextStyle(
+                                color: AppColors.statusDroppedOff,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              t.tr('awaitingConfirmationDetail'),
+                              style: TextStyle(
+                                color: AppColors.statusDroppedOff.withValues(
+                                  alpha: 0.85,
+                                ),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -204,9 +273,15 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                       ),
                       const SizedBox(height: 12),
                       InfoRow(label: t.tr('pickup'), value: load.pickupAddress),
-                      InfoRow(label: t.tr('dropoff'), value: load.dropoffAddress),
+                      InfoRow(
+                        label: t.tr('dropoff'),
+                        value: load.dropoffAddress,
+                      ),
                       if (load.description.isNotEmpty)
-                        InfoRow(label: t.tr('description'), value: load.description),
+                        InfoRow(
+                          label: t.tr('description'),
+                          value: load.description,
+                        ),
                       if (load.pickupAt != null)
                         InfoRow(
                           label: t.tr('pickupTime'),
@@ -246,13 +321,13 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                 Card(
                   child: ExpansionTile(
                     title: Text(
-                      'Status History',
+                      t.tr('statusHistory'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
                     ),
-                    initiallyExpanded: false,
+                    initiallyExpanded: true,
                     children: [
                       if (_historyLoading)
                         const Padding(
@@ -272,16 +347,17 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                                   margin: const EdgeInsets.only(top: 5),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: AppColors.primary,
+                                    color: colors.primary,
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        '${item.fromStatus} → ${item.toStatus}',
+                                        '${LoadStatus.fromString(item.fromStatus).localizedLabel(t)} → ${LoadStatus.fromString(item.toStatus).localizedLabel(t)}',
                                         style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,

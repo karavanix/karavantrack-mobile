@@ -15,8 +15,15 @@ class GpsService {
 
   Future<bool> requestPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    if (_isAccessGranted(permission)) return true;
-    permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.always) return true;
+    if (permission == LocationPermission.deniedForever) return false;
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    // On iOS, prompt a second time to upgrade "When In Use" → "Always"
+    if (permission == LocationPermission.whileInUse) {
+      permission = await Geolocator.requestPermission();
+    }
     return _isAccessGranted(permission);
   }
 

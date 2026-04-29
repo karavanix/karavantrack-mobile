@@ -14,7 +14,7 @@ class LoadStatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: bg.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -24,14 +24,15 @@ class LoadStatusChip extends StatelessWidget {
     );
   }
 
-  static (Color, Color) _colors(String status) {
+  static Color _statusColor(BuildContext context, String status) {
+    final colors = AppColors.of(context);
     switch (status) {
       case 'created':
-        return (AppColors.mutedForeground, AppColors.foreground);
+        return colors.mutedForeground;
       case 'assigned':
         return (Color.fromARGB(255, 129, 140, 248), AppColors.foreground);
       case 'accepted':
-        return (AppColors.primary, AppColors.primaryForeground);
+        return colors.primary;
       case 'pickingUp':
       case 'picking_up':
         return (Color.fromARGB(255, 251, 146, 60), AppColors.foreground);
@@ -40,7 +41,7 @@ class LoadStatusChip extends StatelessWidget {
         return (Color.fromARGB(255, 96, 165, 250), AppColors.foreground);
       case 'in_transit':
       case 'inTransit':
-        return (AppColors.warning, AppColors.foreground);
+        return colors.warning;
       case 'droppingOff':
       case 'dropping_off':
         return (Color.fromARGB(255, 245, 158, 11), AppColors.foreground);
@@ -48,13 +49,13 @@ class LoadStatusChip extends StatelessWidget {
       case 'dropped_off':
         return (Color.fromARGB(255, 52, 211, 153), AppColors.foreground);
       case 'completed':
-        return (AppColors.success, AppColors.foreground);
+        return colors.success;
       case 'confirmed':
         return (Color.fromARGB(255, 52, 211, 153), AppColors.foreground);
       case 'cancelled':
-        return (AppColors.destructive, AppColors.foreground);
+        return colors.destructive;
       default:
-        return (AppColors.mutedForeground, AppColors.foreground);
+        return colors.mutedForeground;
     }
   }
 }
