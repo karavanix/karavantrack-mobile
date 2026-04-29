@@ -145,6 +145,7 @@ class AppLocalizations extends InheritedWidget {
     'onlineStatus': 'Online',
 
     // Relative time
+    'justNow': 'Just now',
     'minutesAgoShort': 'm ago',
     'hoursAgoShort': 'h ago',
     'daysAgoShort': 'd ago',
@@ -277,6 +278,7 @@ class AppLocalizations extends InheritedWidget {
     'onlineStatus': 'В сети',
 
     // Relative time
+    'justNow': 'Только что',
     'minutesAgoShort': ' мин назад',
     'hoursAgoShort': ' ч назад',
     'daysAgoShort': ' дн назад',
@@ -409,6 +411,7 @@ class AppLocalizations extends InheritedWidget {
     'onlineStatus': 'Onlayn',
 
     // Relative time
+    'justNow': 'Hozir',
     'minutesAgoShort': ' daq oldin',
     'hoursAgoShort': ' soat oldin',
     'daysAgoShort': ' kun oldin',
