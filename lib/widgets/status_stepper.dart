@@ -35,8 +35,8 @@ class _StatusStepperState extends State<StatusStepper>
   ];
 
   static const _stepCount = 6;
-  static const _labelTopSpacing = 4.0;
-  static const _labelHeight = 14.0;
+  static const _labelGap = 4.0;
+  static const _labelHeight = 13.0;
 
   late final AnimationController _pulse;
   late final Animation<double> _pulseAnim;
@@ -68,20 +68,22 @@ class _StatusStepperState extends State<StatusStepper>
     return SizedBox(
       height: widget.compact
           ? nodeSize
-          : nodeSize + _labelTopSpacing + _labelHeight,
+          : nodeSize + _labelGap + _labelHeight,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final totalWidth = constraints.maxWidth;
           final sectionWidth = totalWidth / stepCount;
+          // Connector spans from the right edge of circle i to the left edge of circle i+1.
           final connectorWidth = sectionWidth - nodeSize;
 
           return Stack(
             clipBehavior: Clip.none,
             children: [
-              // Connecting lines
+              // ── Connecting lines ──────────────────────────────────────────
               for (int i = 0; i < stepCount - 1; i++)
                 Positioned(
-                  left: sectionWidth * i + (sectionWidth / 2),
+                  // Start at the right edge of circle i.
+                  left: sectionWidth * i + (sectionWidth + nodeSize) / 2,
                   top: nodeSize / 2 - 1,
                   width: connectorWidth,
                   height: 2,
@@ -92,10 +94,10 @@ class _StatusStepperState extends State<StatusStepper>
                   ),
                 ),
 
-              // Step nodes
+              // ── Step circles ─────────────────────────────────────────────
               for (int i = 0; i < stepCount; i++)
                 Positioned(
-                  left: sectionWidth * i + ((sectionWidth - nodeSize) / 2),
+                  left: sectionWidth * i + (sectionWidth - nodeSize) / 2,
                   top: 0,
                   width: nodeSize,
                   height: nodeSize,
@@ -105,9 +107,34 @@ class _StatusStepperState extends State<StatusStepper>
                     nodeSize: nodeSize,
                     pulseAnim: _pulseAnim,
                     isAwaitingConfirmation: widget.isAwaitingConfirmation,
-                    label: widget.compact ? null : labels[i],
                   ),
                 ),
+
+              // ── Labels (one per section, full section width) ──────────────
+              if (!widget.compact)
+                for (int i = 0; i < stepCount; i++)
+                  Positioned(
+                    left: sectionWidth * i,
+                    top: nodeSize + _labelGap,
+                    width: sectionWidth,
+                    height: _labelHeight,
+                    child: Text(
+                      labels[i],
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: i > currentIndex
+                            ? const Color(0xFF4A5568)
+                            : i < currentIndex
+                                ? AppColors.success
+                                : AppColors.primary,
+                        fontWeight: i == currentIndex
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                    ),
+                  ),
             ],
           );
         },
@@ -116,6 +143,7 @@ class _StatusStepperState extends State<StatusStepper>
   }
 }
 
+/// Renders only the circular step indicator. Labels are handled by the parent.
 class _StepNode extends StatelessWidget {
   const _StepNode({
     required this.index,
@@ -123,7 +151,6 @@ class _StepNode extends StatelessWidget {
     required this.nodeSize,
     required this.pulseAnim,
     required this.isAwaitingConfirmation,
-    this.label,
   });
 
   final int index;
@@ -131,95 +158,94 @@ class _StepNode extends StatelessWidget {
   final double nodeSize;
   final Animation<double> pulseAnim;
   final bool isAwaitingConfirmation;
-  final String? label;
 
   @override
   Widget build(BuildContext context) {
     final isDone = index < currentIndex;
     final isCurrent = index == currentIndex;
-    final isPending = !isCurrent && !isDone;
 
+    // ── Awaiting confirmation: amber pulsing hourglass ────────────────────
     if (isCurrent && isAwaitingConfirmation) {
-      return AnimatedBuilder(
-        animation: pulseAnim,
-        builder: (context, child) {
-          final glowSize = nodeSize + 6 + pulseAnim.value * 6;
-          return SizedBox(
-            width: nodeSize + 12,
-            height: nodeSize + 12,
-            child: Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: glowSize,
-                    height: glowSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.statusDroppedOff.withValues(
-                        alpha: 0.25 - pulseAnim.value * 0.15,
-                      ),
+      return OverflowBox(
+        maxWidth: nodeSize + 12,
+        maxHeight: nodeSize + 12,
+        child: AnimatedBuilder(
+          animation: pulseAnim,
+          builder: (context, _) {
+            final glowSize = nodeSize + 4 + pulseAnim.value * 8;
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: glowSize,
+                  height: glowSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF34D399).withValues(
+                      alpha: 0.30 - pulseAnim.value * 0.20,
                     ),
                   ),
-                  Container(
-                    width: nodeSize,
-                    height: nodeSize,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0xFF34D399),
-                    ),
-                    child: Icon(
-                      Icons.hourglass_top_rounded,
-                      size: nodeSize * 0.5,
-                      color: Colors.white,
-                    ),
+                ),
+                Container(
+                  width: nodeSize,
+                  height: nodeSize,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color(0xFF34D399),
                   ),
-                ],
-              ),
-            ),
-          );
-        },
+                  child: Icon(
+                    Icons.hourglass_top_rounded,
+                    size: nodeSize * 0.50,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       );
     }
 
+    // ── Active step: blue pulsing glow ─────────────────────────────────────
     if (isCurrent) {
-      return AnimatedBuilder(
-        animation: pulseAnim,
-        builder: (context, child) {
-          final glowSize = nodeSize + 6 + pulseAnim.value * 6;
-          return SizedBox(
-            width: nodeSize + 12,
-            height: nodeSize + 12,
-            child: Center(
-              child: Container(
-                width: glowSize,
-                height: glowSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(
-                    alpha: 0.25 + pulseAnim.value * 0.15,
-                  ),
-                ),
-                child: Center(
-                  child: Container(
-                    width: nodeSize,
-                    height: nodeSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primary,
+      return OverflowBox(
+        maxWidth: nodeSize + 12,
+        maxHeight: nodeSize + 12,
+        child: AnimatedBuilder(
+          animation: pulseAnim,
+          builder: (context, _) {
+            final glowSize = nodeSize + 4 + pulseAnim.value * 8;
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: glowSize,
+                  height: glowSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(
+                      alpha: 0.30 - pulseAnim.value * 0.20,
                     ),
                   ),
                 ),
-              ),
-            ),
-          );
-        },
+                Container(
+                  width: nodeSize,
+                  height: nodeSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       );
     }
 
-    Widget node;
+    // ── Completed step ─────────────────────────────────────────────────────
     if (isDone) {
-      node = Container(
+      return Container(
         width: nodeSize,
         height: nodeSize,
         decoration: BoxDecoration(
@@ -228,47 +254,16 @@ class _StepNode extends StatelessWidget {
         ),
         child: Icon(Icons.check, size: nodeSize * 0.55, color: Colors.white),
       );
-    } else {
-      node = Container(
-        width: nodeSize,
-        height: nodeSize,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.transparent,
-          border: Border.all(color: const Color(0xFF2C3546), width: 2),
-        ),
-      );
     }
 
-    final Widget centered = SizedBox(
+    // ── Pending step ───────────────────────────────────────────────────────
+    return Container(
       width: nodeSize,
-      child: Center(child: node),
-    );
-
-    if (label == null) return centered;
-
-    return SizedBox(
-      width: nodeSize,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          centered,
-          const SizedBox(height: 4),
-          Text(
-            label!,
-            style: TextStyle(
-              fontSize: 9,
-              color: isPending
-                  ? const Color(0xFF2C3546)
-                  : isDone
-                      ? AppColors.success
-                      : AppColors.primary,
-              fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-            ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+      height: nodeSize,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.transparent,
+        border: Border.all(color: const Color(0xFF2C3546), width: 2),
       ),
     );
   }
