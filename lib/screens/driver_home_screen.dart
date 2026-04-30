@@ -78,7 +78,7 @@ class DriverHomeScreen extends StatelessWidget {
                               const SizedBox(width: 8),
                               Builder(
                                 builder: (context) {
-                                  final colors = AppColors.of(context);
+                                  final colors = AppTheme.of(context);
                                   return Container(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
@@ -173,7 +173,7 @@ class _ActiveLoadPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
-    final colors = AppColors.of(context);
+    final colors = AppTheme.of(context);
     final isLoading = store.isLoadingId(load.id);
     final actionKey = load.status.nextActionKey;
 
@@ -308,7 +308,7 @@ class _PendingLoadCard extends StatelessWidget {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
     final t = AppLocalizations.of(context);
-    final colors = AppColors.of(context);
+    final colors = AppTheme.of(context);
     final isLoading = store.isLoadingId(load.id);
 
     return Card(

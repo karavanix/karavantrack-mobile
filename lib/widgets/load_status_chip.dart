@@ -25,7 +25,7 @@ class LoadStatusChip extends StatelessWidget {
   }
 
   static Color _accent(String status, BuildContext context) {
-    final colors = AppColors.of(context);
+    final colors = AppTheme.of(context);
     switch (status) {
       case 'created':
         return colors.mutedForeground;

@@ -92,7 +92,7 @@ class _HistoryCard extends StatelessWidget {
     final theme = Theme.of(context);
     final mutedColor = theme.colorScheme.onSurface.withValues(alpha: 0.5);
     final t = AppLocalizations.of(context);
-    final colors = AppColors.of(context);
+    final colors = AppTheme.of(context);
 
     final isCancelled = load.status == LoadStatus.cancelled;
     final date = load.dropoffAt ?? load.updatedAt ?? load.createdAt;
