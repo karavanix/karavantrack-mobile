@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'debug_service.dart';
 
 // ---------------------------------------------------------------------------
 // API Configuration
@@ -19,6 +20,8 @@ class ApiService {
 
   static const String _tokenKey = 'auth_token';
   static const String _refreshKey = 'refresh_token';
+
+  final http.Client _client = DebugService.createHttpClient();
 
   String? _accessToken;
   String? _refreshToken;
@@ -62,7 +65,7 @@ class ApiService {
   Future<bool> refreshTokens() async {
     if (_refreshToken == null) return false;
     try {
-      final response = await http.post(
+      final response = await _client.post(
         Uri.parse(_url('/auth/refresh')),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'refresh_token': _refreshToken}),
@@ -103,7 +106,7 @@ class ApiService {
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
 
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse(_url('/auth/login')),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
@@ -136,12 +139,12 @@ class ApiService {
     }
     if (lastName != null && lastName.isNotEmpty) body['last_name'] = lastName;
 
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse(_url('/auth/register')),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       if (data['access_token'] != null) {
         await setTokens(
@@ -158,7 +161,7 @@ class ApiService {
   Future<void> logout() async {
     try {
       await _authed(
-        () => http.post(Uri.parse(_url('/auth/logout')), headers: _authHeaders),
+        () => _client.post(Uri.parse(_url('/auth/logout')), headers: _authHeaders),
       );
     } catch (_) {}
     await clearTokens();
@@ -169,7 +172,7 @@ class ApiService {
   /// GET /users/me
   Future<Map<String, dynamic>?> getMe() async {
     final response = await _authed(
-      () => http.get(Uri.parse(_url('/users/me')), headers: _authHeaders),
+      () => _client.get(Uri.parse(_url('/users/me')), headers: _authHeaders),
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -184,7 +187,7 @@ class ApiService {
     if (lastName != null) body['last_name'] = lastName;
 
     final response = await _authed(
-      () => http.put(
+      () => _client.put(
         Uri.parse(_url('/users/me')),
         headers: _authHeaders,
         body: jsonEncode(body),
@@ -208,7 +211,7 @@ class ApiService {
         'device_type': ?deviceType,
       };
       await _authed(
-        () => http.post(
+        () => _client.post(
           Uri.parse(_url('/users/me/devices')),
           headers: _authHeaders,
           body: jsonEncode(body),
@@ -231,7 +234,7 @@ class ApiService {
     final uri = Uri.parse(
       _url('/loads/pending'),
     ).replace(queryParameters: params.isEmpty ? null : params);
-    final response = await _authed(() => http.get(uri, headers: _authHeaders));
+    final response = await _authed(() => _client.get(uri, headers: _authHeaders));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -242,7 +245,7 @@ class ApiService {
   /// GET /loads/active — the current active load (accepted/in_transit).
   Future<Map<String, dynamic>?> getActiveLoad() async {
     final response = await _authed(
-      () => http.get(Uri.parse(_url('/loads/active')), headers: _authHeaders),
+      () => _client.get(Uri.parse(_url('/loads/active')), headers: _authHeaders),
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -253,7 +256,7 @@ class ApiService {
   /// GET /loads/{id}
   Future<Map<String, dynamic>?> getLoad(String id) async {
     final response = await _authed(
-      () => http.get(Uri.parse(_url('/loads/$id')), headers: _authHeaders),
+      () => _client.get(Uri.parse(_url('/loads/$id')), headers: _authHeaders),
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -264,7 +267,7 @@ class ApiService {
   /// POST /loads/{id}/accept
   Future<bool> acceptLoad(String id) async {
     final response = await _authed(
-      () => http.post(
+      () => _client.post(
         Uri.parse(_url('/loads/$id/accept')),
         headers: _authHeaders,
       ),
@@ -275,8 +278,7 @@ class ApiService {
   /// POST /loads/{id}/start
   Future<bool> startLoad(String id) async {
     final response = await _authed(
-      () =>
-          http.post(Uri.parse(_url('/loads/$id/start')), headers: _authHeaders),
+      () => _client.post(Uri.parse(_url('/loads/$id/start')), headers: _authHeaders),
     );
     return response.statusCode == 200;
   }
@@ -284,7 +286,7 @@ class ApiService {
   /// POST /loads/{id}/pickup/begin  (accepted → picking_up)
   Future<bool> beginPickup(String id) async {
     final response = await _authed(
-      () => http.post(
+      () => _client.post(
         Uri.parse(_url('/loads/$id/pickup/begin')),
         headers: _authHeaders,
       ),
@@ -295,7 +297,7 @@ class ApiService {
   /// POST /loads/{id}/pickup/confirm  (picking_up → picked_up)
   Future<bool> confirmPickup(String id) async {
     final response = await _authed(
-      () => http.post(
+      () => _client.post(
         Uri.parse(_url('/loads/$id/pickup/confirm')),
         headers: _authHeaders,
       ),
@@ -306,7 +308,7 @@ class ApiService {
   /// POST /loads/{id}/dropoff/begin  (in_transit → dropping_off)
   Future<bool> beginDropoff(String id) async {
     final response = await _authed(
-      () => http.post(
+      () => _client.post(
         Uri.parse(_url('/loads/$id/dropoff/begin')),
         headers: _authHeaders,
       ),
@@ -317,7 +319,7 @@ class ApiService {
   /// POST /loads/{id}/dropoff/confirm  (dropping_off → dropped_off)
   Future<bool> confirmDropoff(String id) async {
     final response = await _authed(
-      () => http.post(
+      () => _client.post(
         Uri.parse(_url('/loads/$id/dropoff/confirm')),
         headers: _authHeaders,
       ),
@@ -347,7 +349,7 @@ class ApiService {
       'heading_deg': ?headingDeg,
     };
     final response = await _authed(
-      () => http.post(
+      () => _client.post(
         Uri.parse(_url('/loads/$loadId/location')),
         headers: _authHeaders,
         body: jsonEncode(body),
@@ -361,7 +363,7 @@ class ApiService {
   /// GET /carriers/companies/{id}
   Future<Map<String, dynamic>?> getCompany(String id) async {
     final response = await _authed(
-      () => http.get(
+      () => _client.get(
         Uri.parse(_url('/carriers/companies/$id')),
         headers: _authHeaders,
       ),

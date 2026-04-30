@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_service.dart';
+import 'debug_service.dart';
 
 class NotificationService {
   NotificationService._();
@@ -33,7 +33,7 @@ class NotificationService {
       sound: true,
     );
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
-      debugPrint('[FCM] Permission denied — skipping registration.');
+      DebugService.talker.debug('[FCM] Permission denied — skipping registration.');
       return;
     }
 
@@ -44,14 +44,14 @@ class NotificationService {
     if (!_listenersSetUp) {
       _listenersSetUp = true;
       messaging.onTokenRefresh.listen((t) async {
-        debugPrint('[FCM] onTokenRefresh fired — registering new token.');
+        DebugService.talker.debug('[FCM] onTokenRefresh fired — registering new token.');
         await _registerToken(t);
         _initialized = true;
       });
       FirebaseMessaging.onMessage.listen(
         (msg) => onForegroundMessage?.call(msg),
       );
-      debugPrint('[FCM] Listeners set up.');
+      DebugService.talker.debug('[FCM] Listeners set up.');
     }
 
     // On iOS, FCM tokens depend on APNs tokens which may not be ready immediately.
@@ -59,7 +59,7 @@ class NotificationService {
     if (Platform.isIOS) {
       String? apnsToken;
       for (int i = 0; i < 5 && apnsToken == null; i++) {
-        debugPrint('[FCM] Requesting APNs token (attempt ${i + 1}/5)…');
+        DebugService.talker.debug('[FCM] Requesting APNs token (attempt ${i + 1}/5)…');
         apnsToken = await messaging.getAPNSToken();
         if (apnsToken == null) {
           await Future.delayed(const Duration(seconds: 3));
@@ -68,19 +68,19 @@ class NotificationService {
       if (apnsToken == null) {
         // APNs is not ready yet — onTokenRefresh (registered above) will fire
         // and handle registration automatically when the token arrives.
-        debugPrint('[FCM] APNs token not ready — onTokenRefresh will handle it.');
+        DebugService.talker.debug('[FCM] APNs token not ready — onTokenRefresh will handle it.');
         return;
       }
-      debugPrint('[FCM] APNs token received.');
+      DebugService.talker.debug('[FCM] APNs token received.');
     }
 
     final token = await messaging.getToken();
     if (token != null) {
-      debugPrint('[FCM] FCM token received — registering device.');
+      DebugService.talker.debug('[FCM] FCM token received — registering device.');
       await _registerToken(token);
       _initialized = true;
     } else {
-      debugPrint('[FCM] FCM getToken() returned null.');
+      DebugService.talker.debug('[FCM] FCM getToken() returned null.');
     }
   }
 
@@ -100,12 +100,12 @@ class NotificationService {
       deviceId = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
       await prefs.setString(_kDeviceIdKey, deviceId);
     }
-    debugPrint('[FCM] Sending device token to backend (deviceId=$deviceId).');
+    DebugService.talker.debug('[FCM] Sending device token to backend (deviceId=$deviceId).');
     await ApiService.instance.registerDevice(
       deviceId: deviceId,
       deviceToken: token,
       deviceType: Platform.isIOS ? 'ios' : 'android',
     );
-    debugPrint('[FCM] Device registered.');
+    DebugService.talker.debug('[FCM] Device registered.');
   }
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:talker_flutter/talker_flutter.dart';
+import '../services/debug_service.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
 
@@ -16,6 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   bool _initialized = false;
+  int _versionTapCount = 0;
 
   AppStore get store => widget.store;
 
@@ -345,6 +348,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onTap: store.logout,
                 ),
               ),
+
+              const SizedBox(height: 24),
+
+              // ─── Version (tap 5× to open debug panel) ─────────────
+              GestureDetector(
+                onTap: () {
+                  _versionTapCount++;
+                  if (_versionTapCount >= 5) {
+                    _versionTapCount = 0;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            TalkerScreen(talker: DebugService.talker),
+                      ),
+                    );
+                  }
+                },
+                child: Center(
+                  child: Text(
+                    'v1.0.1',
+                    style: TextStyle(fontSize: 12, color: mutedColor),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
             ],
           ),
         );
