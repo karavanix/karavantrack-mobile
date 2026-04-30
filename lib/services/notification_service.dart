@@ -37,10 +37,6 @@ class NotificationService {
       return;
     }
 
-    // Set up listeners before the APNs check so onTokenRefresh is always active.
-    // This is critical on iOS: if getAPNSToken() returns null (APNs is slow on
-    // first launch), we return early below — but onTokenRefresh will still fire
-    // and register the device the moment Firebase gets a valid token.
     if (!_listenersSetUp) {
       _listenersSetUp = true;
       messaging.onTokenRefresh.listen((t) async {
@@ -54,33 +50,21 @@ class NotificationService {
       DebugService.talker.debug('[FCM] Listeners set up.');
     }
 
-    // On iOS, FCM tokens depend on APNs tokens which may not be ready immediately.
-    // Wait for the APNs token before requesting the FCM token.
-    if (Platform.isIOS) {
-      String? apnsToken;
-      for (int i = 0; i < 5 && apnsToken == null; i++) {
-        DebugService.talker.debug('[FCM] Requesting APNs token (attempt ${i + 1}/5)…');
-        apnsToken = await messaging.getAPNSToken();
-        if (apnsToken == null) {
-          await Future.delayed(const Duration(seconds: 3));
-        }
+    // Let Firebase handle APNs token acquisition internally — getToken() waits
+    // for APNs automatically on iOS. The manual getAPNSToken() loop was a
+    // simple read that exited before Firebase's native layer had stored the token.
+    try {
+      DebugService.talker.debug('[FCM] Requesting FCM token…');
+      final token = await messaging.getToken();
+      if (token != null) {
+        DebugService.talker.debug('[FCM] FCM token received — registering device.');
+        await _registerToken(token);
+        _initialized = true;
+      } else {
+        DebugService.talker.debug('[FCM] getToken() returned null — onTokenRefresh will handle it.');
       }
-      if (apnsToken == null) {
-        // APNs is not ready yet — onTokenRefresh (registered above) will fire
-        // and handle registration automatically when the token arrives.
-        DebugService.talker.debug('[FCM] APNs token not ready — onTokenRefresh will handle it.');
-        return;
-      }
-      DebugService.talker.debug('[FCM] APNs token received.');
-    }
-
-    final token = await messaging.getToken();
-    if (token != null) {
-      DebugService.talker.debug('[FCM] FCM token received — registering device.');
-      await _registerToken(token);
-      _initialized = true;
-    } else {
-      DebugService.talker.debug('[FCM] FCM getToken() returned null.');
+    } catch (e, st) {
+      DebugService.talker.error('[FCM] getToken() threw an error', e, st);
     }
   }
 
