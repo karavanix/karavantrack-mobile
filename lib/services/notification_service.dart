@@ -50,9 +50,20 @@ class NotificationService {
       DebugService.talker.debug('[FCM] Listeners set up.');
     }
 
-    // Let Firebase handle APNs token acquisition internally — getToken() waits
-    // for APNs automatically on iOS. The manual getAPNSToken() loop was a
-    // simple read that exited before Firebase's native layer had stored the token.
+    // iOS: FCM token is derived from the APNs token, which Apple delivers
+    // asynchronously after requestPermission(). Wait for it before calling
+    // getToken(), otherwise we get [firebase_messaging/apns-token-not-set].
+    if (Platform.isIOS) {
+      final apns = await _waitForApnsToken(messaging);
+      if (apns == null) {
+        DebugService.talker.debug(
+          '[FCM] APNs token still null after waiting — onTokenRefresh will handle it later.',
+        );
+        return;
+      }
+      DebugService.talker.debug('[FCM] APNs token acquired.');
+    }
+
     try {
       DebugService.talker.debug('[FCM] Requesting FCM token…');
       final token = await messaging.getToken();
@@ -66,6 +77,18 @@ class NotificationService {
     } catch (e, st) {
       DebugService.talker.error('[FCM] getToken() threw an error', e, st);
     }
+  }
+
+  /// Polls for the APNs token for up to 30 seconds. Returns null if it never
+  /// arrives (usually means a misconfiguration on the Apple/Firebase side).
+  Future<String?> _waitForApnsToken(FirebaseMessaging messaging) async {
+    for (var i = 0; i < 30; i++) {
+      DebugService.talker.debug('[FCM] Fetching APNs token… (attempt ${i + 1})');
+      final apns = await messaging.getAPNSToken();
+      if (apns != null) return apns;
+      await Future.delayed(const Duration(seconds: 1));
+    }
+    return null;
   }
 
   /// Call on logout — deletes the FCM token so it becomes invalid and the
