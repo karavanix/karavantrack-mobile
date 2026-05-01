@@ -242,6 +242,26 @@ class ApiService {
     return {'result': [], 'count': 0};
   }
 
+  /// GET /loads/history — paginated list of completed/confirmed/cancelled loads.
+  Future<Map<String, dynamic>> getHistoryLoads({
+    int? limit,
+    int? offset,
+  }) async {
+    final params = <String, String>{};
+    if (limit != null) params['limit'] = limit.toString();
+    if (offset != null) params['offset'] = offset.toString();
+
+    final uri = Uri.parse(
+      _url('/loads/history'),
+    ).replace(queryParameters: params.isEmpty ? null : params);
+    final response = await _authed(() => _client.get(uri, headers: _authHeaders));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    return {'result': [], 'count': 0};
+  }
+
   /// GET /loads/active — the current active load (accepted/in_transit).
   Future<Map<String, dynamic>?> getActiveLoad() async {
     final response = await _authed(

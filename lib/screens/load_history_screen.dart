@@ -7,10 +7,37 @@ import '../l10n/app_localizations.dart';
 import 'load_details_screen.dart';
 
 /// History screen — completed, confirmed, and cancelled loads.
-class LoadHistoryScreen extends StatelessWidget {
+class LoadHistoryScreen extends StatefulWidget {
   const LoadHistoryScreen({super.key, required this.store});
 
   final AppStore store;
+
+  @override
+  State<LoadHistoryScreen> createState() => _LoadHistoryScreenState();
+}
+
+class _LoadHistoryScreenState extends State<LoadHistoryScreen> {
+  late final ScrollController _scrollCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl = ScrollController()..addListener(_onScroll);
+    widget.store.refreshHistory();
+  }
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.position.pixels >=
+        _scrollCtrl.position.maxScrollExtent - 200) {
+      widget.store.loadMoreHistory();
+    }
+  }
 
   String _formatDate(DateTime dt) {
     final local = dt.toLocal();
@@ -30,46 +57,58 @@ class LoadHistoryScreen extends StatelessWidget {
     final t = AppLocalizations.of(context);
 
     return ListenableBuilder(
-      listenable: store,
+      listenable: widget.store,
       builder: (context, child) {
-        final loads = store.finishedLoads;
+        final loads = widget.store.finishedLoads;
+        final isInitial = widget.store.isFetchingHistory && loads.isEmpty;
 
         return Scaffold(
           appBar: AppBar(
             title: Text(t.tr('history')),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: store.fetchLoads,
-                tooltip: t.tr('refresh'),
-              ),
-            ],
           ),
-          body: loads.isEmpty
-              ? _EmptyHistory(store: store)
-              : RefreshIndicator(
-                  onRefresh: store.fetchLoads,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: loads.length,
-                    itemBuilder: (context, index) {
-                      final load = loads[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _HistoryCard(
-                          load: load,
-                          formatDate: _formatDate,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  LoadDetailsScreen(store: store, loadId: load.id),
+          body: RefreshIndicator(
+            onRefresh: () async => widget.store.refreshHistory(),
+            child: isInitial
+                ? const CustomScrollView(
+                    slivers: [
+                      SliverFillRemaining(
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ],
+                  )
+                : loads.isEmpty
+                    ? _EmptyHistory()
+                    : ListView.builder(
+                        controller: _scrollCtrl,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: loads.length +
+                            (widget.store.isFetchingHistory ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == loads.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+                          final load = loads[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _HistoryCard(
+                              load: load,
+                              formatDate: _formatDate,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => LoadDetailsScreen(
+                                    store: widget.store,
+                                    loadId: load.id,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                          );
+                        },
+                      ),
+          ),
         );
       },
     );
@@ -112,7 +151,7 @@ class _HistoryCard extends StatelessWidget {
                     child: Text(
                       load.title.isNotEmpty
                           ? load.title
-                          : 'Load #${load.id.substring(0, 8)}',
+                          : 'Load #${load.id.length >= 8 ? load.id.substring(0, 8) : load.id}',
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
@@ -148,7 +187,9 @@ class _HistoryCard extends StatelessWidget {
               Row(
                 children: [
                   Icon(
-                    isCancelled ? Icons.cancel_outlined : Icons.check_circle_outline,
+                    isCancelled
+                        ? Icons.cancel_outlined
+                        : Icons.check_circle_outline,
                     size: 14,
                     color: isCancelled ? colors.destructive : colors.success,
                   ),
@@ -168,39 +209,36 @@ class _HistoryCard extends StatelessWidget {
 }
 
 class _EmptyHistory extends StatelessWidget {
-  const _EmptyHistory({required this.store});
-
-  final AppStore store;
+  const _EmptyHistory();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
 
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.history,
-            size: 52,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+    return ListView(
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.history,
+                size: 52,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                t.tr('noCompletedLoads'),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            t.tr('noCompletedLoads'),
-            style: TextStyle(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-            ),
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: store.fetchLoads,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: Text(t.tr('refresh')),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

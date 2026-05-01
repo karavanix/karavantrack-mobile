@@ -308,7 +308,10 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                   child: isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : ElevatedButton(
-                          onPressed: () => _handleAction(context, load),
+                          onPressed: (load.status == LoadStatus.assigned &&
+                                  widget.store.activeLoad != null)
+                              ? null
+                              : () => _handleAction(context, load),
                           child: Text(t.tr(actionKey)),
                         ),
                 ),

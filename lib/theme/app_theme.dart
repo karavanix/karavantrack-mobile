@@ -269,9 +269,10 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
+        toolbarHeight: 44,
         titleTextStyle: TextStyle(
           fontFamily: 'Inter',
-          fontSize: 18,
+          fontSize: 16,
           fontWeight: FontWeight.w600,
           color: foreground,
         ),

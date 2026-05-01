@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
 import 'driver_home_screen.dart';
-import 'load_history_screen.dart';
 import 'settings_screen.dart';
 
-/// Main app shell with 3-tab bottom navigation: Loads / History / Settings.
+/// Main app shell with 2-tab bottom navigation: Loads / Settings.
 class MainShell extends StatefulWidget {
   const MainShell({super.key, required this.store});
 
@@ -25,7 +24,6 @@ class _MainShellState extends State<MainShell> {
 
     final screens = <Widget>[
       DriverHomeScreen(store: widget.store),
-      LoadHistoryScreen(store: widget.store),
       SettingsScreen(store: widget.store),
     ];
 
@@ -37,26 +35,26 @@ class _MainShellState extends State<MainShell> {
             top: BorderSide(color: theme.colorScheme.outline, width: 1),
           ),
         ),
-        child: BottomNavigationBar(
-          currentIndex: _tabIndex,
-          onTap: (i) => setState(() => _tabIndex = i),
-          items: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.local_shipping_outlined),
-              activeIcon: const Icon(Icons.local_shipping),
-              label: t.tr('loads'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.history_outlined),
-              activeIcon: const Icon(Icons.history),
-              label: t.tr('history'),
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.settings_outlined),
-              activeIcon: const Icon(Icons.settings),
-              label: t.tr('settings'),
-            ),
-          ],
+        child: SizedBox(
+          height: 56,
+          child: BottomNavigationBar(
+            currentIndex: _tabIndex,
+            onTap: (i) => setState(() => _tabIndex = i),
+            selectedFontSize: 10,
+            unselectedFontSize: 10,
+            items: [
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.local_shipping_outlined),
+                activeIcon: const Icon(Icons.local_shipping),
+                label: t.tr('loads'),
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.settings_outlined),
+                activeIcon: const Icon(Icons.settings),
+                label: t.tr('settings'),
+              ),
+            ],
+          ),
         ),
       ),
     );

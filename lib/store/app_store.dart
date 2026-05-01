@@ -105,6 +105,15 @@ class AppStore extends ChangeNotifier {
   final List<LoadItem> _allLoads = [];
   final List<LoadItem> _historyLoads = [];
 
+  // ─── Pagination ─────────────────────────────────────────────────────────
+  int _pendingOffset = 0;
+  bool _hasMorePending = true;
+  bool _isFetchingPending = false;
+  int _historyOffset = 0;
+  bool _hasMoreHistory = true;
+  bool _isFetchingHistory = false;
+  bool _isInitialFetching = false;
+
   // ─── Tracking ───────────────────────────────────────────────────────────
 
   bool networkOnline = true;
@@ -128,6 +137,12 @@ class AppStore extends ChangeNotifier {
   List<LoadItem> get allLoads => List.unmodifiable(_allLoads);
 
   List<LoadItem> get finishedLoads => List.unmodifiable(_historyLoads);
+
+  bool get hasMorePending    => _hasMorePending;
+  bool get isFetchingPending => _isFetchingPending;
+  bool get hasMoreHistory    => _hasMoreHistory;
+  bool get isFetchingHistory => _isFetchingHistory;
+  bool get isInitialFetching => _isInitialFetching;
 
   Position? get lastGpsPosition => _lastGpsPosition;
 
@@ -264,6 +279,13 @@ class AppStore extends ChangeNotifier {
     _activeLoad = null;
     _allLoads.clear();
     _historyLoads.clear();
+    _pendingOffset = 0;
+    _historyOffset = 0;
+    _hasMorePending = true;
+    _hasMoreHistory = true;
+    _isInitialFetching = false;
+    _isFetchingPending = false;
+    _isFetchingHistory = false;
     _lastLocalPoints.clear();
     _lastDeliveredPoints.clear();
     _offlineBuffers.clear();
@@ -335,47 +357,93 @@ class AppStore extends ChangeNotifier {
 
   // ─── Loads ──────────────────────────────────────────────────────────────
 
-  Future<void> fetchLoads() async {
+  Future<void> refreshAll() async {
+    _isInitialFetching = true;
+    _pendingOffset = 0;
+    _hasMorePending = true;
+    _isFetchingPending = true; // block scroll-triggered loadMorePending() race
+    notifyListeners();
+    await Future.wait([
+      _fetchActive(),
+      _fetchPendingPage(reset: true),
+    ]);
+    _isInitialFetching = false;
+    _rebuildAllLoads();
+    notifyListeners();
+  }
+
+  Future<void> refreshHistory() async {
+    _historyOffset = 0;
+    _hasMoreHistory = true;
+    await _fetchHistoryPage(reset: true);
+    _rebuildAllLoads();
+  }
+
+  // Backwards-compatible alias so all existing call sites continue working.
+  Future<void> fetchLoads() => refreshAll();
+
+  Future<void> loadMorePending() => _fetchPendingPage();
+
+  Future<void> loadMoreHistory() => _fetchHistoryPage();
+
+  Future<void> _fetchActive() async {
     try {
-      // Fetch all loads the carrier has ever received (limit=100 to capture history).
-      final allResult = await _api.getPendingLoads(limit: 100);
-      final rawList = allResult['result'] as List<dynamic>? ?? [];
-
-      _pendingLoads.clear();
-      _historyLoads.clear();
-
-      for (final item in rawList) {
-        final load = LoadItem.fromJson(item as Map<String, dynamic>);
-        if (load.status.isFinal) {
-          _historyLoads.add(load);
-        } else {
-          _pendingLoads.add(load);
-        }
-      }
-
-      // Sort history: most recently updated/created first.
-      _historyLoads.sort((a, b) {
-        final aTime = a.updatedAt ?? a.createdAt;
-        final bTime = b.updatedAt ?? b.createdAt;
-        return bTime.compareTo(aTime);
-      });
-
-      // Fetch active load
       final activeResult = await _api.getActiveLoad();
-      if (activeResult != null) {
-        _activeLoad = LoadItem.fromJson(activeResult);
-      } else {
-        _activeLoad = null;
-      }
-
-      // Build combined list for internal lookups
-      _allLoads.clear();
-      if (_activeLoad != null) _allLoads.add(_activeLoad!);
-      _allLoads.addAll(_pendingLoads);
-      _allLoads.addAll(_historyLoads);
-
-      notifyListeners();
+      _activeLoad = activeResult != null
+          ? LoadItem.fromJson(activeResult)
+          : null;
     } catch (_) {}
+  }
+
+  Future<void> _fetchPendingPage({bool reset = false}) async {
+    if (!reset && _isFetchingPending) return;
+    if (!_hasMorePending && !reset) return;
+    _isFetchingPending = true;
+    notifyListeners();
+    try {
+      const limit = 15;
+      final offset = reset ? 0 : _pendingOffset;
+      final result = await _api.getPendingLoads(limit: limit, offset: offset);
+      final raw = result['result'] as List<dynamic>? ?? [];
+      if (reset) _pendingLoads.clear();
+      for (final item in raw) {
+        _pendingLoads.add(LoadItem.fromJson(item as Map<String, dynamic>));
+      }
+      _pendingOffset = offset + raw.length;
+      _hasMorePending = raw.length >= limit;
+    } catch (_) {}
+    _isFetchingPending = false;
+    _rebuildAllLoads();
+    notifyListeners();
+  }
+
+  Future<void> _fetchHistoryPage({bool reset = false}) async {
+    if (_isFetchingHistory) return;
+    if (!_hasMoreHistory && !reset) return;
+    _isFetchingHistory = true;
+    notifyListeners();
+    try {
+      const limit = 15;
+      final offset = reset ? 0 : _historyOffset;
+      final result = await _api.getHistoryLoads(limit: limit, offset: offset);
+      final raw = result['result'] as List<dynamic>? ?? [];
+      if (reset) _historyLoads.clear();
+      for (final item in raw) {
+        _historyLoads.add(LoadItem.fromJson(item as Map<String, dynamic>));
+      }
+      _historyOffset = offset + raw.length;
+      _hasMoreHistory = raw.length >= limit;
+    } catch (_) {}
+    _isFetchingHistory = false;
+    _rebuildAllLoads();
+    notifyListeners();
+  }
+
+  void _rebuildAllLoads() {
+    _allLoads.clear();
+    if (_activeLoad != null) _allLoads.add(_activeLoad!);
+    _allLoads.addAll(_pendingLoads);
+    _allLoads.addAll(_historyLoads);
   }
 
   Future<void> acceptLoad(String loadId) async {
