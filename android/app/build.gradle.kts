@@ -6,12 +6,7 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-def keyPropertiesFile = rootProject.file("key.properties")
-def keyProperties = new Properties()
-keyProperties.load(new FileInputStream(keyPropertiesFile))
-
 android {
-    
     namespace = "yool.live.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
@@ -32,18 +27,11 @@ android {
             keyAlias = System.getenv("KEY_ALIAS")
             keyPassword = System.getenv("KEY_PASSWORD")
         }
-
-        create("debug") {
-            keyAlias keyProperties['keyAlias']
-            keyPassword keyProperties['keyPassword']
-            storeFile file(keyProperties['storeFile'])
-            storePassword keyProperties['storePassword']
-        }
     }
 
     defaultConfig {
         applicationId = "yool.live.app"
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -52,9 +40,6 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-        }
-        debug {
-            signingConfig = signingConfigs.getByName("debug")
         }
     }
 }

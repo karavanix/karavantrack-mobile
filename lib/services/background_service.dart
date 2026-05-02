@@ -47,6 +47,14 @@ Future<bool> onIosBackground(ServiceInstance service) async {
   return true;
 }
 
+// ─── Adaptive interval state ─────────────────────────────────────────────────
+// Speed threshold (m/s) above which the truck is considered moving (~5 km/h).
+const double _kMovingThresholdMps = 1.5;
+const Duration _kMovingInterval = Duration(minutes: 2);
+const Duration _kStationaryInterval = Duration(minutes: 10);
+
+DateTime? _lastSentAt;
+
 // ─── Background isolate entry point ─────────────────────────────────────────
 /// Runs in a separate Dart isolate — NO shared memory with the UI isolate.
 @pragma('vm:entry-point')
@@ -62,8 +70,8 @@ void onStart(ServiceInstance service) async {
   // Listen for stop signal from UI isolate
   service.on('stopService').listen((_) => service.stopSelf());
 
-  // Send GPS every 10 minutes
-  Timer.periodic(const Duration(minutes: 10), (_) => _tick(service));
+  // Check every minute; actual send rate adapts to movement (2 min moving, 10 min stationary).
+  Timer.periodic(const Duration(minutes: 1), (_) => _tick(service));
 
   // Also send immediately on first start
   await _tick(service);
@@ -105,12 +113,22 @@ Future<void> _tick(ServiceInstance service) async {
       ),
     );
 
+    final isMoving = (pos.speed) > _kMovingThresholdMps;
+    final requiredInterval = isMoving ? _kMovingInterval : _kStationaryInterval;
+    final now = DateTime.now();
+
+    if (_lastSentAt != null &&
+        now.difference(_lastSentAt!) < requiredInterval) {
+      return;
+    }
+
     await _postLocation(
       token: token,
       loadId: loadId,
       carrierId: carrierId ?? '',
       pos: pos,
     );
+    _lastSentAt = now;
   } catch (_) {
     // Silently skip — will retry on next tick
   }

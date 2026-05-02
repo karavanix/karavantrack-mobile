@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/load.dart';
 import '../store/app_store.dart';
+import '../widgets/floating_dock.dart';
 import '../widgets/internet_status_banner.dart';
 import '../widgets/load_status_chip.dart';
 import '../widgets/status_pill.dart';
@@ -22,6 +23,7 @@ class DriverHomeScreen extends StatefulWidget {
 
 class _DriverHomeScreenState extends State<DriverHomeScreen> {
   late final ScrollController _scrollCtrl;
+  bool _showScrollTop = false;
 
   @override
   void initState() {
@@ -40,6 +42,18 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         _scrollCtrl.position.maxScrollExtent - 200) {
       widget.store.loadMorePending();
     }
+    final shouldShow = _scrollCtrl.position.pixels > 300;
+    if (shouldShow != _showScrollTop) {
+      setState(() => _showScrollTop = shouldShow);
+    }
+  }
+
+  void _scrollToTop() {
+    _scrollCtrl.animateTo(
+      0,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _openDetails(BuildContext context, String loadId) {
@@ -65,6 +79,28 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
         final showInitialSpinner = store.isInitialFetching && !hasAny;
 
         return Scaffold(
+          floatingActionButton: AnimatedSlide(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            offset: _showScrollTop ? Offset.zero : const Offset(0, 0.3),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: _showScrollTop ? 1.0 : 0.0,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: kDockHeight +
+                      kDockBottomMargin +
+                      MediaQuery.of(context).padding.bottom,
+                ),
+                child: FloatingActionButton.small(
+                  onPressed: _showScrollTop ? _scrollToTop : null,
+                  elevation: 4,
+                  child: const Icon(Icons.keyboard_arrow_up_rounded, size: 22),
+                ),
+              ),
+            ),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           appBar: AppBar(
             title: Text(t.tr('appName')),
             actions: [
@@ -152,6 +188,15 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                         child: Center(child: CircularProgressIndicator()),
                       ),
                     ),
+
+                  if (pending.isNotEmpty &&
+                      !store.isFetchingPending &&
+                      !store.hasMorePending)
+                    const SliverToBoxAdapter(child: _EndOfListMarker()),
+
+                  SliverPadding(
+                    padding: EdgeInsets.only(bottom: dockClearance(context)),
+                  ),
                 ],
               ],
             ),
@@ -845,6 +890,39 @@ class _EmptyState extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── End-of-list marker (shown after last pending card on final page) ────────
+
+class _EndOfListMarker extends StatelessWidget {
+  const _EndOfListMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final colors = AppTheme.of(context);
+    final lineColor = colors.mutedForeground.withValues(alpha: 0.25);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(40, 12, 40, 0),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: lineColor, height: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              t.tr('endOfList'),
+              style: TextStyle(
+                fontSize: 12,
+                color: colors.mutedForeground.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: lineColor, height: 1)),
+        ],
       ),
     );
   }
