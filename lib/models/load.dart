@@ -175,7 +175,7 @@ class LoadHistoryItem {
       fromStatus: json['from_status'] as String? ?? '',
       toStatus: json['to_status'] as String? ?? '',
       changedAt:
-          DateTime.tryParse(json['changed_at'] as String? ?? '') ??
+          DateTime.tryParse(json['created_at'] as String? ?? '') ??
           DateTime.now().toUtc(),
     );
   }
