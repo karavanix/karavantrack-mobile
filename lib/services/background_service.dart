@@ -6,6 +6,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 // ─── SharedPreferences keys (shared between UI and background isolate) ─────
 const String kBgActiveLoadId = 'bg_active_load_id';
@@ -47,13 +48,22 @@ Future<bool> onIosBackground(ServiceInstance service) async {
   return true;
 }
 
-// ─── Adaptive interval state ─────────────────────────────────────────────────
+// ─── Adaptive interval state (normal REST mode) ──────────────────────────────
 // Speed threshold (m/s) above which the truck is considered moving (~5 km/h).
 const double _kMovingThresholdMps = 1.5;
 const Duration _kMovingInterval = Duration(minutes: 2);
 const Duration _kStationaryInterval = Duration(minutes: 10);
 
 DateTime? _lastSentAt;
+
+// ─── Live mode state (WebSocket fast mode) ──────────────────────────────────
+WebSocketChannel? _wsChannel;
+bool _isLiveTracking = false;
+Timer? _liveTrackingWatchdog;
+StreamSubscription<Position>? _liveGpsSubscription;
+
+// Reconnect delay grows with each failed attempt, capped at 30 s.
+int _wsReconnectDelaySec = 5;
 
 // ─── Background isolate entry point ─────────────────────────────────────────
 /// Runs in a separate Dart isolate — NO shared memory with the UI isolate.
@@ -68,7 +78,14 @@ void onStart(ServiceInstance service) async {
   }
 
   // Listen for stop signal from UI isolate
-  service.on('stopService').listen((_) => service.stopSelf());
+  service.on('stopService').listen((_) {
+    _stopLiveMode();
+    _wsChannel?.sink.close();
+    service.stopSelf();
+  });
+
+  // Connect WebSocket to receive start/stop_live_location signals from backend.
+  await _connectWs();
 
   // Check every minute; actual send rate adapts to movement (2 min moving, 10 min stationary).
   Timer.periodic(const Duration(minutes: 1), (_) => _tick(service));
@@ -76,6 +93,105 @@ void onStart(ServiceInstance service) async {
   // Also send immediately on first start
   await _tick(service);
 }
+
+// ─── WebSocket client ────────────────────────────────────────────────────────
+
+Future<void> _connectWs() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString(kBgAuthToken) ?? '';
+  if (token.isEmpty) return;
+
+  final wsUri = Uri.parse(
+    '${_kBaseUrl.replaceAll('https://', 'wss://').replaceAll('http://', 'ws://')}$_kBasePath/ws?token=$token',
+  );
+
+  try {
+    _wsChannel = WebSocketChannel.connect(wsUri);
+    _wsReconnectDelaySec = 5; // reset backoff on success
+    _wsChannel!.stream.listen(
+      _onWsMessage,
+      onDone: _scheduleWsReconnect,
+      onError: (_) => _scheduleWsReconnect(),
+      cancelOnError: true,
+    );
+  } catch (_) {
+    _scheduleWsReconnect();
+  }
+}
+
+void _scheduleWsReconnect() {
+  Future.delayed(Duration(seconds: _wsReconnectDelaySec), _connectWs);
+  // Exponential backoff capped at 30 s
+  if (_wsReconnectDelaySec < 30) {
+    _wsReconnectDelaySec = (_wsReconnectDelaySec * 2).clamp(5, 30);
+  }
+}
+
+void _onWsMessage(dynamic raw) {
+  try {
+    final msg = jsonDecode(raw as String) as Map<String, dynamic>;
+    switch (msg['event']) {
+      case 'start_live_location':
+        _startLiveMode();
+        break;
+      case 'stop_live_location':
+        _stopLiveMode();
+        break;
+    }
+  } catch (_) {}
+}
+
+// ─── Live mode (WebSocket GPS stream) ───────────────────────────────────────
+
+void _startLiveMode() {
+  _isLiveTracking = true;
+
+  // Reset the 5-minute watchdog — if no keepalive renewal arrives the driver
+  // reverts to normal REST mode automatically.
+  _liveTrackingWatchdog?.cancel();
+  _liveTrackingWatchdog = Timer(const Duration(minutes: 5), _stopLiveMode);
+
+  // Subscribe to the position stream and forward each fix over the WebSocket.
+  _liveGpsSubscription?.cancel();
+  _liveGpsSubscription = Geolocator.getPositionStream(
+    locationSettings: const LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 10,
+    ),
+  ).listen(_sendPositionViaWs);
+}
+
+void _stopLiveMode() {
+  _isLiveTracking = false;
+  _liveTrackingWatchdog?.cancel();
+  _liveGpsSubscription?.cancel();
+  _liveGpsSubscription = null;
+}
+
+Future<void> _sendPositionViaWs(Position pos) async {
+  if (_wsChannel == null) return;
+
+  final prefs = await SharedPreferences.getInstance();
+  final loadId = prefs.getString(kBgActiveLoadId) ?? '';
+  if (loadId.isEmpty) return;
+
+  try {
+    _wsChannel!.sink.add(jsonEncode({
+      'event': 'location',
+      'data': {
+        'load_id': loadId,
+        'lat': pos.latitude,
+        'lng': pos.longitude,
+        'speed_mps': pos.speed < 0 ? 0.0 : pos.speed,
+        'accuracy_m': pos.accuracy,
+        'heading_deg': pos.heading,
+        'recorded_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    }));
+  } catch (_) {}
+}
+
+// ─── Normal REST tick (unchanged) ───────────────────────────────────────────
 
 Future<void> _tick(ServiceInstance service) async {
   // Update notification timestamp
