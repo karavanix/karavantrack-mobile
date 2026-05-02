@@ -74,6 +74,10 @@ class AppLocalizations extends InheritedWidget {
     'dropoffLocation': 'Dropoff location',
     'buffer': 'Buffer',
     'gpsWaiting': 'GPS: Waiting...',
+    'gpsActive': 'GPS active',
+    'gpsSearching': 'GPS searching',
+    'acceptBlockedHint': 'Finish your active load to accept a new one',
+    'noActiveLoadSubtitleNew': 'New loads will appear here',
 
     // Load details
     'load': 'Load',
@@ -208,6 +212,10 @@ class AppLocalizations extends InheritedWidget {
     'dropoffLocation': 'Место разгрузки',
     'buffer': 'Буфер',
     'gpsWaiting': 'GPS: Ожидание...',
+    'gpsActive': 'GPS активен',
+    'gpsSearching': 'GPS поиск',
+    'acceptBlockedHint': 'Завершите активный груз, чтобы принять новый',
+    'noActiveLoadSubtitleNew': 'Новые грузы появятся здесь',
 
     // Load details
     'load': 'Груз',
@@ -342,6 +350,10 @@ class AppLocalizations extends InheritedWidget {
     'dropoffLocation': 'Tushirish joyi',
     'buffer': 'Bufer',
     'gpsWaiting': 'GPS: Kutilmoqda...',
+    'gpsActive': 'GPS faol',
+    'gpsSearching': 'GPS qidirilmoqda',
+    'acceptBlockedHint': 'Yangi yuk qabul qilish uchun faol yukni tugating',
+    'noActiveLoadSubtitleNew': 'Yangi yuklar shu yerda paydo bo\'ladi',
 
     // Load details
     'load': 'Yuk',
