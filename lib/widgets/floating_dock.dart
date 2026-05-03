@@ -39,6 +39,7 @@ class FloatingDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Padding(
@@ -53,21 +54,23 @@ class FloatingDock extends StatelessWidget {
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(32),
           border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(0.15),
+            color: isDark ? theme.colorScheme.outline : theme.colorScheme.outline.withOpacity(0.5),
             width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.25),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -103,6 +106,8 @@ class _DockTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -112,7 +117,9 @@ class _DockTab extends StatelessWidget {
           curve: Curves.easeOutCubic,
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
-            color: isActive ? activeColor.withOpacity(0.12) : Colors.transparent,
+            color: isActive 
+                ? activeColor.withOpacity(isDark ? 0.25 : 0.12) 
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
