@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'l10n/app_localizations.dart';
 import 'theme/app_theme.dart';
 import 'services/gps_service.dart';
+import 'services/location_permission_service.dart';
 import 'services/notification_service.dart';
 import 'store/app_store.dart';
 import 'screens/splash_screen.dart';
@@ -36,6 +38,9 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
   Timer? _gpsPoller;
   bool _gpsEnabled = false;
   bool _gpsDialogShown = false;
+
+  // ─── Always-location permission ────────────────────────────────────────────
+  bool _alwaysPermissionDialogShown = false;
 
   void _handlePosition(Position position) => _store.onGpsPosition(position);
 
@@ -73,6 +78,30 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
 
     // Start polling GPS status every 2 seconds
     _startGpsPolling();
+
+    // Check for "Always" location permission after splash is gone
+    // (delayed so the navigator context is available)
+    if (Platform.isAndroid) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkAlwaysLocationPermission();
+      });
+    }
+  }
+
+  /// Checks whether the "Always" location permission is granted.
+  /// If not, shows a blocking dialog forcing the user to go to settings.
+  Future<void> _checkAlwaysLocationPermission() async {
+    if (_alwaysPermissionDialogShown) return;
+
+    final isAlways = await LocationPermissionService.isAlwaysGranted();
+    if (isAlways) return;
+
+    final navContext = _navigatorKey.currentContext;
+    if (navContext == null || !mounted) return;
+
+    _alwaysPermissionDialogShown = true;
+    await LocationPermissionService.enforceAlwaysPermission(navContext);
+    _alwaysPermissionDialogShown = false;
   }
 
   /// Polls GPS enabled status every 2 seconds.

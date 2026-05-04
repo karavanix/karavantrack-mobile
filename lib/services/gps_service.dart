@@ -8,9 +8,10 @@ typedef PositionCallback = void Function(Position position);
 class GpsService {
   StreamSubscription<Position>? _positionStream;
 
+  /// Only "always" is acceptable — the app requires background and
+  /// killed-state location tracking for delivery monitoring.
   bool _isAccessGranted(LocationPermission permission) {
-    return permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse;
+    return permission == LocationPermission.always;
   }
 
   Future<bool> requestPermission() async {

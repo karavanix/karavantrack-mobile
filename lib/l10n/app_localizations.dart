@@ -170,6 +170,15 @@ class AppLocalizations extends InheritedWidget {
         'Location services are disabled. Please turn on GPS so your position can be tracked.',
     'turnOnGps': 'Turn On GPS',
 
+    // Always-location permission dialog
+    'alwaysLocationTitle': 'Background Location Required',
+    'alwaysLocationMessage':
+        'This app needs "Allow all the time" location access to track your position even when the app is closed or in the background.',
+    'alwaysLocationStep1': 'Tap "Open Settings" below',
+    'alwaysLocationStep2': 'Select "Permissions" → "Location"',
+    'alwaysLocationStep3': 'Choose "Allow all the time"',
+    'openAppSettings': 'Open Settings',
+
     // Stepper labels (short)
     'stepAccepted': 'Accepted',
     'stepPickup': 'Pickup',
@@ -317,6 +326,15 @@ class AppLocalizations extends InheritedWidget {
         'Службы геолокации отключены. Включите GPS, чтобы ваше местоположение отслеживалось.',
     'turnOnGps': 'Включить GPS',
 
+    // Always-location permission dialog
+    'alwaysLocationTitle': 'Требуется фоновая геолокация',
+    'alwaysLocationMessage':
+        'Приложению необходим доступ «Разрешить всё время» к местоположению, чтобы отслеживать вашу позицию даже при закрытом приложении.',
+    'alwaysLocationStep1': 'Нажмите «Открыть настройки» ниже',
+    'alwaysLocationStep2': 'Выберите «Разрешения» → «Местоположение»',
+    'alwaysLocationStep3': 'Выберите «Разрешить всё время»',
+    'openAppSettings': 'Открыть настройки',
+
     // Stepper labels (short)
     'stepAccepted': 'Принят',
     'stepPickup': 'Погрузка',
@@ -463,6 +481,15 @@ class AppLocalizations extends InheritedWidget {
     'gpsOffMessage':
         'Joylashuv xizmatlari o\'chirilgan. GPS ni yoqing, shunda joylashuvingiz kuzatiladi.',
     'turnOnGps': 'GPS ni yoqish',
+
+    // Always-location permission dialog
+    'alwaysLocationTitle': 'Fon joylashuvi kerak',
+    'alwaysLocationMessage':
+        'Ilova yopilgan yoki fonda bo\'lganda ham joylashuvingizni kuzatish uchun "Har doim ruxsat berish" kerak.',
+    'alwaysLocationStep1': 'Quyidagi "Sozlamalarni ochish" tugmasini bosing',
+    'alwaysLocationStep2': '"Ruxsatlar" → "Joylashuv" ni tanlang',
+    'alwaysLocationStep3': '"Har doim ruxsat berish" ni tanlang',
+    'openAppSettings': 'Sozlamalarni ochish',
 
     // Stepper labels (short)
     'stepAccepted': 'Qabul',
