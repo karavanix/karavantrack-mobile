@@ -7,10 +7,15 @@ import 'package:permission_handler/permission_handler.dart'
 
 import '../l10n/app_localizations.dart';
 
-/// Service that enforces "Allow all the time" (Always) location permission
-/// on Android. If the user has only "While in use" or less, a blocking
-/// non-dismissible dialog is shown directing them to the app's location
-/// permission settings page.
+/// Service that enforces "Allow all the time" (Always) location permission.
+///
+/// Android: a blocking dialog directs the user straight to the app's
+/// location permission settings when "While in use" or less is granted.
+///
+/// iOS: first attempts the native permission prompts (which can request
+/// an "Always" upgrade exactly once after "While Using"). If that does not
+/// yield Always, falls back to a blocking dialog that directs the user to
+/// iOS Settings with iOS-specific instructions.
 class LocationPermissionService {
   LocationPermissionService._();
 
@@ -22,7 +27,8 @@ class LocationPermissionService {
   }
 
   /// Checks the current location permission level. If it is not "always",
-  /// shows a blocking dialog that directs the user to the app's settings.
+  /// attempts to acquire it (via OS prompts on iOS) and otherwise shows a
+  /// blocking dialog that directs the user to the app's settings.
   ///
   /// The dialog is non-dismissible — the user *must* grant "Allow all the
   /// time" before they can proceed. The method re-checks automatically when
@@ -30,18 +36,29 @@ class LocationPermissionService {
   ///
   /// Returns `true` once the permission is granted.
   static Future<bool> enforceAlwaysPermission(BuildContext context) async {
-    if (!Platform.isAndroid) return true;
+    if (!Platform.isAndroid && !Platform.isIOS) return true;
 
-    final permission = await Geolocator.checkPermission();
+    var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.always) return true;
 
-    // If denied entirely, try requesting basic permission first
+    // If denied entirely, request basic permission first. On iOS this shows
+    // the native "Allow While Using App / Allow Once / Don't Allow" prompt.
     if (permission == LocationPermission.denied) {
-      final result = await Geolocator.requestPermission();
-      if (result == LocationPermission.always) return true;
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.always) return true;
     }
 
-    // At this point user has "while in use" or denied — show blocking dialog
+    // On iOS, asking for permission again while the user has only granted
+    // "While Using" triggers the native one-time "Allow Always" upgrade
+    // prompt. iOS only shows it once per install — after that we must
+    // direct the user to Settings.
+    if (Platform.isIOS && permission == LocationPermission.whileInUse) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.always) return true;
+    }
+
+    // Still not "Always" — show the blocking dialog with platform-specific
+    // instructions for getting to the right settings page.
     if (context.mounted) {
       await _showAlwaysPermissionDialog(context);
     }
@@ -166,17 +183,29 @@ class _AlwaysPermissionDialogState extends State<_AlwaysPermissionDialog>
                 children: [
                   _InstructionStep(
                     number: '1',
-                    text: t.tr('alwaysLocationStep1'),
+                    text: t.tr(
+                      Platform.isIOS
+                          ? 'alwaysLocationIosStep1'
+                          : 'alwaysLocationStep1',
+                    ),
                   ),
                   const SizedBox(height: 6),
                   _InstructionStep(
                     number: '2',
-                    text: t.tr('alwaysLocationStep2'),
+                    text: t.tr(
+                      Platform.isIOS
+                          ? 'alwaysLocationIosStep2'
+                          : 'alwaysLocationStep2',
+                    ),
                   ),
                   const SizedBox(height: 6),
                   _InstructionStep(
                     number: '3',
-                    text: t.tr('alwaysLocationStep3'),
+                    text: t.tr(
+                      Platform.isIOS
+                          ? 'alwaysLocationIosStep3'
+                          : 'alwaysLocationStep3',
+                    ),
                   ),
                 ],
               ),

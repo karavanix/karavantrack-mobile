@@ -81,7 +81,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
 
     // Check for "Always" location permission after splash is gone
     // (delayed so the navigator context is available)
-    if (Platform.isAndroid) {
+    if (Platform.isAndroid || Platform.isIOS) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _checkAlwaysLocationPermission();
       });

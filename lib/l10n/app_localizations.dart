@@ -177,6 +177,9 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationStep1': 'Tap "Open Settings" below',
     'alwaysLocationStep2': 'Select "Permissions" → "Location"',
     'alwaysLocationStep3': 'Choose "Allow all the time"',
+    'alwaysLocationIosStep1': 'Tap "Open Settings" below',
+    'alwaysLocationIosStep2': 'Select "Location"',
+    'alwaysLocationIosStep3': 'Choose "Always"',
     'openAppSettings': 'Open Settings',
 
     // Stepper labels (short)
@@ -333,6 +336,9 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationStep1': 'Нажмите «Открыть настройки» ниже',
     'alwaysLocationStep2': 'Выберите «Разрешения» → «Местоположение»',
     'alwaysLocationStep3': 'Выберите «Разрешить всё время»',
+    'alwaysLocationIosStep1': 'Нажмите «Открыть настройки» ниже',
+    'alwaysLocationIosStep2': 'Выберите «Геолокация»',
+    'alwaysLocationIosStep3': 'Выберите «Всегда»',
     'openAppSettings': 'Открыть настройки',
 
     // Stepper labels (short)
@@ -489,6 +495,9 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationStep1': 'Quyidagi "Sozlamalarni ochish" tugmasini bosing',
     'alwaysLocationStep2': '"Ruxsatlar" → "Joylashuv" ni tanlang',
     'alwaysLocationStep3': '"Har doim ruxsat berish" ni tanlang',
+    'alwaysLocationIosStep1': 'Quyidagi "Sozlamalarni ochish" tugmasini bosing',
+    'alwaysLocationIosStep2': '"Joylashuv" ni tanlang',
+    'alwaysLocationIosStep3': '"Doim" ni tanlang',
     'openAppSettings': 'Sozlamalarni ochish',
 
     // Stepper labels (short)
