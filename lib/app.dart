@@ -24,7 +24,8 @@ class DriverTrackingApp extends StatefulWidget {
   State<DriverTrackingApp> createState() => _DriverTrackingAppState();
 }
 
-class _DriverTrackingAppState extends State<DriverTrackingApp> {
+class _DriverTrackingAppState extends State<DriverTrackingApp>
+    with WidgetsBindingObserver {
   final GpsService _gps = GpsService();
   late final AppStore _store;
   // ValueNotifier so _HomeRouter can listen directly without rebuilding MaterialApp.
@@ -48,7 +49,16 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
   void initState() {
     super.initState();
     _store = widget.store ?? AppStore();
+    WidgetsBinding.instance.addObserver(this);
     _initializeApp();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        (Platform.isAndroid || Platform.isIOS)) {
+      _checkAlwaysLocationPermission();
+    }
   }
 
   Future<void> _initializeApp() async {
@@ -172,6 +182,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _gpsPoller?.cancel();
     _store.dispose();
     _showSplash.dispose();

@@ -48,12 +48,18 @@ class LocationPermissionService {
       if (permission == LocationPermission.always) return true;
     }
 
-    // On iOS, asking for permission again while the user has only granted
-    // "While Using" triggers the native one-time "Allow Always" upgrade
-    // prompt. iOS only shows it once per install — after that we must
-    // direct the user to Settings.
+    // On iOS, after "While Using" is granted, request the Always upgrade via
+    // permission_handler — this reliably calls
+    // CLLocationManager.requestAlwaysAuthorization, which shows iOS's native
+    // one-time "Allow Always" upgrade prompt. (Geolocator's second
+    // requestPermission() call does not consistently trigger it.)
+    // iOS only ever shows this prompt once per install; after that, the user
+    // must go to Settings.
     if (Platform.isIOS && permission == LocationPermission.whileInUse) {
-      permission = await Geolocator.requestPermission();
+      final iosResult = await permission_handler.Permission.locationAlways
+          .request();
+      if (iosResult.isGranted) return true;
+      permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.always) return true;
     }
 
