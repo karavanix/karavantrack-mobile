@@ -39,9 +39,11 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   Timer? _gpsPoller;
   bool _gpsEnabled = false;
   bool _gpsDialogShown = false;
+  bool _streamActive = false;
 
   // ─── Always-location permission ────────────────────────────────────────────
   bool _alwaysPermissionDialogShown = false;
+  bool _permissionGranted = false;
 
   void _handlePosition(Position position) => _store.onGpsPosition(position);
 
@@ -49,15 +51,25 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   void initState() {
     super.initState();
     _store = widget.store ?? AppStore();
+    _store.addListener(_onStoreChanged);
     WidgetsBinding.instance.addObserver(this);
     _initializeApp();
   }
 
+  // Re-evaluate stream whenever store changes (load accepted, completed, logout).
+  // Synchronous — no I/O, uses cached _permissionGranted.
+  void _onStoreChanged() => _syncGpsStream();
+
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed &&
         (Platform.isAndroid || Platform.isIOS)) {
-      _checkAlwaysLocationPermission();
+      // User may have changed permission in Settings — re-read from OS.
+      LocationPermissionService.isAlwaysGranted().then((granted) {
+        _permissionGranted = granted;
+        _syncGpsStream();
+        _checkAlwaysLocationPermission();
+      });
     }
   }
 
@@ -76,15 +88,6 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     // Initial GPS check
     _gpsEnabled = await Geolocator.isLocationServiceEnabled();
 
-    // Only start the stream immediately for returning users who already have
-    // Always permission. New users get it started after the permission flow below.
-    if (_gpsEnabled) {
-      final alreadyGranted = await LocationPermissionService.isAlwaysGranted();
-      if (alreadyGranted) {
-        _gps.startPositionStream(_handlePosition).catchError((_) {});
-      }
-    }
-
     await Future.wait([
       _store.init(),
       Future.delayed(const Duration(milliseconds: 900)),
@@ -94,16 +97,34 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     // Start polling GPS status every 2 seconds
     _startGpsPolling();
 
+    // Populate permission cache, then sync stream (activeLoad is now known too).
+    _permissionGranted = await LocationPermissionService.isAlwaysGranted();
+    _syncGpsStream();
+
     // Check for "Always" location permission after splash is gone
-    // (delayed so the navigator context is available)
+    // (delayed so the navigator context is available), then re-sync stream.
     if (Platform.isAndroid || Platform.isIOS) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        final granted = await _checkAlwaysLocationPermission();
-        // Start stream for new users whose permission was just granted.
-        if (granted && _gpsEnabled) {
-          _gps.startPositionStream(_handlePosition).catchError((_) {});
-        }
+        await _checkAlwaysLocationPermission();
+        _syncGpsStream();
       });
+    }
+  }
+
+  /// Starts or stops the stream based on cached state — no I/O.
+  /// Call _permissionGranted = await isAlwaysGranted() before this whenever
+  /// the permission state may have changed (app resume, permission flow).
+  void _syncGpsStream() {
+    final shouldRun = _gpsEnabled && (_store.activeLoad != null) && _permissionGranted;
+
+    if (shouldRun && !_streamActive) {
+      _streamActive = true;
+      _gps.startPositionStream(_handlePosition).catchError((_) {
+        _streamActive = false;
+      });
+    } else if (!shouldRun && _streamActive) {
+      _streamActive = false;
+      _gps.stopPositionStream();
     }
   }
 
@@ -123,7 +144,8 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     await LocationPermissionService.enforceAlwaysPermission(navContext);
     _alwaysPermissionDialogShown = false;
 
-    return await LocationPermissionService.isAlwaysGranted();
+    _permissionGranted = await LocationPermissionService.isAlwaysGranted();
+    return _permissionGranted;
   }
 
   /// Polls GPS enabled status every 2 seconds.
@@ -136,12 +158,12 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
       if (!isEnabled && _gpsEnabled) {
         // GPS just turned OFF
         _gpsEnabled = false;
-        await _gps.stopPositionStream();
+        _syncGpsStream();
         if (mounted && !_gpsDialogShown) _showGpsDialog();
       } else if (isEnabled && !_gpsEnabled) {
-        // GPS just turned ON (or was on at first check)
+        // GPS just turned ON
         _gpsEnabled = true;
-        _gps.startPositionStream(_handlePosition).catchError((_) {});
+        _syncGpsStream();
         // Auto-dismiss any open dialog
         if (_gpsDialogShown) _navigatorKey.currentState?.pop();
       } else if (!isEnabled && !_gpsDialogShown) {
@@ -195,6 +217,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _store.removeListener(_onStoreChanged);
     _gpsPoller?.cancel();
     _store.dispose();
     _showSplash.dispose();
