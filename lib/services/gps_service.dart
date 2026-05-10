@@ -1,42 +1,45 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 
 typedef PositionCallback = void Function(Position position);
 
-/// Wrapper around the Geolocator plugin for requesting permissions
-/// and streaming GPS positions.
 class GpsService {
   StreamSubscription<Position>? _positionStream;
 
-  /// Only "always" is acceptable — the app requires background and
-  /// killed-state location tracking for delivery monitoring.
-  bool _isAccessGranted(LocationPermission permission) {
-    return permission == LocationPermission.always;
-  }
-
-  Future<bool> requestPermission() async {
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.always) return true;
-    if (permission == LocationPermission.deniedForever) return false;
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    // On iOS, prompt a second time to upgrade "When In Use" → "Always"
-    if (permission == LocationPermission.whileInUse) {
-      permission = await Geolocator.requestPermission();
-    }
-    return _isAccessGranted(permission);
-  }
-
   Future<void> startPositionStream(PositionCallback callback) async {
-    final granted = await requestPermission();
-    if (!granted) throw Exception('Location permission not granted');
+    // Permission must already be granted by LocationPermissionService before calling this.
+    final permission = await Geolocator.checkPermission();
+    if (permission != LocationPermission.always) {
+      throw Exception('Always location permission not granted');
+    }
 
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+    final LocationSettings settings;
+
+    if (Platform.isIOS) {
+      settings = AppleSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        activityType: ActivityType.automotiveNavigation,
+        distanceFilter: 10,
+        pauseLocationUpdatesAutomatically: false,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+      );
+    } else {
+      settings = AndroidSettings(
         accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 10,
-      ),
+        intervalDuration: const Duration(seconds: 10),
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationText: 'Location tracking active',
+          notificationTitle: 'KaravanTrack',
+          enableWakeLock: true,
+        ),
+      );
+    }
+
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: settings,
     ).listen(callback);
   }
 

@@ -76,8 +76,13 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     // Initial GPS check
     _gpsEnabled = await Geolocator.isLocationServiceEnabled();
 
+    // Only start the stream immediately for returning users who already have
+    // Always permission. New users get it started after the permission flow below.
     if (_gpsEnabled) {
-      _gps.startPositionStream(_handlePosition).catchError((_) {});
+      final alreadyGranted = await LocationPermissionService.isAlwaysGranted();
+      if (alreadyGranted) {
+        _gps.startPositionStream(_handlePosition).catchError((_) {});
+      }
     }
 
     await Future.wait([
@@ -92,26 +97,33 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     // Check for "Always" location permission after splash is gone
     // (delayed so the navigator context is available)
     if (Platform.isAndroid || Platform.isIOS) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _checkAlwaysLocationPermission();
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final granted = await _checkAlwaysLocationPermission();
+        // Start stream for new users whose permission was just granted.
+        if (granted && _gpsEnabled) {
+          _gps.startPositionStream(_handlePosition).catchError((_) {});
+        }
       });
     }
   }
 
   /// Checks whether the "Always" location permission is granted.
   /// If not, shows a blocking dialog forcing the user to go to settings.
-  Future<void> _checkAlwaysLocationPermission() async {
-    if (_alwaysPermissionDialogShown) return;
+  /// Returns true once Always is confirmed.
+  Future<bool> _checkAlwaysLocationPermission() async {
+    if (_alwaysPermissionDialogShown) return false;
 
     final isAlways = await LocationPermissionService.isAlwaysGranted();
-    if (isAlways) return;
+    if (isAlways) return true;
 
     final navContext = _navigatorKey.currentContext;
-    if (navContext == null || !mounted) return;
+    if (navContext == null || !mounted) return false;
 
     _alwaysPermissionDialogShown = true;
     await LocationPermissionService.enforceAlwaysPermission(navContext);
     _alwaysPermissionDialogShown = false;
+
+    return await LocationPermissionService.isAlwaysGranted();
   }
 
   /// Polls GPS enabled status every 2 seconds.

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -21,13 +22,10 @@ const String _kBasePath = '/api/v1';
 /// Initialize and configure the Android foreground service.
 /// Call once in `main()` before `runApp()`.
 Future<void> initBackgroundService() async {
+  if (!Platform.isAndroid) return;
   final service = FlutterBackgroundService();
   await service.configure(
-    iosConfiguration: IosConfiguration(
-      autoStart: false,
-      onForeground: onStart,
-      onBackground: onIosBackground,
-    ),
+    iosConfiguration: IosConfiguration(autoStart: false),
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
       autoStart: false,
@@ -281,6 +279,7 @@ Future<void> _postLocation({
 
 /// Start the foreground location service.
 Future<void> startBackgroundService() async {
+  if (!Platform.isAndroid) return;
   final service = FlutterBackgroundService();
   final running = await service.isRunning();
   if (!running) await service.startService();
@@ -288,6 +287,7 @@ Future<void> startBackgroundService() async {
 
 /// Stop the foreground location service.
 Future<void> stopBackgroundService() async {
+  if (!Platform.isAndroid) return;
   final service = FlutterBackgroundService();
   service.invoke('stopService');
 }

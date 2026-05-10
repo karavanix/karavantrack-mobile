@@ -56,10 +56,20 @@ class LocationPermissionService {
     // iOS only ever shows this prompt once per install; after that, the user
     // must go to Settings.
     if (Platform.isIOS && permission == LocationPermission.whileInUse) {
+      // iOS needs a brief pause between the two native prompts or the second
+      // prompt may be silently ignored.
+      await Future.delayed(const Duration(milliseconds: 500));
       final iosResult = await permission_handler.Permission.locationAlways
           .request();
       if (iosResult.isGranted) return true;
       permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.always) return true;
+    }
+
+    // Android: a second Geolocator.requestPermission() does work here
+    // (unlike iOS where it silently does nothing after the first call).
+    if (Platform.isAndroid && permission == LocationPermission.whileInUse) {
+      permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.always) return true;
     }
 
