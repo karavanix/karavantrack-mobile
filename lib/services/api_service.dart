@@ -122,7 +122,7 @@ class ApiService {
     return {'success': false, 'message': _parseError(response)};
   }
 
-  /// POST /auth/register
+  /// POST /auth/register — sends verification email; no tokens returned.
   Future<Map<String, dynamic>> register({
     String? email,
     String? phone,
@@ -144,15 +144,57 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
-    if (response.statusCode == 200 || response.statusCode == 201) {
+    if (response.statusCode == 200) {
+      return {'success': true, 'email': email};
+    }
+    return {'success': false, 'message': _parseError(response)};
+  }
+
+  /// POST /auth/verify-email — verify OTP code and receive tokens.
+  Future<Map<String, dynamic>> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    final response = await _client.post(
+      Uri.parse(_url('/auth/verify-email')),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'code': code}),
+    );
+    if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      if (data['access_token'] != null) {
-        await setTokens(
-          access: data['access_token'] as String,
-          refresh: data['refresh_token'] as String,
-        );
-      }
+      await setTokens(
+        access: data['access_token'] as String,
+        refresh: data['refresh_token'] as String,
+      );
       return {'success': true, 'data': data};
+    }
+    return {'success': false, 'message': _parseError(response)};
+  }
+
+  /// POST /auth/apple — Apple Sign In.
+  Future<Map<String, dynamic>> appleSignIn({
+    required String idToken,
+    String? firstName,
+    String? lastName,
+    String? role,
+  }) async {
+    final body = <String, dynamic>{'id_token': idToken};
+    if (firstName != null && firstName.isNotEmpty) body['first_name'] = firstName;
+    if (lastName != null && lastName.isNotEmpty) body['last_name'] = lastName;
+    if (role != null && role.isNotEmpty) body['role'] = role;
+
+    final response = await _client.post(
+      Uri.parse(_url('/auth/apple')),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      await setTokens(
+        access: data['access_token'] as String,
+        refresh: data['refresh_token'] as String,
+      );
+      return {'success': true, 'data': data, 'isNewUser': data['is_new_user'] ?? false};
     }
     return {'success': false, 'message': _parseError(response)};
   }

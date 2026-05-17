@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../models/load.dart';
 import '../models/tracking_point.dart';
@@ -48,6 +50,7 @@ class AppStore extends ChangeNotifier {
 
   bool isLoggedIn = false;
   bool isLoading = false;
+  String? pendingVerificationEmail;
 
   // Per-load loading state — keyed by load id.
   final Set<String> _loadingIds = {};
@@ -247,6 +250,26 @@ class AppStore extends ChangeNotifier {
         role: role,
       );
       if (result['success'] == true) {
+        pendingVerificationEmail = result['email'] as String? ?? email;
+        notifyListeners();
+        return null;
+      }
+      return result['message'] as String? ?? 'Registration error';
+    } catch (e) {
+      return 'Network error: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String?> verifyEmail(String email, String code) async {
+    isLoading = true;
+    notifyListeners();
+    try {
+      final result = await _api.verifyEmail(email: email, code: code);
+      if (result['success'] == true) {
+        pendingVerificationEmail = null;
         isLoggedIn = true;
         await _loadProfile();
         await fetchLoads();
@@ -254,7 +277,47 @@ class AppStore extends ChangeNotifier {
         notifyListeners();
         return null;
       }
-      return result['message'] as String? ?? 'Registration error';
+      return result['message'] as String? ?? 'Verification error';
+    } catch (e) {
+      return 'Network error: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String?> appleSignIn() async {
+    if (!Platform.isIOS) return 'Apple Sign In is only available on iOS';
+    isLoading = true;
+    notifyListeners();
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+      final idToken = credential.identityToken;
+      if (idToken == null) return 'Apple Sign In failed: no identity token';
+
+      final result = await _api.appleSignIn(
+        idToken: idToken,
+        firstName: credential.givenName,
+        lastName: credential.familyName,
+        role: 'carrier',
+      );
+      if (result['success'] == true) {
+        isLoggedIn = true;
+        await _loadProfile();
+        await fetchLoads();
+        NotificationService.instance.initialize().catchError((_) {});
+        notifyListeners();
+        return null;
+      }
+      return result['message'] as String? ?? 'Apple Sign In error';
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return null;
+      return 'Apple Sign In error: ${e.message}';
     } catch (e) {
       return 'Network error: $e';
     } finally {

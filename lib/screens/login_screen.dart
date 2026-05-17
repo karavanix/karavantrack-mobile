@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
 
@@ -188,6 +190,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      if (!_isRegister && Platform.isIOS) ...[
+                        const SizedBox(height: 16),
+                        SignInWithAppleButton(
+                          onPressed: loading
+                              ? () {}
+                              : () async {
+                                  final error = await widget.store.appleSignIn();
+                                  if (error != null && mounted) _showError(error);
+                                },
+                          text: t.tr('continueWithApple'),
+                        ),
+                      ],
                     ],
                   ),
                 ),

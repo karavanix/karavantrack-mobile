@@ -53,6 +53,12 @@ class AppLocalizations extends InheritedWidget {
     'enterEmailAndPassword': 'Enter email and password',
     'alreadyHaveAccount': 'Already have an account? Sign in',
     'dontHaveAccount': "Don't have an account? Sign up",
+    'continueWithApple': 'Continue with Apple',
+    'verifyEmail': 'Verify Email',
+    'verificationCodeSent': 'A verification code was sent to',
+    'enterVerificationCode': 'Please enter the verification code',
+    'verificationCodeLabel': 'Verification Code',
+    'verify': 'Verify',
 
     // Profile setup
     'completeProfile': 'Complete Profile',
@@ -212,6 +218,12 @@ class AppLocalizations extends InheritedWidget {
     'enterEmailAndPassword': 'Введите почту и пароль',
     'alreadyHaveAccount': 'Уже есть аккаунт? Войти',
     'dontHaveAccount': 'Нет аккаунта? Зарегистрироваться',
+    'continueWithApple': 'Войти через Apple',
+    'verifyEmail': 'Подтверждение почты',
+    'verificationCodeSent': 'Код подтверждения отправлен на',
+    'enterVerificationCode': 'Введите код подтверждения',
+    'verificationCodeLabel': 'Код подтверждения',
+    'verify': 'Подтвердить',
 
     // Profile setup
     'completeProfile': 'Заполнить профиль',
@@ -371,6 +383,12 @@ class AppLocalizations extends InheritedWidget {
     'enterEmailAndPassword': 'Pochta va parolni kiriting',
     'alreadyHaveAccount': 'Akkaunt bormi? Kirish',
     'dontHaveAccount': "Akkaunt yo'qmi? Ro'yxatdan o'ting",
+    'continueWithApple': 'Apple orqali kirish',
+    'verifyEmail': 'Emailni tasdiqlash',
+    'verificationCodeSent': 'Tasdiqlash kodi yuborildi:',
+    'enterVerificationCode': 'Tasdiqlash kodini kiriting',
+    'verificationCodeLabel': 'Tasdiqlash kodi',
+    'verify': 'Tasdiqlash',
 
     // Profile setup
     'completeProfile': 'Profilni to\'ldirish',

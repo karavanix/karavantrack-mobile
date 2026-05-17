@@ -11,6 +11,7 @@ import 'services/notification_service.dart';
 import 'store/app_store.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/verify_email_screen.dart';
 import 'screens/profile_setup_screen.dart';
 import 'screens/main_shell.dart';
 
@@ -277,6 +278,7 @@ class _HomeRouter extends StatelessWidget {
       animation: Listenable.merge([store, showSplash]),
       builder: (context, _) {
         if (showSplash.value) return const SplashScreen();
+        if (store.pendingVerificationEmail != null) return VerifyEmailScreen(store: store);
         if (!store.isLoggedIn) return LoginScreen(store: store);
         if (!store.isProfileCompleted) return ProfileSetupScreen(store: store);
         return MainShell(store: store);
