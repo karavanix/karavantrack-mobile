@@ -326,6 +326,37 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  Future<String?> telegramSignIn(Map<String, String> authData) async {
+    isLoading = true;
+    notifyListeners();
+    try {
+      final result = await _api.telegramSignIn(
+        id: authData['id']!,
+        authDate: authData['auth_date']!,
+        hash: authData['hash']!,
+        firstName: authData['first_name'],
+        lastName: authData['last_name'],
+        username: authData['username'],
+        photoUrl: authData['photo_url'],
+        role: 'carrier',
+      );
+      if (result['success'] == true) {
+        isLoggedIn = true;
+        await _loadProfile();
+        await fetchLoads();
+        NotificationService.instance.initialize().catchError((_) {});
+        notifyListeners();
+        return null;
+      }
+      return result['message'] as String? ?? 'Telegram Sign In error';
+    } catch (e) {
+      return 'Network error: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     _locationTimer?.cancel();
     _locationTimer = null;
