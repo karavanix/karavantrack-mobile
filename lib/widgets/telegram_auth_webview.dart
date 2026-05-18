@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 /// Shows the Telegram Login Widget in an in-app WebView.
-/// On successful auth Telegram redirects to karavantrack://auth/telegram?...
+/// On successful auth Telegram redirects to yool://auth/telegram?...
 /// The WebView intercepts that URL and returns the query params via [onAuthData].
 class TelegramAuthWebView extends StatelessWidget {
   const TelegramAuthWebView({
@@ -18,7 +18,7 @@ class TelegramAuthWebView extends StatelessWidget {
   /// Called with the raw Telegram auth query params when auth completes.
   final void Function(Map<String, String> data) onAuthData;
 
-  static const _deepLinkScheme = 'karavantrack://auth/telegram';
+  static const _deepLinkScheme = 'yool://auth/telegram';
 
   @override
   Widget build(BuildContext context) {
