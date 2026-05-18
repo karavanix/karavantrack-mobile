@@ -199,6 +199,44 @@ class ApiService {
     return {'success': false, 'message': _parseError(response)};
   }
 
+  /// POST /auth/telegram — Telegram Sign In.
+  Future<Map<String, dynamic>> telegramSignIn({
+    required String id,
+    required String authDate,
+    required String hash,
+    String? firstName,
+    String? lastName,
+    String? username,
+    String? photoUrl,
+    String? role,
+  }) async {
+    final body = <String, dynamic>{
+      'id': id,
+      'auth_date': authDate,
+      'hash': hash,
+    };
+    if (firstName != null && firstName.isNotEmpty) body['first_name'] = firstName;
+    if (lastName != null && lastName.isNotEmpty) body['last_name'] = lastName;
+    if (username != null && username.isNotEmpty) body['username'] = username;
+    if (photoUrl != null && photoUrl.isNotEmpty) body['photo_url'] = photoUrl;
+    if (role != null && role.isNotEmpty) body['role'] = role;
+
+    final response = await _client.post(
+      Uri.parse(_url('/auth/telegram')),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      await setTokens(
+        access: data['access_token'] as String,
+        refresh: data['refresh_token'] as String,
+      );
+      return {'success': true, 'data': data, 'isNewUser': data['is_new_user'] ?? false};
+    }
+    return {'success': false, 'message': _parseError(response)};
+  }
+
   /// POST /auth/logout
   Future<void> logout() async {
     try {

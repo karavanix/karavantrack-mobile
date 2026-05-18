@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/telegram_auth_webview.dart';
 
 /// Login screen with email/password. Toggles to register mode.
+/// OAuth buttons (Telegram + Apple) appear in both login and register modes.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, required this.store});
 
@@ -60,6 +62,33 @@ class _LoginScreenState extends State<LoginScreen> {
     if (error != null && mounted) _showError(error);
   }
 
+  Future<void> _appleSignIn() async {
+    final error = await widget.store.appleSignIn();
+    if (error != null && mounted) _showError(error);
+  }
+
+  Future<void> _openTelegramWebView() async {
+    Map<String, String>? authData;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => TelegramAuthWebView(
+          widgetUrl:
+              'https://api.yool.live/api/v1/auth/telegram/widget?role=carrier',
+          onAuthData: (data) {
+            authData = data;
+          },
+        ),
+      ),
+    );
+
+    if (authData != null && mounted) {
+      final error = await widget.store.telegramSignIn(authData!);
+      if (error != null && mounted) _showError(error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -108,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Card
+                      // Card with email/password form
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(20),
@@ -190,16 +219,39 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      if (!_isRegister && Platform.isIOS) ...[
-                        const SizedBox(height: 16),
-                        SignInWithAppleButton(
-                          onPressed: loading
-                              ? () {}
-                              : () async {
-                                  final error = await widget.store.appleSignIn();
-                                  if (error != null && mounted) _showError(error);
-                                },
-                          text: t.tr('continueWithApple'),
+
+                      // ─── OAuth section (both login & register modes) ───
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              t.tr('orContinueWith'),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.45),
+                              ),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _OAuthButton(
+                        onPressed: loading ? null : _openTelegramWebView,
+                        icon: const _TelegramIcon(),
+                        label: t.tr('continueWithTelegram'),
+                      ),
+                      if (Platform.isIOS) ...[
+                        const SizedBox(height: 10),
+                        _OAuthButton(
+                          onPressed: loading ? null : _appleSignIn,
+                          icon: const Icon(Icons.apple, size: 20),
+                          label: t.tr('continueWithApple'),
                         ),
                       ],
                     ],
@@ -212,4 +264,91 @@ class _LoginScreenState extends State<LoginScreen> {
       },
     );
   }
+}
+
+// ─── Helper widgets ──────────────────────────────────────────────────────────
+
+class _OAuthButton extends StatelessWidget {
+  const _OAuthButton({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+  });
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 48,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: icon,
+        label: Text(label),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: theme.colorScheme.onSurface,
+          side: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.4),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TelegramIcon extends StatelessWidget {
+  const _TelegramIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 20,
+      height: 20,
+      child: CustomPaint(painter: _TelegramPainter()),
+    );
+  }
+}
+
+class _TelegramPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bgPaint = Paint()
+      ..color = const Color(0xFF2AABEE)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(
+      Offset(size.width / 2, size.height / 2),
+      size.width / 2,
+      bgPaint,
+    );
+
+    final arrowPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(size.width * 0.20, size.height * 0.48)
+      ..lineTo(size.width * 0.83, size.height * 0.27)
+      ..lineTo(size.width * 0.54, size.height * 0.73)
+      ..lineTo(size.width * 0.41, size.height * 0.59)
+      ..close();
+    canvas.drawPath(path, arrowPaint);
+
+    final tailPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.85)
+      ..style = PaintingStyle.fill;
+    final tail = Path()
+      ..moveTo(size.width * 0.41, size.height * 0.59)
+      ..lineTo(size.width * 0.54, size.height * 0.73)
+      ..lineTo(size.width * 0.54, size.height * 0.57)
+      ..close();
+    canvas.drawPath(tail, tailPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
