@@ -361,19 +361,13 @@ class AppStore extends ChangeNotifier {
     }
   }
 
-  Future<String?> telegramSignIn(Map<String, String> authData) async {
+  Future<String?> telegramSignIn({required String idToken, String role = 'carrier'}) async {
     isLoading = true;
     notifyListeners();
     try {
       final result = await _api.telegramSignIn(
-        id: authData['id']!,
-        authDate: authData['auth_date']!,
-        hash: authData['hash']!,
-        firstName: authData['first_name'],
-        lastName: authData['last_name'],
-        username: authData['username'],
-        photoUrl: authData['photo_url'],
-        role: 'carrier',
+        idToken: idToken,
+        role: role,
       );
       if (result['success'] == true) {
         isLoggedIn = true;
