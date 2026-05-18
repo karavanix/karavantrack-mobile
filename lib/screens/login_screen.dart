@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
+import '../theme/app_theme.dart';
 import '../widgets/telegram_auth_webview.dart';
 
 /// Login screen with email/password. Toggles to register mode.
@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _firstNameCtrl = TextEditingController();
   final _lastNameCtrl = TextEditingController();
   bool _isRegister = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -91,8 +92,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
+    final colors = AppTheme.of(context);
 
     return ListenableBuilder(
       listenable: widget.store,
@@ -100,164 +101,162 @@ class _LoginScreenState extends State<LoginScreen> {
         final loading = widget.store.isLoading;
         return Scaffold(
           body: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Logo
-                      Icon(
-                        Icons.local_shipping_rounded,
-                        size: 48,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        t.tr('appName'),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _isRegister
-                            ? t.tr('createAccount')
-                            : t.tr('signIn'),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.5),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Card with email/password form
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (_isRegister) ...[
-                                TextField(
-                                  controller: _firstNameCtrl,
-                                  decoration: InputDecoration(
-                                    labelText: t.tr('firstName'),
-                                    prefixIcon:
-                                        const Icon(Icons.person_outline),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                TextField(
-                                  controller: _lastNameCtrl,
-                                  decoration: InputDecoration(
-                                    labelText: t.tr('lastName'),
-                                    prefixIcon:
-                                        const Icon(Icons.person_outline),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                              ],
-                              TextField(
-                                controller: _emailCtrl,
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: InputDecoration(
-                                  labelText: t.tr('email'),
-                                  prefixIcon:
-                                      const Icon(Icons.email_outlined),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _passwordCtrl,
-                                obscureText: true,
-                                decoration: InputDecoration(
-                                  labelText: t.tr('password'),
-                                  prefixIcon:
-                                      const Icon(Icons.lock_outline),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                height: 48,
-                                child: ElevatedButton(
-                                  onPressed: loading ? null : _submit,
-                                  child: loading
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : Text(
-                                          _isRegister
-                                              ? t.tr('createAccount')
-                                              : t.tr('signIn'),
-                                        ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              TextButton(
-                                onPressed: () => setState(
-                                  () => _isRegister = !_isRegister,
-                                ),
-                                child: Text(
-                                  _isRegister
-                                      ? t.tr('alreadyHaveAccount')
-                                      : t.tr('dontHaveAccount'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // ─── OAuth section (both login & register modes) ───
-                      const SizedBox(height: 24),
-                      Row(
+            child: Stack(
+              children: [
+                Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Expanded(child: Divider()),
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(
-                              t.tr('orContinueWith'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.45),
+                          // Brand block
+                          Center(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: Image.asset(
+                                'assets/icon/icon.png',
+                                width: 72,
+                                height: 72,
+                                fit: BoxFit.cover,
                               ),
                             ),
                           ),
-                          const Expanded(child: Divider()),
+                          const SizedBox(height: 14),
+                          Text(
+                            t.tr('appName'),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w700,
+                              color: colors.foreground,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            t.tr('tagline'),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: colors.mutedForeground,
+                            ),
+                          ),
+                          const SizedBox(height: 36),
+
+                          // Form fields — no card chrome
+                          if (_isRegister) ...[
+                            _FilledField(
+                              controller: _firstNameCtrl,
+                              label: t.tr('firstName'),
+                              icon: Icons.person_outline,
+                            ),
+                            const SizedBox(height: 12),
+                            _FilledField(
+                              controller: _lastNameCtrl,
+                              label: t.tr('lastName'),
+                              icon: Icons.person_outline,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          _FilledField(
+                            controller: _emailCtrl,
+                            label: t.tr('email'),
+                            icon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 12),
+                          _FilledField(
+                            controller: _passwordCtrl,
+                            label: t.tr('password'),
+                            icon: Icons.lock_outline,
+                            obscureText: _obscurePassword,
+                            suffix: IconButton(
+                              tooltip: _obscurePassword
+                                  ? t.tr('showPassword')
+                                  : t.tr('hidePassword'),
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                size: 20,
+                                color: colors.mutedForeground,
+                              ),
+                              onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          // Primary CTA
+                          _TallButton(
+                            onPressed: loading ? null : _submit,
+                            child: loading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    _isRegister
+                                        ? t.tr('createAccount')
+                                        : t.tr('signIn'),
+                                  ),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // OAuth buttons — tight stack, no divider
+                          _OAuthButton(
+                            onPressed: loading ? null : _openTelegramWebView,
+                            icon: const _TelegramIcon(),
+                            label: t.tr('continueWithTelegram'),
+                          ),
+                          if (Platform.isIOS) ...[
+                            const SizedBox(height: 10),
+                            _OAuthButton(
+                              onPressed: loading ? null : _appleSignIn,
+                              icon: Icon(
+                                Icons.apple,
+                                size: 22,
+                                color: colors.foreground,
+                              ),
+                              label: t.tr('continueWithApple'),
+                            ),
+                          ],
+
+                          if (_isRegister) ...[
+                            const SizedBox(height: 16),
+                            _TermsLine(),
+                          ],
+
+                          const SizedBox(height: 8),
+                          Center(
+                            child: TextButton(
+                              onPressed: () => setState(
+                                () => _isRegister = !_isRegister,
+                              ),
+                              child: Text(
+                                _isRegister
+                                    ? t.tr('alreadyHaveAccount')
+                                    : t.tr('dontHaveAccount'),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      _OAuthButton(
-                        onPressed: loading ? null : _openTelegramWebView,
-                        icon: const _TelegramIcon(),
-                        label: t.tr('continueWithTelegram'),
-                      ),
-                      if (Platform.isIOS) ...[
-                        const SizedBox(height: 10),
-                        _OAuthButton(
-                          onPressed: loading ? null : _appleSignIn,
-                          icon: const Icon(Icons.apple, size: 20),
-                          label: t.tr('continueWithApple'),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
+                Positioned(
+                  top: 8,
+                  right: 12,
+                  child: _LanguagePill(store: widget.store),
+                ),
+              ],
             ),
           ),
         );
@@ -266,7 +265,88 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// ─── Helper widgets ──────────────────────────────────────────────────────────
+// ─── Filled, borderless input ───────────────────────────────────────────────
+
+class _FilledField extends StatelessWidget {
+  const _FilledField({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.keyboardType,
+    this.obscureText = false,
+    this.suffix,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final bool obscureText;
+  final Widget? suffix;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      obscureText: obscureText,
+      style: TextStyle(color: colors.foreground),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20, color: colors.mutedForeground),
+        suffixIcon: suffix,
+        filled: true,
+        fillColor: colors.muted,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: colors.primary, width: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Unified 52px button shells ─────────────────────────────────────────────
+
+class _TallButton extends StatelessWidget {
+  const _TallButton({required this.onPressed, required this.child});
+
+  final VoidCallback? onPressed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 52,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
 
 class _OAuthButton extends StatelessWidget {
   const _OAuthButton({
@@ -281,20 +361,23 @@ class _OAuthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final colors = AppTheme.of(context);
     return SizedBox(
-      height: 48,
+      height: 52,
       child: OutlinedButton.icon(
         onPressed: onPressed,
         icon: icon,
         label: Text(label),
         style: OutlinedButton.styleFrom(
-          foregroundColor: theme.colorScheme.onSurface,
-          side: BorderSide(
-            color: theme.colorScheme.outline.withValues(alpha: 0.4),
-          ),
+          foregroundColor: colors.foreground,
+          backgroundColor: colors.muted,
+          side: BorderSide.none,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -302,14 +385,120 @@ class _OAuthButton extends StatelessWidget {
   }
 }
 
+// ─── Language pill (top-right) ──────────────────────────────────────────────
+
+class _LanguagePill extends StatelessWidget {
+  const _LanguagePill({required this.store});
+
+  final AppStore store;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    return PopupMenuButton<String>(
+      tooltip: AppLocalizations.of(context).tr('language'),
+      initialValue: store.locale,
+      onSelected: (code) => store.setLocale(code),
+      color: colors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      itemBuilder: (context) => AppLocalizations.supportedLocales
+          .map(
+            (code) => PopupMenuItem<String>(
+              value: code,
+              child: Row(
+                children: [
+                  Text(
+                    code.toUpperCase(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: colors.mutedForeground,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    AppLocalizations.languageNames[code]!,
+                    style: TextStyle(color: colors.foreground),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: colors.muted,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              store.locale.toUpperCase(),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: colors.foreground,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 16,
+              color: colors.mutedForeground,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Terms & privacy line (inert text until URLs are wired) ─────────────────
+
+class _TermsLine extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final colors = AppTheme.of(context);
+    final linkStyle = TextStyle(
+      color: colors.primary,
+      fontWeight: FontWeight.w600,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Text.rich(
+        TextSpan(
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.4,
+            color: colors.mutedForeground,
+          ),
+          children: [
+            TextSpan(text: '${t.tr('byCreatingAccount')} '),
+            TextSpan(text: t.tr('termsOfService'), style: linkStyle),
+            TextSpan(text: ' ${t.tr('and')} '),
+            TextSpan(text: t.tr('privacyPolicy'), style: linkStyle),
+            const TextSpan(text: '.'),
+          ],
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+}
+
+// ─── Telegram icon ──────────────────────────────────────────────────────────
+
 class _TelegramIcon extends StatelessWidget {
   const _TelegramIcon();
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 20,
-      height: 20,
+      width: 22,
+      height: 22,
       child: CustomPaint(painter: _TelegramPainter()),
     );
   }

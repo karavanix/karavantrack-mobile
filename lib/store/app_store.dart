@@ -11,6 +11,7 @@ import '../models/tracking_point.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/background_service.dart';
+import '../services/first_run_service.dart';
 import '../services/locale_service.dart';
 import '../services/notification_service.dart';
 import '../services/theme_service.dart';
@@ -26,7 +27,10 @@ class AppStore extends ChangeNotifier {
     });
     _loadSavedLocale();
     _loadSavedTheme();
+    _firstRunLoaded = _loadFirstRunFlags();
   }
+
+  late final Future<void> _firstRunLoaded;
 
   final ApiService _api = ApiService.instance;
 
@@ -35,7 +39,10 @@ class AppStore extends ChangeNotifier {
   DateTime _nowUtc = DateTime.now().toUtc();
 
   Future<void> init() async {
-    await _api.init();
+    await Future.wait([
+      _api.init(),
+      _firstRunLoaded,
+    ]);
     if (_api.hasToken) {
       isLoggedIn = true;
       notifyListeners();
@@ -92,6 +99,34 @@ class AppStore extends ChangeNotifier {
     if (_isDarkTheme == isDark) return;
     _isDarkTheme = isDark;
     await ThemeService.saveIsDark(isDark);
+    notifyListeners();
+  }
+
+  // ─── First-run flags ─────────────────────────────────────────────────
+
+  bool _seenLanguage = false;
+  bool _seenOnboarding = false;
+
+  bool get seenLanguage => _seenLanguage;
+  bool get seenOnboarding => _seenOnboarding;
+
+  Future<void> _loadFirstRunFlags() async {
+    _seenLanguage = await FirstRunService.hasSeenLanguage();
+    _seenOnboarding = await FirstRunService.hasSeenOnboarding();
+    notifyListeners();
+  }
+
+  Future<void> markLanguageSeen() async {
+    if (_seenLanguage) return;
+    _seenLanguage = true;
+    await FirstRunService.markLanguageSeen();
+    notifyListeners();
+  }
+
+  Future<void> markOnboardingSeen() async {
+    if (_seenOnboarding) return;
+    _seenOnboarding = true;
+    await FirstRunService.markOnboardingSeen();
     notifyListeners();
   }
 
