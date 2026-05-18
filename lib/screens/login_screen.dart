@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
-import '../widgets/telegram_auth_webview.dart';
+import '../services/telegram_auth_service.dart';
 
 /// Login screen with email/password. Toggles to register mode.
 /// OAuth buttons (Telegram + Apple) appear in both login and register modes.
@@ -68,25 +68,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (error != null && mounted) _showError(error);
   }
 
-  Future<void> _openTelegramWebView() async {
-    Map<String, String>? authData;
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => TelegramAuthWebView(
-          widgetUrl:
-              'https://api.yool.live/api/v1/auth/telegram/widget?role=carrier',
-          onAuthData: (data) {
-            authData = data;
-          },
-        ),
-      ),
-    );
-
-    if (authData != null && mounted) {
-      final error = await widget.store.telegramSignIn(authData!);
+  Future<void> _telegramSignIn() async {
+    try {
+      final idToken = await TelegramAuthService.authenticate();
+      if (idToken == null) return; // user cancelled
+      if (!mounted) return;
+      final error = await widget.store.telegramSignIn(idToken: idToken);
       if (error != null && mounted) _showError(error);
+    } catch (e) {
+      if (mounted) _showError('Telegram Sign In failed: $e');
     }
   }
 
@@ -211,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           // OAuth buttons — tight stack, no divider
                           _OAuthButton(
-                            onPressed: loading ? null : _openTelegramWebView,
+                            onPressed: loading ? null : _telegramSignIn,
                             icon: const _TelegramIcon(),
                             label: t.tr('continueWithTelegram'),
                           ),

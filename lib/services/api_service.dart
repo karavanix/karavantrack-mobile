@@ -199,26 +199,12 @@ class ApiService {
     return {'success': false, 'message': _parseError(response)};
   }
 
-  /// POST /auth/telegram — Telegram Sign In.
+  /// POST /auth/telegram — Telegram OAuth 2.0 / OIDC Sign In.
   Future<Map<String, dynamic>> telegramSignIn({
-    required String id,
-    required String authDate,
-    required String hash,
-    String? firstName,
-    String? lastName,
-    String? username,
-    String? photoUrl,
+    required String idToken,
     String? role,
   }) async {
-    final body = <String, dynamic>{
-      'id': id,
-      'auth_date': authDate,
-      'hash': hash,
-    };
-    if (firstName != null && firstName.isNotEmpty) body['first_name'] = firstName;
-    if (lastName != null && lastName.isNotEmpty) body['last_name'] = lastName;
-    if (username != null && username.isNotEmpty) body['username'] = username;
-    if (photoUrl != null && photoUrl.isNotEmpty) body['photo_url'] = photoUrl;
+    final body = <String, dynamic>{'id_token': idToken};
     if (role != null && role.isNotEmpty) body['role'] = role;
 
     final response = await _client.post(
