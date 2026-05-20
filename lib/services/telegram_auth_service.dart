@@ -3,6 +3,7 @@ import 'package:telegram_login/telegram_login.dart';
 
 // Platform-specific OAuth client IDs from BotFather native app registration.
 // Each ID is embedded in the corresponding redirect URL: app{id}-login.tg.dev
+const String _clientId          = '8966637225';
 const String _iosClientId       = '3555230600';
 const String _androidClientId   = '626999857';
 const String _iosRedirectUri    = 'https://app3555230600-login.tg.dev';
@@ -15,12 +16,13 @@ class TelegramAuthService {
   /// id_token JWT on success, or null if the user cancelled.
   /// Throws on unexpected errors.
   static Future<String?> authenticate() async {
+    final realCleintID = _clientId;
     final clientId    = Platform.isIOS ? _iosClientId    : _androidClientId;
     final redirectUri = Platform.isIOS ? _iosRedirectUri : _androidRedirectUri;
 
     await _telegramLogin.configure(
       TelegramLoginConfiguration(
-        clientId: clientId,
+        clientId: realCleintID,
         redirectUri: redirectUri,
         scopes: ['profile'],
       ),
