@@ -56,7 +56,6 @@ DateTime? _lastSentAt;
 
 // ─── Live mode state (WebSocket fast mode) ──────────────────────────────────
 WebSocketChannel? _wsChannel;
-bool _isLiveTracking = false;
 Timer? _liveTrackingWatchdog;
 StreamSubscription<Position>? _liveGpsSubscription;
 
@@ -142,8 +141,6 @@ void _onWsMessage(dynamic raw) {
 // ─── Live mode (WebSocket GPS stream) ───────────────────────────────────────
 
 void _startLiveMode() {
-  _isLiveTracking = true;
-
   // Reset the 5-minute watchdog — if no keepalive renewal arrives the driver
   // reverts to normal REST mode automatically.
   _liveTrackingWatchdog?.cancel();
@@ -160,7 +157,6 @@ void _startLiveMode() {
 }
 
 void _stopLiveMode() {
-  _isLiveTracking = false;
   _liveTrackingWatchdog?.cancel();
   _liveGpsSubscription?.cancel();
   _liveGpsSubscription = null;

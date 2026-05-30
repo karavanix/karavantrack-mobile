@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/ios/SourcePackages/checkouts/GoogleDataTransport" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/ios/SourcePackages/checkouts/GoogleUtilities" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/ios/SourcePackages/checkouts/grpc-binary" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/ios/SourcePackages/checkouts/gtm-session-fetcher" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/ios/SourcePackages/checkouts/nanopb" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/build/ios/SourcePackages/checkouts/promises" vcs="Git" />
+  </component>
+</project>

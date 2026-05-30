@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
+import '../services/debug_service.dart';
 import '../services/telegram_auth_service.dart';
 
 /// Login screen with email/password. Toggles to register mode.
@@ -69,13 +70,28 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _telegramSignIn() async {
+    final log = DebugService.talker;
+    log.info('[TG][ui] "Continue with Telegram" tapped');
     try {
       final idToken = await TelegramAuthService.authenticate();
-      if (idToken == null) return; // user cancelled
-      if (!mounted) return;
+      if (idToken == null) {
+        log.info('[TG][ui] flow ended without idToken (cancelled)');
+        return; // user cancelled
+      }
+      if (!mounted) {
+        log.warning('[TG][ui] widget unmounted after authenticate() — aborting');
+        return;
+      }
+      log.info('[TG][ui] idToken received — calling store.telegramSignIn()');
       final error = await widget.store.telegramSignIn(idToken: idToken);
-      if (error != null && mounted) _showError(error);
-    } catch (e) {
+      if (error != null) {
+        log.error('[TG][ui] sign-in failed: $error');
+        if (mounted) _showError(error);
+      } else {
+        log.info('[TG][ui] sign-in completed successfully');
+      }
+    } catch (e, st) {
+      log.error('[TG][ui] _telegramSignIn() threw', e, st);
       if (mounted) _showError('Telegram Sign In failed: $e');
     }
   }
