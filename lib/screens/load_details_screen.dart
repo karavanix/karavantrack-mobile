@@ -99,7 +99,6 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
     final theme = Theme.of(context);
     final t = AppLocalizations.of(context);
     final colors = AppTheme.of(context);
-    final awaitingColor = colors.statusDroppedOff;
 
     return ListenableBuilder(
       listenable: widget.store,

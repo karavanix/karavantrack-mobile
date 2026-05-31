@@ -141,7 +141,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     if (isAlways) return true;
 
     final navContext = _navigatorKey.currentContext;
-    if (navContext == null || !mounted) return false;
+    if (navContext == null || !mounted || !navContext.mounted) return false;
 
     _alwaysPermissionDialogShown = true;
     await LocationPermissionService.enforceAlwaysPermission(navContext);

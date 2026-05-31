@@ -54,19 +54,19 @@ class FloatingDock extends StatelessWidget {
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(32),
           border: Border.all(
-            color: isDark ? theme.colorScheme.outline : theme.colorScheme.outline.withOpacity(0.5),
+            color: isDark ? theme.colorScheme.outline : theme.colorScheme.outline.withValues(alpha: 0.5),
             width: 1,
           ),
           boxShadow: isDark
               ? null
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
+                    color: Colors.black.withValues(alpha: 0.25),
                     blurRadius: 24,
                     offset: const Offset(0, 8),
                   ),
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -79,7 +79,7 @@ class FloatingDock extends StatelessWidget {
               item: items[i],
               isActive: i == currentIndex,
               activeColor: theme.colorScheme.primary,
-              inactiveColor: theme.colorScheme.onSurface.withOpacity(0.45),
+              inactiveColor: theme.colorScheme.onSurface.withValues(alpha: 0.45),
               onTap: () => onTap(i),
             );
           }),
@@ -118,7 +118,7 @@ class _DockTab extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             color: isActive 
-                ? activeColor.withOpacity(isDark ? 0.25 : 0.12) 
+                ? activeColor.withValues(alpha: isDark ? 0.25 : 0.12)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(24),
           ),

@@ -1,0 +1,51 @@
+{
+  // Flutter / Dart launch configurations.
+  // Requires the "Dart" and "Flutter" VS Code extensions.
+  // Press F5 to launch. Logs (print/debugPrint + framework output) appear in
+  // the DEBUG CONSOLE. Use the toolbar to Hot Reload (⚡) / Hot Restart, or
+  // just save a file (Cmd+S) to trigger Hot Reload automatically.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Picks whatever device is selected in the status bar (or prompts).
+      "name": "KaravanTrack (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "console": "debugConsole"
+    },
+    {
+      // Always targets the iPhone 17 Pro Max simulator (boots it if needed).
+      "name": "KaravanTrack (debug · iPhone simulator)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "debug",
+      "deviceId": "5D469A11-DD8E-4870-9EF3-7564A0D10928",
+      "console": "debugConsole"
+    },
+    {
+      "name": "KaravanTrack (profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "profile",
+      "console": "debugConsole"
+    },
+    {
+      "name": "KaravanTrack (release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "flutterMode": "release",
+      "console": "debugConsole"
+    },
+    {
+      // Attach to an already-running `flutter run` session.
+      "name": "KaravanTrack (attach)",
+      "request": "attach",
+      "type": "dart"
+    }
+  ]
+}

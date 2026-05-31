@@ -11,6 +11,7 @@ import '../models/tracking_point.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/background_service.dart';
+import '../services/debug_service.dart';
 import '../services/first_run_service.dart';
 import '../services/locale_service.dart';
 import '../services/notification_service.dart';
@@ -362,6 +363,10 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<String?> telegramSignIn({required String idToken, String role = 'carrier'}) async {
+    final log = DebugService.talker;
+    log.info(
+      '[TG][store] telegramSignIn() start · idToken=${idToken.length} chars role=$role',
+    );
     isLoading = true;
     notifyListeners();
     try {
@@ -370,15 +375,20 @@ class AppStore extends ChangeNotifier {
         role: role,
       );
       if (result['success'] == true) {
+        log.info('[TG][store] backend accepted token — loading profile & loads');
         isLoggedIn = true;
         await _loadProfile();
         await fetchLoads();
         NotificationService.instance.initialize().catchError((_) {});
         notifyListeners();
+        log.info('[TG][store] telegramSignIn() success · isLoggedIn=true');
         return null;
       }
-      return result['message'] as String? ?? 'Telegram Sign In error';
-    } catch (e) {
+      final message = result['message'] as String? ?? 'Telegram Sign In error';
+      log.warning('[TG][store] backend rejected token: $message');
+      return message;
+    } catch (e, st) {
+      log.error('[TG][store] telegramSignIn() threw', e, st);
       return 'Network error: $e';
     } finally {
       isLoading = false;

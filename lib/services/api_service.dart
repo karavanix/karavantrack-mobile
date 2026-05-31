@@ -204,23 +204,55 @@ class ApiService {
     required String idToken,
     String? role,
   }) async {
+    final log = DebugService.talker;
     final body = <String, dynamic>{'id_token': idToken};
     if (role != null && role.isNotEmpty) body['role'] = role;
 
-    final response = await _client.post(
-      Uri.parse(_url('/auth/telegram')),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(body),
+    log.info(
+      '[TG][api] POST /auth/telegram · id_token=${idToken.length} chars role=$role',
     );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      await setTokens(
-        access: data['access_token'] as String,
-        refresh: data['refresh_token'] as String,
+
+    try {
+      final response = await _client.post(
+        Uri.parse(_url('/auth/telegram')),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
       );
-      return {'success': true, 'data': data, 'isNewUser': data['is_new_user'] ?? false};
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final access = data['access_token'] as String?;
+        final refresh = data['refresh_token'] as String?;
+        if (access == null || refresh == null) {
+          log.error(
+            '[TG][api] HTTP 200 but tokens missing in body: ${response.body}',
+          );
+          return {
+            'success': false,
+            'message': 'Auth succeeded but server returned no tokens',
+          };
+        }
+        await setTokens(access: access, refresh: refresh);
+        log.info(
+          '[TG][api] sign-in OK · isNewUser=${data['is_new_user'] ?? false}',
+        );
+        return {
+          'success': true,
+          'data': data,
+          'isNewUser': data['is_new_user'] ?? false,
+        };
+      }
+
+      final message = _parseError(response);
+      log.error(
+        '[TG][api] sign-in failed · HTTP ${response.statusCode} – $message '
+        '· body=${response.body}',
+      );
+      return {'success': false, 'message': message};
+    } catch (e, st) {
+      log.error('[TG][api] /auth/telegram request threw', e, st);
+      rethrow;
     }
-    return {'success': false, 'message': _parseError(response)};
   }
 
   /// POST /auth/logout

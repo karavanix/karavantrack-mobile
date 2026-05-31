@@ -163,8 +163,6 @@ class AppColors {
   static Color get success => _darkSuccess;
   static Color get warning => _darkWarning;
   static Color get statusDroppedOff => _statusDroppedOff;
-
-  static Object? of(BuildContext context) {}
 }
 
 // ─── Theme data ─────────────────────────────────────────────────────────────

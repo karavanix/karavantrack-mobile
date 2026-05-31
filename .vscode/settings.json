@@ -1,4 +1,9 @@
 {
   "java.configuration.updateBuildConfiguration": "automatic",
-  "cmake.ignoreCMakeListsMissing": true
+  "cmake.ignoreCMakeListsMissing": true,
+
+  // Save a file (Cmd+S) to trigger Hot Reload automatically while debugging.
+  "dart.flutterHotReloadOnSave": "manual",
+  // Expand getters in the debug variables/watch views.
+  "dart.evaluateGettersInDebugViews": true
 }
