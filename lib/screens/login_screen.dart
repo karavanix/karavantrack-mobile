@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 import '../services/debug_service.dart';
 import '../services/telegram_auth_service.dart';
 
@@ -119,15 +120,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Brand block
+                          // Brand block — triple-tap to open debug log viewer
                           Center(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: Image.asset(
-                                'assets/icon/icon.png',
-                                width: 72,
-                                height: 72,
-                                fit: BoxFit.cover,
+                            child: GestureDetector(
+                              onLongPress: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => TalkerScreen(
+                                      talker: DebugService.talker,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(18),
+                                child: Image.asset(
+                                  'assets/icon/icon.png',
+                                  width: 72,
+                                  height: 72,
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
                           ),
