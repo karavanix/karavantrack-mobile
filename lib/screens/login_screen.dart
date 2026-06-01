@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../store/app_store.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
@@ -461,9 +463,12 @@ class _LanguagePill extends StatelessWidget {
   }
 }
 
-// ─── Terms & privacy line (inert text until URLs are wired) ─────────────────
+// ─── Terms & privacy line ────────────────────────────────────────────────────
 
 class _TermsLine extends StatelessWidget {
+  static final _privacyUri = Uri.parse('https://app.yool.live/privacy-policy');
+  static final _termsUri = Uri.parse('https://app.yool.live/terms-of-service');
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
@@ -483,9 +488,19 @@ class _TermsLine extends StatelessWidget {
           ),
           children: [
             TextSpan(text: '${t.tr('byCreatingAccount')} '),
-            TextSpan(text: t.tr('termsOfService'), style: linkStyle),
+            TextSpan(
+              text: t.tr('termsOfService'),
+              style: linkStyle,
+              recognizer: TapGestureRecognizer()
+                ..onTap = () => launchUrl(_termsUri, mode: LaunchMode.externalApplication),
+            ),
             TextSpan(text: ' ${t.tr('and')} '),
-            TextSpan(text: t.tr('privacyPolicy'), style: linkStyle),
+            TextSpan(
+              text: t.tr('privacyPolicy'),
+              style: linkStyle,
+              recognizer: TapGestureRecognizer()
+                ..onTap = () => launchUrl(_privacyUri, mode: LaunchMode.externalApplication),
+            ),
             const TextSpan(text: '.'),
           ],
         ),

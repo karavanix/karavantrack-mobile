@@ -10,7 +10,7 @@
 	</array>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:app3555230600-login.tg.dev</string>
+		<string>applinks:app3555230600-login.tg.dev?mode=developer</string>
 		<string>webcredentials:app3555230600-login.tg.dev</string>
 	</array>
 </dict>
