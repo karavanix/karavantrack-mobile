@@ -396,6 +396,37 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  /// Called by TelegramAuthService when the native redirect delivers code+state.
+  /// Works for both warm-resume and cold-start (process-death) scenarios.
+  Future<void> telegramSignInWithCode({
+    required String code,
+    required String state,
+  }) async {
+    final log = DebugService.talker;
+    log.info('[TG][store] telegramSignInWithCode() start · state=$state');
+    isLoading = true;
+    notifyListeners();
+    try {
+      final result = await _api.telegramCallback(code: code, state: state);
+      if (result['success'] == true) {
+        log.info('[TG][store] backend accepted code — loading profile & loads');
+        isLoggedIn = true;
+        await _loadProfile();
+        await fetchLoads();
+        NotificationService.instance.initialize().catchError((_) {});
+        notifyListeners();
+        log.info('[TG][store] telegramSignInWithCode() success');
+      } else {
+        log.warning('[TG][store] backend rejected code: ${result['message']}');
+      }
+    } catch (e, st) {
+      log.error('[TG][store] telegramSignInWithCode() threw', e, st);
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     _locationTimer?.cancel();
     _locationTimer = null;

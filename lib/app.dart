@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/app_theme.dart';
 import 'services/gps_service.dart';
+import 'services/telegram_auth_service.dart';
 import 'services/location_permission_service.dart';
 import 'services/notification_service.dart';
 import 'store/app_store.dart';
@@ -54,6 +55,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   void initState() {
     super.initState();
     _store = widget.store ?? AppStore();
+    TelegramAuthService.init(_store);
     _store.addListener(_onStoreChanged);
     WidgetsBinding.instance.addObserver(this);
     _initializeApp();

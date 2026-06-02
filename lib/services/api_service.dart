@@ -255,6 +255,55 @@ class ApiService {
     }
   }
 
+  /// POST /auth/pkce — obtain state + code_challenge from backend.
+  Future<Map<String, dynamic>> requestPkce() async {
+    final log = DebugService.talker;
+    log.info('[TG][api] POST /auth/pkce');
+    final response = await _client.post(
+      Uri.parse(_url('/auth/pkce')),
+      headers: {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    log.error('[TG][api] /auth/pkce failed · HTTP ${response.statusCode} · ${response.body}');
+    throw Exception('PKCE request failed: ${response.statusCode}');
+  }
+
+  /// POST /auth/telegram/callback — exchange code+state for session tokens.
+  Future<Map<String, dynamic>> telegramCallback({
+    required String code,
+    required String state,
+  }) async {
+    final log = DebugService.talker;
+    log.info('[TG][api] POST /auth/telegram/callback · state=$state');
+    try {
+      final response = await _client.post(
+        Uri.parse(_url('/auth/telegram/callback')),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'code': code, 'state': state}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final access  = data['access_token']  as String?;
+        final refresh = data['refresh_token'] as String?;
+        if (access == null || refresh == null) {
+          log.error('[TG][api] HTTP 200 but tokens missing: ${response.body}');
+          return {'success': false, 'message': 'Auth succeeded but server returned no tokens'};
+        }
+        await setTokens(access: access, refresh: refresh);
+        log.info('[TG][api] callback OK · isNewUser=${data['is_new_user'] ?? false}');
+        return {'success': true, 'data': data, 'isNewUser': data['is_new_user'] ?? false};
+      }
+      final message = _parseError(response);
+      log.error('[TG][api] callback failed · HTTP ${response.statusCode} – $message');
+      return {'success': false, 'message': message};
+    } catch (e, st) {
+      log.error('[TG][api] /auth/telegram/callback threw', e, st);
+      rethrow;
+    }
+  }
+
   /// POST /auth/logout
   Future<void> logout() async {
     try {

@@ -3,37 +3,74 @@ import UIKit
 
 class SceneDelegate: FlutterSceneDelegate {
 
-  override func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-    NSLog("[TelegramAuth][SceneDelegate] scene:continue: activityType=%@", userActivity.activityType)
-    super.scene(scene, continue: userActivity)
+    private var pendingCode: String?
+    private var pendingState: String?
 
-    guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
-          let url = userActivity.webpageURL
-    else {
-      NSLog("[TelegramAuth][SceneDelegate] skipped: not a web browsing activity or no URL")
-      return
-    }
-
-    NSLog("[TelegramAuth][SceneDelegate] universal link received: %@", url.absoluteString)
-
-    guard url.host?.hasSuffix(".tg.dev") == true else {
-      NSLog("[TelegramAuth][SceneDelegate] skipped: host is not *.tg.dev")
-      return
-    }
-
-    guard let controller = window?.rootViewController as? FlutterViewController else {
-      NSLog("[TelegramAuth][SceneDelegate] ERROR: rootViewController is not FlutterViewController")
-      return
-    }
-
-    NSLog("[TelegramAuth][SceneDelegate] forwarding to telegram_login plugin via handleUrl")
-    FlutterMethodChannel(name: "telegram_login", binaryMessenger: controller.binaryMessenger)
-      .invokeMethod("handleUrl", arguments: ["url": url.absoluteString]) { result in
-        if let error = result as? FlutterError {
-          NSLog("[TelegramAuth][SceneDelegate] handleUrl error: %@ – %@", error.code, error.message ?? "")
-        } else {
-          NSLog("[TelegramAuth][SceneDelegate] handleUrl success: %@", String(describing: result))
+    // Cold-start: app launched by a universal link (redirect URI in connectionOptions).
+    override func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        if let url = connectionOptions.userActivities
+            .first(where: { $0.activityType == NSUserActivityTypeBrowsingWeb })?
+            .webpageURL,
+           url.host?.hasSuffix(".tg.dev") == true {
+            extractAndQueue(url: url)
         }
-      }
-  }
+        super.scene(scene, willConnectTo: session, options: connectionOptions)
+    }
+
+    // Warm-resume: universal link fires while the app is in memory.
+    override func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        super.scene(scene, continue: userActivity)
+        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+              let url = userActivity.webpageURL,
+              url.host?.hasSuffix(".tg.dev") == true
+        else { return }
+        if !deliver(url: url) { extractAndQueue(url: url) }
+    }
+
+    // Drain the queue once the scene is active (Flutter engine is ready).
+    override func sceneDidBecomeActive(_ scene: UIScene) {
+        super.sceneDidBecomeActive(scene)
+        if let code = pendingCode, let state = pendingState {
+            if deliverParams(code: code, state: state) {
+                pendingCode = nil
+                pendingState = nil
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func extractAndQueue(url: URL) {
+        guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let code  = comps.queryItems?.first(where: { $0.name == "code"  })?.value,
+              let state = comps.queryItems?.first(where: { $0.name == "state" })?.value
+        else { return }
+        pendingCode  = code
+        pendingState = state
+    }
+
+    @discardableResult
+    private func deliver(url: URL) -> Bool {
+        guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let code  = comps.queryItems?.first(where: { $0.name == "code"  })?.value,
+              let state = comps.queryItems?.first(where: { $0.name == "state" })?.value
+        else { return false }
+        return deliverParams(code: code, state: state)
+    }
+
+    @discardableResult
+    private func deliverParams(code: String, state: String) -> Bool {
+        guard let controller = window?.rootViewController as? FlutterViewController else {
+            return false
+        }
+        FlutterMethodChannel(
+            name: "yool.live.app/telegram_auth",
+            binaryMessenger: controller.binaryMessenger
+        ).invokeMethod("onTelegramCallback", arguments: ["code": code, "state": state])
+        return true
+    }
 }

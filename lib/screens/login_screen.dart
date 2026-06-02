@@ -76,25 +76,10 @@ class _LoginScreenState extends State<LoginScreen> {
     final log = DebugService.talker;
     log.info('[TG][ui] "Continue with Telegram" tapped');
     try {
-      final idToken = await TelegramAuthService.authenticate();
-      if (idToken == null) {
-        log.info('[TG][ui] flow ended without idToken (cancelled)');
-        return; // user cancelled
-      }
-      if (!mounted) {
-        log.warning('[TG][ui] widget unmounted after authenticate() — aborting');
-        return;
-      }
-      log.info('[TG][ui] idToken received — calling store.telegramSignIn()');
-      final error = await widget.store.telegramSignIn(idToken: idToken);
-      if (error != null) {
-        log.error('[TG][ui] sign-in failed: $error');
-        if (mounted) _showError(error);
-      } else {
-        log.info('[TG][ui] sign-in completed successfully');
-      }
+      await TelegramAuthService.startAuth();
+      // Auth completes asynchronously via MethodChannel → store.telegramSignInWithCode.
     } catch (e, st) {
-      log.error('[TG][ui] _telegramSignIn() threw', e, st);
+      log.error('[TG][ui] startAuth() threw', e, st);
       if (mounted) _showError('Telegram Sign In failed: $e');
     }
   }
