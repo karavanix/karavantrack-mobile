@@ -274,14 +274,22 @@ class ApiService {
   Future<Map<String, dynamic>> telegramCallback({
     required String code,
     required String state,
+    required String redirectUri,
+    String role = 'carrier',
   }) async {
     final log = DebugService.talker;
-    log.info('[TG][api] POST /auth/telegram/callback · state=$state');
+    final body = jsonEncode({
+      'code': code,
+      'state': state,
+      'redirect_uri': redirectUri,
+      'role': role,
+    });
+    log.info('[TG][api] POST /auth/telegram/callback · body=$body');
     try {
       final response = await _client.post(
         Uri.parse(_url('/auth/telegram/callback')),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'code': code, 'state': state}),
+        body: body,
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;

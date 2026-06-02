@@ -8,6 +8,7 @@ import 'debug_service.dart';
 const String _clientId           = '8966637225';
 const String _iosRedirectUri     = 'https://app3555230600-login.tg.dev';
 const String _androidRedirectUri = 'https://app1451611780-login.tg.dev/tglogin';
+// const String _androidRedirectUri = 'https://app3297224938-login.tg.dev/tglogin';
 
 const _channel = MethodChannel('yool.live.app/telegram_auth');
 final _log = DebugService.talker;
@@ -29,7 +30,8 @@ class TelegramAuthService {
     final code  = args['code']  as String;
     final state = args['state'] as String;
     _log.info('[TG] onTelegramCallback received · code=${code.length} chars state=$state');
-    await _store?.telegramSignInWithCode(code: code, state: state);
+    final redirectUri = Platform.isIOS ? _iosRedirectUri : _androidRedirectUri;
+    await _store?.telegramSignInWithCode(code: code, state: state, redirectUri: redirectUri);
   }
 
   /// Requests PKCE params from the backend, then opens the Telegram OAuth URL

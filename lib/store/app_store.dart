@@ -401,13 +401,18 @@ class AppStore extends ChangeNotifier {
   Future<void> telegramSignInWithCode({
     required String code,
     required String state,
+    required String redirectUri,
   }) async {
     final log = DebugService.talker;
     log.info('[TG][store] telegramSignInWithCode() start · state=$state');
     isLoading = true;
     notifyListeners();
     try {
-      final result = await _api.telegramCallback(code: code, state: state);
+      final result = await _api.telegramCallback(
+        code: code,
+        state: state,
+        redirectUri: redirectUri,
+      );
       if (result['success'] == true) {
         log.info('[TG][store] backend accepted code — loading profile & loads');
         isLoggedIn = true;
