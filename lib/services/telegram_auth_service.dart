@@ -8,9 +8,7 @@ import '../store/app_store.dart';
 import 'debug_service.dart';
 
 const String _clientId           = '8966637225';
-const String _iosRedirectUri     = 'https://app3555230600-login.tg.dev';
-const String _androidRedirectUri = 'https://app1451611780-login.tg.dev/tglogin';
-// const String _androidRedirectUri = 'https://app3297224938-login.tg.dev/tglogin';
+const String _redirectUri = 'https://api.yool.live/api/v1/auth/telegram/callback';
 
 const _channel = MethodChannel('yool.live.app/telegram_auth');
 final _log = DebugService.talker;
@@ -32,8 +30,7 @@ class TelegramAuthService {
     final code  = args['code']  as String;
     final state = args['state'] as String;
     _log.info('[TG] onTelegramCallback received · code=${code.length} chars state=$state');
-    final redirectUri = Platform.isIOS ? _iosRedirectUri : _androidRedirectUri;
-    await _store?.telegramSignInWithCode(code: code, state: state, redirectUri: redirectUri);
+    await _store?.telegramSignInWithCode(code: code, state: state, redirectUri: _redirectUri);
   }
 
   /// Requests PKCE params from the backend, then opens the Telegram OAuth URL.
@@ -41,43 +38,33 @@ class TelegramAuthService {
   /// Otherwise falls back to an in-app browser (Chrome Custom Tab / SFSafariVC).
   /// The auth result arrives asynchronously through the MethodChannel handler above.
   static Future<void> startAuth() async {
-    final redirectUri = Platform.isIOS ? _iosRedirectUri : _androidRedirectUri;
-    _log.info('[TG] startAuth() · redirectUri=$redirectUri');
+    _log.info('[TG] startAuth() · redirectUri=$_redirectUri');
 
     final pkce = await ApiService.instance.requestPkce();
     final state     = pkce['state']          as String;
     final challenge = pkce['code_challenge'] as String;
     _log.info('[TG] PKCE received · state=$state');
 
-    // On Android we deliberately skip the tg:// cross-app shortcut. When
-    // Telegram is installed, it opens the https redirect_uri inside its own
-    // in-app webview, which never fires a system VIEW intent — so the verified
-    // App Link is never triggered and control never returns to the app (the
-    // user is left stranded inside Telegram). Going straight to the Custom Tab
-    // web flow lets the verified App Link break out and reopen the app. See
-    // https://github.com/tdlib/telegram-bot-api/issues/681 and #299.
-    if (Platform.isIOS) {
-      // Try to get a tg:// deeplink that opens Telegram directly (if installed).
-      final crossAppUri = await _fetchCrossAppUri(
-        state: state,
-        challenge: challenge,
-        redirectUri: redirectUri,
-      );
+    // Try tg:// crossapp on both platforms. With a custom URL scheme Telegram's
+    // native app fires a direct OS intent/openURL call, so the app is reopened
+    // correctly on Android too (unlike HTTPS App Links which Telegram swallowed
+    // in its in-app webview).
+    final crossAppUri = await _fetchCrossAppUri(
+      state: state,
+      challenge: challenge,
+      redirectUri: _redirectUri,
+    );
 
-      if (crossAppUri != null && await canLaunchUrl(crossAppUri)) {
-        _log.info('[TG] launching cross-app URI — Telegram is installed');
-        await launchUrl(crossAppUri, mode: LaunchMode.externalApplication);
-        return;
-      }
+    if (crossAppUri != null && await canLaunchUrl(crossAppUri)) {
+      _log.info('[TG] launching cross-app URI — Telegram is installed');
+      await launchUrl(crossAppUri, mode: LaunchMode.externalApplication);
+      return;
     }
 
-    // Web flow via in-app browser (Chrome Custom Tab / SFSafariVC). On Android
-    // this is the primary path. The verified App Link breaks out of the Custom
-    // Tab and reopens the app; the redirect is delivered via onNewIntent /
-    // onFlutterUiDisplayed.
+    // Web fallback via in-app browser (Chrome Custom Tab / SFSafariVC).
     final webUri = Uri.https('oauth.telegram.org', '/auth', {
       'client_id':             _clientId,
-      'redirect_uri':          redirectUri,
+      'redirect_uri':          _redirectUri,
       'response_type':         'code',
       'scope':                 'openid profile phone',
       'state':                 state,

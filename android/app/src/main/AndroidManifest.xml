@@ -33,15 +33,12 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Telegram OAuth 2.0 redirect URI (App Link) -->
-            <intent-filter android:autoVerify="true">
+            <!-- Telegram OAuth 2.0 redirect URI (custom URL scheme) -->
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="https"
-                    android:host="app1451611780-login.tg.dev"
-                    android:path="/tglogin" />
+                <data android:scheme="yoollive" android:host="tglogin" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

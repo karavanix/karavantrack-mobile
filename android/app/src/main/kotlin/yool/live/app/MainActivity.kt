@@ -71,7 +71,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun isTelegramRedirect(uri: Uri): Boolean =
-        uri.host == "app1451611780-login.tg.dev"
+        uri.scheme == "yoollive" && uri.host == "tglogin"
 
     private fun deliverToFlutter(uri: Uri): Boolean {
         val engine = flutterEngine ?: return false

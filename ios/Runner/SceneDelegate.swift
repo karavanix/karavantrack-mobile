@@ -6,28 +6,23 @@ class SceneDelegate: FlutterSceneDelegate {
     private var pendingCode: String?
     private var pendingState: String?
 
-    // Cold-start: app launched by a universal link (redirect URI in connectionOptions).
+    // Cold-start: app launched by the custom URL scheme.
     override func scene(
         _ scene: UIScene,
         willConnectTo session: UISceneSession,
         options connectionOptions: UIScene.ConnectionOptions
     ) {
-        if let url = connectionOptions.userActivities
-            .first(where: { $0.activityType == NSUserActivityTypeBrowsingWeb })?
-            .webpageURL,
-           url.host?.hasSuffix(".tg.dev") == true {
+        if let url = connectionOptions.urlContexts.first?.url,
+           isTelegramRedirect(url) {
             extractAndQueue(url: url)
         }
         super.scene(scene, willConnectTo: session, options: connectionOptions)
     }
 
-    // Warm-resume: universal link fires while the app is in memory.
-    override func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
-        super.scene(scene, continue: userActivity)
-        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
-              let url = userActivity.webpageURL,
-              url.host?.hasSuffix(".tg.dev") == true
-        else { return }
+    // Warm-resume: custom URL scheme fired while app is in memory.
+    override func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        super.scene(scene, openURLContexts: URLContexts)
+        guard let url = URLContexts.first?.url, isTelegramRedirect(url) else { return }
         if !deliver(url: url) { extractAndQueue(url: url) }
     }
 
@@ -43,6 +38,10 @@ class SceneDelegate: FlutterSceneDelegate {
     }
 
     // MARK: - Helpers
+
+    private func isTelegramRedirect(_ url: URL) -> Bool {
+        url.scheme == "yoollive" && url.host == "tglogin"
+    }
 
     private func extractAndQueue(url: URL) {
         guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
