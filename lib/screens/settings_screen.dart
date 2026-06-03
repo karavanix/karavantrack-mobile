@@ -412,7 +412,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
                 child: Center(
                   child: Text(
-                    'v1.2.5+32',
+                    'v1.2.6+33',
                     style: TextStyle(
                       fontSize: 12,
                       color: colors.mutedForeground,
