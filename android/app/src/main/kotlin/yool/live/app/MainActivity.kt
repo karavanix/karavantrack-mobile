@@ -30,27 +30,43 @@ class MainActivity : FlutterActivity() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        // Cold-start: app launched directly by the redirect App Link.
+        // Cold-start: app launched by the redirect App Link.
+        // Do NOT call deliverToFlutter() here. flutterEngine is non-null after
+        // super.onCreate(), but the Dart isolate is still initialising —
+        // TelegramAuthService.init() has not registered the MethodChannel
+        // handler yet, so invokeMethod() would silently drop the message.
+        // Delivery is deferred to onFlutterUiDisplayed(), which fires only
+        // after the first Flutter frame (and therefore after initState has
+        // registered the handler).
         intent?.data?.takeIf { isTelegramRedirect(it) }?.let { uri ->
-            if (!deliverToFlutter(uri)) pendingTelegramUri = uri
+            pendingTelegramUri = uri
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // Warm-resume: app was already alive, onNewIntent fires.
+        // Warm-resume: Dart handler already registered, try immediate delivery.
         intent.data?.takeIf { isTelegramRedirect(it) }?.let { uri ->
             if (!deliverToFlutter(uri)) pendingTelegramUri = uri
         }
     }
 
-    // Earliest reliable point that flutterEngine is non-null AND the Dart
-    // MethodCallHandler registered in TelegramAuthService.init() is live.
+    // Fired after the first Flutter frame — Dart handler is guaranteed live.
+    // Drains any URI that was stashed during cold-start onCreate().
     override fun onFlutterUiDisplayed() {
         super.onFlutterUiDisplayed()
         pendingTelegramUri?.let { uri ->
             pendingTelegramUri = null
             deliverToFlutter(uri)
+        }
+    }
+
+    // Safety-net for the warm-resume case: if onNewIntent ran but
+    // deliverToFlutter failed (engine briefly null), retry here.
+    override fun onResume() {
+        super.onResume()
+        pendingTelegramUri?.let { uri ->
+            if (deliverToFlutter(uri)) pendingTelegramUri = null
         }
     }
 
