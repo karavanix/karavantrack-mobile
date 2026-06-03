@@ -23,6 +23,7 @@ class TelegramAuthService {
 
   static Future<void> _handleCallback(MethodCall call) async {
     if (call.method != 'onTelegramCallback') return;
+    await closeInAppWebView();
     final args  = Map<String, dynamic>.from(call.arguments as Map);
     final code  = args['code']  as String;
     final state = args['state'] as String;
