@@ -1,7 +1,4 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'api_service.dart';
 import '../store/app_store.dart';
@@ -33,36 +30,12 @@ class TelegramAuthService {
     await _store?.telegramSignInWithCode(code: code, state: state, redirectUri: _redirectUri);
   }
 
-  /// Requests PKCE params from the backend, then opens the Telegram OAuth URL.
-  /// If Telegram is installed, opens it directly via a tg:// deeplink.
-  /// Otherwise falls back to an in-app browser (Chrome Custom Tab / SFSafariVC).
-  /// The auth result arrives asynchronously through the MethodChannel handler above.
   static Future<void> startAuth() async {
-    _log.info('[TG] startAuth() · redirectUri=$_redirectUri');
-
-    final pkce = await ApiService.instance.requestPkce();
+    final pkce      = await ApiService.instance.requestPkce();
     final state     = pkce['state']          as String;
     final challenge = pkce['code_challenge'] as String;
-    _log.info('[TG] PKCE received · state=$state');
 
-    // Try tg:// crossapp on both platforms. With a custom URL scheme Telegram's
-    // native app fires a direct OS intent/openURL call, so the app is reopened
-    // correctly on Android too (unlike HTTPS App Links which Telegram swallowed
-    // in its in-app webview).
-    final crossAppUri = await _fetchCrossAppUri(
-      state: state,
-      challenge: challenge,
-      redirectUri: _redirectUri,
-    );
-
-    if (crossAppUri != null && await canLaunchUrl(crossAppUri)) {
-      _log.info('[TG] launching cross-app URI — Telegram is installed');
-      await launchUrl(crossAppUri, mode: LaunchMode.externalApplication);
-      return;
-    }
-
-    // Web fallback via in-app browser (Chrome Custom Tab / SFSafariVC).
-    final webUri = Uri.https('oauth.telegram.org', '/auth', {
+    final uri = Uri.https('oauth.telegram.org', '/auth', {
       'client_id':             _clientId,
       'redirect_uri':          _redirectUri,
       'response_type':         'code',
@@ -71,41 +44,6 @@ class TelegramAuthService {
       'code_challenge':        challenge,
       'code_challenge_method': 'S256',
     });
-    _log.info('[TG] launching web auth URI (in-app browser)');
-    await launchUrl(webUri, mode: LaunchMode.inAppBrowserView);
-  }
-
-  // Calls Telegram's /crossapp endpoint, which returns {"url": "tg://..."} when
-  // the request is valid. The tg:// URL opens the Telegram app directly to the
-  // consent screen — no browser hop required.
-  static Future<Uri?> _fetchCrossAppUri({
-    required String state,
-    required String challenge,
-    required String redirectUri,
-  }) async {
-    try {
-      final sdkParam = Platform.isIOS ? 'ios_sdk' : 'android_sdk';
-      final uri = Uri.https('oauth.telegram.org', '/crossapp', {
-        'client_id':             _clientId,
-        'response_type':         'code',
-        'redirect_uri':          redirectUri,
-        'scope':                 'openid profile phone',
-        'state':                 state,
-        'code_challenge':        challenge,
-        'code_challenge_method': 'S256',
-        sdkParam:                '1',
-      });
-      final response = await http.get(uri);
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final url = data['url'] as String?;
-        _log.info('[TG] /crossapp → url=$url');
-        return url != null ? Uri.tryParse(url) : null;
-      }
-      _log.warning('[TG] /crossapp HTTP ${response.statusCode}');
-    } catch (e) {
-      _log.warning('[TG] /crossapp failed: $e');
-    }
-    return null;
+    await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
   }
 }
