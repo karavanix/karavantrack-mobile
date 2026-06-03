@@ -49,21 +49,32 @@ class TelegramAuthService {
     final challenge = pkce['code_challenge'] as String;
     _log.info('[TG] PKCE received · state=$state');
 
-    // Try to get a tg:// deeplink that opens Telegram directly (if installed).
-    final crossAppUri = await _fetchCrossAppUri(
-      state: state,
-      challenge: challenge,
-      redirectUri: redirectUri,
-    );
+    // On Android we deliberately skip the tg:// cross-app shortcut. When
+    // Telegram is installed, it opens the https redirect_uri inside its own
+    // in-app webview, which never fires a system VIEW intent — so the verified
+    // App Link is never triggered and control never returns to the app (the
+    // user is left stranded inside Telegram). Going straight to the Custom Tab
+    // web flow lets the verified App Link break out and reopen the app. See
+    // https://github.com/tdlib/telegram-bot-api/issues/681 and #299.
+    if (Platform.isIOS) {
+      // Try to get a tg:// deeplink that opens Telegram directly (if installed).
+      final crossAppUri = await _fetchCrossAppUri(
+        state: state,
+        challenge: challenge,
+        redirectUri: redirectUri,
+      );
 
-    if (crossAppUri != null && await canLaunchUrl(crossAppUri)) {
-      _log.info('[TG] launching cross-app URI — Telegram is installed');
-      await launchUrl(crossAppUri, mode: LaunchMode.externalApplication);
-      return;
+      if (crossAppUri != null && await canLaunchUrl(crossAppUri)) {
+        _log.info('[TG] launching cross-app URI — Telegram is installed');
+        await launchUrl(crossAppUri, mode: LaunchMode.externalApplication);
+        return;
+      }
     }
 
-    // Fallback: in-app browser (Chrome Custom Tab / SFSafariVC).
-    // Keeps the process alive; the redirect is delivered via onNewIntent.
+    // Web flow via in-app browser (Chrome Custom Tab / SFSafariVC). On Android
+    // this is the primary path. The verified App Link breaks out of the Custom
+    // Tab and reopens the app; the redirect is delivered via onNewIntent /
+    // onFlutterUiDisplayed.
     final webUri = Uri.https('oauth.telegram.org', '/auth', {
       'client_id':             _clientId,
       'redirect_uri':          redirectUri,
