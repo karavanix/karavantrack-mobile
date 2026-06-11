@@ -335,6 +335,18 @@ class ApiService {
     return null;
   }
 
+  /// DELETE /users/me — permanently deletes the account.
+  Future<bool> deleteAccount() async {
+    final response = await _authed(
+      () => _client.delete(Uri.parse(_url('/users/me')), headers: _authHeaders),
+    );
+    if (response.statusCode == 200) {
+      await clearTokens();
+      return true;
+    }
+    return false;
+  }
+
   /// PUT /users/me
   Future<bool> updateMe({String? firstName, String? lastName}) async {
     final body = <String, dynamic>{};

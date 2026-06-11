@@ -218,6 +218,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _deleteAccount() async {
+    final t = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(t.tr('deleteAccountConfirmTitle')),
+          content: Text(t.tr('deleteAccountConfirmMessage')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(t.tr('cancel')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.of(context).destructive,
+              ),
+              child: Text(t.tr('deleteAccountButton')),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+    final error = await store.deleteAccount();
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.tr('deleteAccountError'))),
+      );
+    }
+  }
+
   Future<void> _contactSupport() async {
     final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -364,12 +398,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // ─── Account section ───────────────────────────────────
               _SectionLabel(label: t.tr('account')),
               Card(
-                child: _SettingRow(
-                  icon: Icons.mail_outline_rounded,
-                  label: t.tr('contactSupport'),
-                  subtitle: _supportEmail,
-                  trailingIcon: Icons.copy_rounded,
-                  onTap: _contactSupport,
+                child: Column(
+                  children: [
+                    _SettingRow(
+                      icon: Icons.mail_outline_rounded,
+                      label: t.tr('contactSupport'),
+                      subtitle: _supportEmail,
+                      trailingIcon: Icons.copy_rounded,
+                      onTap: _contactSupport,
+                    ),
+                    Divider(height: 1, color: colors.border),
+                    _SettingRow(
+                      icon: Icons.delete_outline_rounded,
+                      label: t.tr('deleteAccount'),
+                      onTap: _deleteAccount,
+                      iconColor: colors.destructive,
+                      labelColor: colors.destructive,
+                    ),
+                  ],
                 ),
               ),
 
@@ -464,6 +510,8 @@ class _SettingRow extends StatelessWidget {
     this.value,
     this.subtitle,
     this.trailingIcon = Icons.chevron_right_rounded,
+    this.iconColor,
+    this.labelColor,
   }) : assert(value == null || subtitle == null,
             'Use either value (inline, right-aligned) or subtitle (stacked)');
 
@@ -478,6 +526,8 @@ class _SettingRow extends StatelessWidget {
   final String? subtitle;
 
   final IconData trailingIcon;
+  final Color? iconColor;
+  final Color? labelColor;
 
   @override
   Widget build(BuildContext context) {
@@ -488,11 +538,15 @@ class _SettingRow extends StatelessWidget {
       fontWeight: FontWeight.w500,
     );
 
+    final effectiveLabelStyle = labelColor != null
+        ? labelStyle.copyWith(color: labelColor)
+        : labelStyle;
+
     final Widget content = subtitle != null
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: labelStyle),
+              Text(label, style: effectiveLabelStyle),
               const SizedBox(height: 2),
               Text(
                 subtitle!,
@@ -504,7 +558,7 @@ class _SettingRow extends StatelessWidget {
           )
         : Row(
             children: [
-              Expanded(child: Text(label, style: labelStyle)),
+              Expanded(child: Text(label, style: effectiveLabelStyle)),
               const SizedBox(width: 12),
               Text(
                 value ?? '',
@@ -524,7 +578,7 @@ class _SettingRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 20, color: colors.primary),
+            Icon(icon, size: 20, color: iconColor ?? colors.primary),
             const SizedBox(width: 12),
             Expanded(child: content),
             const SizedBox(width: 8),

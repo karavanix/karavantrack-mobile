@@ -82,13 +82,13 @@ class LocationPermissionService {
     return await isAlwaysGranted();
   }
 
-  /// Shows a non-dismissible full-screen dialog that explains why "Always"
-  /// location is required and provides a button to open app settings.
+  /// Shows a dismissible dialog that explains why "Always" location is needed
+  /// and provides a button to open app settings.
   /// Automatically dismisses when the permission is granted upon resume.
   static Future<void> _showAlwaysPermissionDialog(BuildContext context) async {
     await showDialog<void>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (dialogContext) {
         return _AlwaysPermissionDialog();
       },
@@ -151,8 +151,7 @@ class _AlwaysPermissionDialogState extends State<_AlwaysPermissionDialog>
     final theme = Theme.of(context);
 
     return PopScope(
-      // Prevent back-button dismissal
-      canPop: false,
+      canPop: true,
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         icon: Container(
@@ -229,6 +228,10 @@ class _AlwaysPermissionDialogState extends State<_AlwaysPermissionDialog>
           ],
         ),
         actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(t.tr('maybeLater')),
+          ),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(

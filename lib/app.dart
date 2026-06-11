@@ -43,6 +43,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   Timer? _gpsPoller;
   bool _gpsEnabled = false;
   bool _gpsDialogShown = false;
+  bool _gpsDialogUserDismissed = false;
   bool _streamActive = false;
 
   // ─── Always-location permission ────────────────────────────────────────────
@@ -163,59 +164,63 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
       if (!isEnabled && _gpsEnabled) {
         // GPS just turned OFF
         _gpsEnabled = false;
+        _gpsDialogUserDismissed = false;
         _syncGpsStream();
         if (mounted && !_gpsDialogShown) _showGpsDialog();
       } else if (isEnabled && !_gpsEnabled) {
         // GPS just turned ON
         _gpsEnabled = true;
+        _gpsDialogUserDismissed = false;
         _syncGpsStream();
         // Auto-dismiss any open dialog
         if (_gpsDialogShown) _navigatorKey.currentState?.pop();
-      } else if (!isEnabled && !_gpsDialogShown) {
-        // GPS still off and dialog was dismissed — re-show it
+      } else if (!isEnabled && !_gpsDialogShown && !_gpsDialogUserDismissed) {
+        // GPS still off and user hasn't manually dismissed — re-show once
         if (mounted) _showGpsDialog();
       }
     });
   }
 
-  /// Shows a non-dismissible dialog prompting the user to enable GPS.
+  /// Shows a dismissible dialog prompting the user to enable GPS.
   /// Sets [_gpsDialogShown] = true while open so we don't stack duplicates.
   void _showGpsDialog() {
     final navContext = _navigatorKey.currentContext;
     if (navContext == null) return;
     _gpsDialogShown = true;
 
-    showDialog<void>(
+    showDialog<bool>(
       context: navContext,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (ctx) {
         final t = AppLocalizations.of(ctx);
         return PopScope(
-          // Prevent back-button dismissal
-          canPop: false,
+          canPop: true,
           child: AlertDialog(
             icon: const Icon(Icons.gps_off_rounded, size: 48),
             iconColor: Colors.orange,
             title: Text(t.tr('gpsOffTitle')),
             content: Text(t.tr('gpsOffMessage')),
             actions: [
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.location_on),
-                  label: Text(t.tr('turnOnGps')),
-                  onPressed: () async {
-                    await Geolocator.openLocationSettings();
-                  },
-                ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(t.tr('maybeLater')),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.location_on),
+                label: Text(t.tr('turnOnGps')),
+                onPressed: () async {
+                  await Geolocator.openLocationSettings();
+                },
               ),
             ],
           ),
         );
       },
-    ).whenComplete(() {
-      // Track that dialog closed (user navigated away via settings or back)
+    ).then((userDismissed) {
       _gpsDialogShown = false;
+      if (userDismissed == true) {
+        _gpsDialogUserDismissed = true;
+      }
     });
   }
 

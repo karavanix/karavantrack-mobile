@@ -432,6 +432,22 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  Future<String?> deleteAccount() async {
+    isLoading = true;
+    notifyListeners();
+    try {
+      final success = await _api.deleteAccount();
+      if (!success) return 'Failed to delete account';
+      await logout();
+      return null;
+    } catch (e) {
+      return 'Network error: $e';
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> logout() async {
     _locationTimer?.cancel();
     _locationTimer = null;

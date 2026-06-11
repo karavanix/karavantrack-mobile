@@ -154,6 +154,13 @@ class AppLocalizations extends InheritedWidget {
     'selectLanguage': 'Select language',
     'selectTheme': 'Select theme',
     'cancel': 'Cancel',
+    'maybeLater': 'Maybe Later',
+    'deleteAccount': 'Delete Account',
+    'deleteAccountConfirmTitle': 'Delete Account?',
+    'deleteAccountConfirmMessage':
+        'This action is permanent and cannot be undone. All your data will be deleted.',
+    'deleteAccountButton': 'Delete Account',
+    'deleteAccountError': 'Failed to delete account. Please try again.',
 
     // Bottom nav
     'loads': 'Loads',
@@ -339,6 +346,13 @@ class AppLocalizations extends InheritedWidget {
     'selectLanguage': 'Выберите язык',
     'selectTheme': 'Выберите тему',
     'cancel': 'Отмена',
+    'maybeLater': 'Позже',
+    'deleteAccount': 'Удалить аккаунт',
+    'deleteAccountConfirmTitle': 'Удалить аккаунт?',
+    'deleteAccountConfirmMessage':
+        'Это действие необратимо. Все ваши данные будут удалены.',
+    'deleteAccountButton': 'Удалить',
+    'deleteAccountError': 'Не удалось удалить аккаунт. Попробуйте ещё раз.',
 
     // Bottom nav
     'loads': 'Грузы',
@@ -524,6 +538,13 @@ class AppLocalizations extends InheritedWidget {
     'selectLanguage': 'Tilni tanlang',
     'selectTheme': 'Mavzuni tanlang',
     'cancel': 'Bekor qilish',
+    'maybeLater': 'Keyinroq',
+    'deleteAccount': "Akkauntni o'chirish",
+    'deleteAccountConfirmTitle': "Akkauntni o'chirasizmi?",
+    'deleteAccountConfirmMessage':
+        "Bu amalni qaytarib bo'lmaydi. Barcha ma'lumotlaringiz o'chiriladi.",
+    'deleteAccountButton': "O'chirish",
+    'deleteAccountError': "Akkauntni o'chirib bo'lmadi. Qayta urinib ko'ring.",
 
     // Bottom nav
     'loads': 'Yuklar',
