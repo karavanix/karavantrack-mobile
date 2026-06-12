@@ -158,6 +158,31 @@ class AppStore extends ChangeNotifier {
   bool networkOnline = true;
   Position? _lastGpsPosition;
 
+  // ─── GPS / location-permission blocking state ─────────────────────────────
+  // Mirrored from the root widget (app.dart) so the Loads screen can react and
+  // show its frosted blocking overlay. Default true → no overlay flash before
+  // the first GPS/permission check completes.
+  bool _gpsEnabled = true;
+  bool _locationPermissionGranted = true;
+
+  bool get gpsEnabled => _gpsEnabled;
+  bool get locationPermissionGranted => _locationPermissionGranted;
+
+  /// True when the Loads content should be obscured by the blocking overlay.
+  bool get loadsBlocked => !_gpsEnabled || !_locationPermissionGranted;
+
+  void setGpsEnabled(bool value) {
+    if (_gpsEnabled == value) return;
+    _gpsEnabled = value;
+    notifyListeners();
+  }
+
+  void setLocationPermissionGranted(bool value) {
+    if (_locationPermissionGranted == value) return;
+    _locationPermissionGranted = value;
+    notifyListeners();
+  }
+
   // Per-load tracking state (keyed by load id)
   final Map<String, TrackingPoint?> _lastLocalPoints = {};
   final Map<String, TrackingPoint?> _lastDeliveredPoints = {};

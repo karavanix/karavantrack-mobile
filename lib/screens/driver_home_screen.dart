@@ -3,6 +3,7 @@ import '../models/load.dart';
 import '../store/app_store.dart';
 import '../widgets/floating_dock.dart';
 import '../widgets/internet_status_banner.dart';
+import '../widgets/loads_blocked_overlay.dart';
 import '../widgets/load_status_chip.dart';
 import '../widgets/status_pill.dart';
 import '../widgets/status_stepper.dart';
@@ -119,9 +120,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               child: InternetStatusBanner(store: store),
             ),
           ),
-          body: RefreshIndicator(
-            onRefresh: () async => store.refreshAll(),
-            child: CustomScrollView(
+          body: Stack(
+            children: [
+              RefreshIndicator(
+                onRefresh: () async => store.refreshAll(),
+                child: CustomScrollView(
               controller: _scrollCtrl,
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
@@ -199,7 +202,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                   ),
                 ],
               ],
-            ),
+                ),
+              ),
+              if (store.loadsBlocked)
+                LoadsBlockedOverlay(gpsOff: !store.gpsEnabled),
+            ],
           ),
         );
       },

@@ -42,12 +42,9 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   // ─── GPS polling ───────────────────────────────────────────────────────────
   Timer? _gpsPoller;
   bool _gpsEnabled = false;
-  bool _gpsDialogShown = false;
-  bool _gpsDialogUserDismissed = false;
   bool _streamActive = false;
 
   // ─── Always-location permission ────────────────────────────────────────────
-  bool _alwaysPermissionDialogShown = false;
   bool _permissionGranted = false;
 
   void _handlePosition(Position position) => _store.onGpsPosition(position);
@@ -73,6 +70,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
       // User may have changed permission in Settings — re-read from OS.
       LocationPermissionService.isAlwaysGranted().then((granted) {
         _permissionGranted = granted;
+        _store.setLocationPermissionGranted(granted);
         _syncGpsStream();
         _checkAlwaysLocationPermission();
       });
@@ -93,6 +91,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
 
     // Initial GPS check
     _gpsEnabled = await Geolocator.isLocationServiceEnabled();
+    _store.setGpsEnabled(_gpsEnabled);
 
     await Future.wait([
       _store.init(),
@@ -105,6 +104,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
 
     // Populate permission cache, then sync stream (activeLoad is now known too).
     _permissionGranted = await LocationPermissionService.isAlwaysGranted();
+    _store.setLocationPermissionGranted(_permissionGranted);
     _syncGpsStream();
 
     // Check for "Always" location permission after splash is gone
@@ -134,93 +134,37 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     }
   }
 
-  /// Checks whether the "Always" location permission is granted.
-  /// If not, shows a blocking dialog forcing the user to go to settings.
+  /// Ensures the "Always" location permission is granted, running the native
+  /// OS prompts if needed. The result is mirrored into the store, which drives
+  /// the Loads-screen blocking overlay (no dialog is shown here).
   /// Returns true once Always is confirmed.
   Future<bool> _checkAlwaysLocationPermission() async {
-    if (_alwaysPermissionDialogShown) return false;
-
     final isAlways = await LocationPermissionService.isAlwaysGranted();
-    if (isAlways) return true;
+    if (isAlways) {
+      _permissionGranted = true;
+      _store.setLocationPermissionGranted(true);
+      return true;
+    }
 
-    final navContext = _navigatorKey.currentContext;
-    if (navContext == null || !mounted || !navContext.mounted) return false;
-
-    _alwaysPermissionDialogShown = true;
-    await LocationPermissionService.enforceAlwaysPermission(navContext);
-    _alwaysPermissionDialogShown = false;
+    await LocationPermissionService.enforceAlwaysPermission();
 
     _permissionGranted = await LocationPermissionService.isAlwaysGranted();
+    _store.setLocationPermissionGranted(_permissionGranted);
     return _permissionGranted;
   }
 
-  /// Polls GPS enabled status every 2 seconds.
-  /// Shows dialog when GPS is off, auto-dismisses and restarts stream when on.
+  /// Polls GPS enabled status every 2 seconds, mirroring the state into the
+  /// store (which drives the Loads-screen blocking overlay) and re-syncing the
+  /// position stream on each on/off transition.
   void _startGpsPolling() {
     _gpsPoller = Timer.periodic(const Duration(seconds: 2), (_) async {
       if (!mounted) return;
       final isEnabled = await Geolocator.isLocationServiceEnabled();
+      if (isEnabled == _gpsEnabled) return;
 
-      if (!isEnabled && _gpsEnabled) {
-        // GPS just turned OFF
-        _gpsEnabled = false;
-        _gpsDialogUserDismissed = false;
-        _syncGpsStream();
-        if (mounted && !_gpsDialogShown) _showGpsDialog();
-      } else if (isEnabled && !_gpsEnabled) {
-        // GPS just turned ON
-        _gpsEnabled = true;
-        _gpsDialogUserDismissed = false;
-        _syncGpsStream();
-        // Auto-dismiss any open dialog
-        if (_gpsDialogShown) _navigatorKey.currentState?.pop();
-      } else if (!isEnabled && !_gpsDialogShown && !_gpsDialogUserDismissed) {
-        // GPS still off and user hasn't manually dismissed — re-show once
-        if (mounted) _showGpsDialog();
-      }
-    });
-  }
-
-  /// Shows a dismissible dialog prompting the user to enable GPS.
-  /// Sets [_gpsDialogShown] = true while open so we don't stack duplicates.
-  void _showGpsDialog() {
-    final navContext = _navigatorKey.currentContext;
-    if (navContext == null) return;
-    _gpsDialogShown = true;
-
-    showDialog<bool>(
-      context: navContext,
-      barrierDismissible: true,
-      builder: (ctx) {
-        final t = AppLocalizations.of(ctx);
-        return PopScope(
-          canPop: true,
-          child: AlertDialog(
-            icon: const Icon(Icons.gps_off_rounded, size: 48),
-            iconColor: Colors.orange,
-            title: Text(t.tr('gpsOffTitle')),
-            content: Text(t.tr('gpsOffMessage')),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: Text(t.tr('maybeLater')),
-              ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.location_on),
-                label: Text(t.tr('turnOnGps')),
-                onPressed: () async {
-                  await Geolocator.openLocationSettings();
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    ).then((userDismissed) {
-      _gpsDialogShown = false;
-      if (userDismissed == true) {
-        _gpsDialogUserDismissed = true;
-      }
+      _gpsEnabled = isEnabled;
+      _store.setGpsEnabled(isEnabled);
+      _syncGpsStream();
     });
   }
 
