@@ -284,11 +284,29 @@ public class TelegramLoginPlugin: NSObject, FlutterPlugin {
     // through standard UIApplicationDelegate mechanisms. They forward URLs to
     // the Telegram SDK for OAuth callback processing.
 
+    /// Only `yoollive://tglogin` callbacks belong to this plugin — matches the
+    /// same scheme/host check used by `SceneDelegate.swift` / `MainActivity.kt`
+    /// for the app's own Telegram redirect handling.
+    ///
+    /// This app registers other URL consumers on the same custom scheme
+    /// (e.g. `yoollive://invite/{token}` deep links handled by `app_links`)
+    /// and Universal Links (`https://app.yool.live/...`). Flutter's plugin
+    /// registry calls every registered `FlutterApplicationLifeCycleDelegate`
+    /// for each incoming URL — unconditionally forwarding here and returning
+    /// `true` would hand every one of those unrelated URLs to
+    /// `TelegramLogin.handle(url)` and risk this plugin being treated as
+    /// "the" handler ahead of the plugin that actually needs it. Only intercept
+    /// URLs that are plausibly a Telegram redirect.
+    private func isTelegramRedirect(_ url: URL) -> Bool {
+        url.scheme == "yoollive" && url.host == "tglogin"
+    }
+
     public func application(
         _ application: UIApplication,
         open url: URL,
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
+        guard isTelegramRedirect(url) else { return false }
         DispatchQueue.main.async { [weak self] in
             self?.forwardUrl(url)
         }
@@ -297,28 +315,27 @@ public class TelegramLoginPlugin: NSObject, FlutterPlugin {
 
     /// Handles universal link continuations for Web-based OAuth callbacks.
     ///
-    /// Called when the app is opened via a universal link (e.g., HTTPS URL
-    /// associated with the app's domain). Checks if the activity is a web
-    /// browsing activity and forwards the URL to the Telegram SDK.
+    /// This app's Telegram sign-in flow does not use Universal Links — the
+    /// backend redirect (`_redirectUri` in `telegram_auth_service.dart`) hands
+    /// off to the app exclusively via the `yoollive://tglogin` custom scheme
+    /// (see `SceneDelegate.swift`), and `TelegramLogin.swift`'s own
+    /// `ASWebAuthenticationSession.Callback.https(...)` path (iOS 17.4+) is
+    /// self-contained and does not route through this delegate method either.
+    /// So there is nothing for this plugin to legitimately handle here, and
+    /// unconditionally returning `true` would swallow real Universal Links
+    /// (e.g. `https://app.yool.live/invite/{token}`) meant for `app_links`.
+    /// Always decline so other registered plugins get a chance to handle it.
     ///
     /// - Parameters:
     ///   - application: The shared UIApplication instance
     ///   - userActivity: The NSUserActivity containing the web URL
     ///   - restorationHandler: Unused restoration handler
-    /// - Returns: `true` if the URL was handled (was a web browsing URL),
-    ///   `false` otherwise
+    /// - Returns: `false`, always — see above.
     public func application(
         _ application: UIApplication,
         continue userActivity: NSUserActivity,
         restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
     ) -> Bool {
-        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
-              let url = userActivity.webpageURL else {
-            return false
-        }
-        DispatchQueue.main.async { [weak self] in
-            self?.forwardUrl(url)
-        }
-        return true
+        return false
     }
 }

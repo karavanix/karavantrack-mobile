@@ -60,6 +60,24 @@ class AppStore extends ChangeNotifier {
   bool isLoading = false;
   String? pendingVerificationEmail;
 
+  // ─── Driver-invite-by-link ──────────────────────────────────────────────
+  // Set when the app is opened via an `https://app.yool.live/invite/{token}`
+  // or `yoollive://invite/{token}` deep link (see app.dart). Mirrors the
+  // pendingVerificationEmail pattern: a nullable field gating what
+  // _HomeRouter shows, cleared once the invite flow is resolved.
+  String? pendingInviteToken;
+
+  void setPendingInvite(String token) {
+    pendingInviteToken = token;
+    notifyListeners();
+  }
+
+  void clearPendingInvite() {
+    if (pendingInviteToken == null) return;
+    pendingInviteToken = null;
+    notifyListeners();
+  }
+
   // Per-load loading state — keyed by load id.
   final Set<String> _loadingIds = {};
 
@@ -677,6 +695,45 @@ class AppStore extends ChangeNotifier {
     } catch (_) {}
     _loadingIds.remove(loadId);
     notifyListeners();
+  }
+
+  /// Accepts a load offered via a driver-invite link (see AcceptInviteScreen).
+  /// The backend performs the same load-assignment side effects as a normal
+  /// `POST /loads/{id}/accept`, so this mirrors [acceptLoad]'s post-success
+  /// client-side bookkeeping (refresh loads, background tracking) rather than
+  /// duplicating it inside the screen, since those are private timers/state.
+  ///
+  /// Returns the raw API result map — `{'success': true, 'loadId': ...}` or
+  /// `{'success': false, 'message': ..., 'statusCode': ...}` — so the caller
+  /// can surface the backend's 409 message for already accepted/expired/
+  /// revoked invites.
+  Future<Map<String, dynamic>> acceptInvite(String token) async {
+    isLoading = true;
+    notifyListeners();
+    try {
+      final result = await _api.acceptInvite(token);
+      if (result['success'] == true) {
+        clearPendingInvite();
+        await fetchLoads();
+        final loadId = result['loadId'] as String?;
+        if (profile != null && _api.accessToken != null) {
+          await setBgActiveLoad(
+            loadId: _activeLoad?.id ?? loadId ?? '',
+            carrierId: profile!.id,
+            token: _api.accessToken!,
+          );
+          await startBackgroundService();
+        }
+        _sendCurrentLocation();
+        _startLocationTimer();
+      }
+      return result;
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> beginPickup(String loadId) async {

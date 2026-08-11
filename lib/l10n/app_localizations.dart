@@ -222,6 +222,21 @@ class AppLocalizations extends InheritedWidget {
     'stepTransit': 'Transit',
     'stepDropoff': 'Dropoff',
     'stepDelivered': 'Delivered',
+
+    // Driver invite (accept-by-link)
+    'invite': 'Invite',
+    'inviteLoadOffer': 'You have been offered a load',
+    'inviteCompany': 'Company',
+    'inviteLoginAndAccept': 'Log in & accept',
+    'inviteNotFound': 'This invite link is invalid or no longer exists',
+    'inviteStatusAccepted': 'This invite has already been accepted',
+    'inviteStatusExpired': 'This invite has expired',
+    'inviteStatusRevoked': 'This invite has been revoked',
+    'inviteLoadError':
+        'Could not load invite details. Check your connection and try again',
+    'inviteAcceptError': 'Could not accept this load',
+    'inviteGoToApp': 'Go to app',
+    'tryAgain': 'Try again',
   };
 
   // ── Russian ────────────────────────────────────────────────────────────
@@ -414,6 +429,21 @@ class AppLocalizations extends InheritedWidget {
     'stepTransit': 'В пути',
     'stepDropoff': 'Разгрузка',
     'stepDelivered': 'Доставлен',
+
+    // Driver invite (accept-by-link)
+    'invite': 'Приглашение',
+    'inviteLoadOffer': 'Вам предложен груз',
+    'inviteCompany': 'Компания',
+    'inviteLoginAndAccept': 'Войти и принять',
+    'inviteNotFound': 'Ссылка-приглашение недействительна или больше не существует',
+    'inviteStatusAccepted': 'Это приглашение уже принято',
+    'inviteStatusExpired': 'Срок действия этого приглашения истёк',
+    'inviteStatusRevoked': 'Это приглашение отозвано',
+    'inviteLoadError':
+        'Не удалось загрузить приглашение. Проверьте соединение и попробуйте снова',
+    'inviteAcceptError': 'Не удалось принять этот груз',
+    'inviteGoToApp': 'Перейти в приложение',
+    'tryAgain': 'Повторить',
   };
 
   // ── Uzbek ──────────────────────────────────────────────────────────────
@@ -606,6 +636,21 @@ class AppLocalizations extends InheritedWidget {
     'stepTransit': 'Yo\'lda',
     'stepDropoff': 'Tushirish',
     'stepDelivered': 'Yetkazildi',
+
+    // Driver invite (accept-by-link)
+    'invite': 'Taklif',
+    'inviteLoadOffer': 'Sizga yuk taklif qilindi',
+    'inviteCompany': 'Kompaniya',
+    'inviteLoginAndAccept': 'Kirish va qabul qilish',
+    'inviteNotFound': 'Taklif havolasi yaroqsiz yoki mavjud emas',
+    'inviteStatusAccepted': 'Bu taklif allaqachon qabul qilingan',
+    'inviteStatusExpired': 'Bu taklifning muddati tugagan',
+    'inviteStatusRevoked': 'Bu taklif bekor qilingan',
+    'inviteLoadError':
+        "Taklif ma'lumotlarini yuklab bo'lmadi. Ulanishni tekshirib, qayta urinib ko'ring",
+    'inviteAcceptError': "Bu yukni qabul qilib bo'lmadi",
+    'inviteGoToApp': "Ilovaga o'tish",
+    'tryAgain': "Qayta urinish",
   };
 
   /// Language display names for the language picker.
