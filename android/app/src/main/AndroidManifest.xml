@@ -40,6 +40,22 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="yoollive" android:host="tglogin" />
             </intent-filter>
+            <!-- Driver invite deep link (custom scheme fallback) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="yoollive" android:host="invite" />
+            </intent-filter>
+            <!-- Driver invite / tracking Android App Links (requires assetlinks.json hosted at
+                 https://app.yool.live/.well-known/assetlinks.json, provisioned separately in the
+                 karavantrack-app repo) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="app.yool.live" android:pathPrefix="/invite" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

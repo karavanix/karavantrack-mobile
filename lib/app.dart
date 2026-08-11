@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:app_links/app_links.dart';
 
 import 'l10n/app_localizations.dart';
 import 'theme/app_theme.dart';
@@ -16,6 +17,7 @@ import 'screens/language_select_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/verify_email_screen.dart';
 import 'screens/profile_setup_screen.dart';
+import 'screens/accept_invite_screen.dart';
 import 'screens/main_shell.dart';
 
 /// Root widget — initializes GPS, store, and routes between auth states.
@@ -39,6 +41,11 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   // showDialog / Navigator.pop work correctly from timer callbacks.
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
+  // ─── Driver-invite deep links ───────────────────────────────────────────
+  // https://app.yool.live/invite/{token} and yoollive://invite/{token}.
+  final AppLinks _appLinks = AppLinks();
+  StreamSubscription<Uri>? _inviteLinkSub;
+
   // ─── GPS polling ───────────────────────────────────────────────────────────
   Timer? _gpsPoller;
   bool _gpsEnabled = false;
@@ -56,7 +63,44 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     TelegramAuthService.init(_store);
     _store.addListener(_onStoreChanged);
     WidgetsBinding.instance.addObserver(this);
+    _initDeepLinks();
     _initializeApp();
+  }
+
+  /// Wires up driver-invite deep-link handling once, mirroring the
+  /// foreground-FCM-message wiring in [_initializeApp] — a single global
+  /// stream subscription set up at app init. Handles both cold start
+  /// (`getInitialLink`) and warm-resume (`uriLinkStream`) cases; app_links
+  /// normalizes both the custom scheme (`yoollive://invite/{token}`) and the
+  /// HTTPS App/Universal Link (`https://app.yool.live/invite/{token}`) into
+  /// a plain [Uri], so both are handled the same way in [_handleIncomingLink].
+  void _initDeepLinks() {
+    _appLinks.getInitialLink().then((uri) {
+      if (uri != null) _handleIncomingLink(uri);
+    }).catchError((_) {});
+    _inviteLinkSub = _appLinks.uriLinkStream.listen(
+      _handleIncomingLink,
+      onError: (_) {},
+    );
+  }
+
+  /// Extracts `{token}` from an invite URI in either shape:
+  ///  - custom scheme `yoollive://invite/{token}` → host == 'invite',
+  ///    pathSegments == ['{token}']
+  ///  - HTTPS `https://app.yool.live/invite/{token}` → pathSegments ==
+  ///    ['invite', '{token}']
+  /// Any other URI (e.g. an unrelated link) is ignored.
+  void _handleIncomingLink(Uri uri) {
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    String? token;
+    if (uri.host == 'invite' && segments.isNotEmpty) {
+      token = segments.first;
+    } else if (segments.length >= 2 && segments[0] == 'invite') {
+      token = segments[1];
+    }
+    if (token != null && token.isNotEmpty) {
+      _store.setPendingInvite(token);
+    }
   }
 
   // Re-evaluate stream whenever store changes (load accepted, completed, logout).
@@ -173,6 +217,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     WidgetsBinding.instance.removeObserver(this);
     _store.removeListener(_onStoreChanged);
     _gpsPoller?.cancel();
+    _inviteLinkSub?.cancel();
     _store.dispose();
     _showSplash.dispose();
     _gps.stopPositionStream();
@@ -232,6 +277,17 @@ class _HomeRouter extends StatelessWidget {
       builder: (context, _) {
         if (showSplash.value) return const SplashScreen();
         if (store.pendingVerificationEmail != null) return VerifyEmailScreen(store: store);
+        // An incoming driver-invite link takes priority over the normal
+        // language/onboarding/login chain — tapping the link should land
+        // straight on the offer (which itself prompts to log in/register
+        // when needed), skipping the first-run screens. But if the account
+        // is already logged in, let it finish profile setup first (below)
+        // before showing the invite, rather than accepting a load with an
+        // incomplete profile.
+        if (store.pendingInviteToken != null &&
+            (!store.isLoggedIn || store.isProfileCompleted)) {
+          return AcceptInviteScreen(store: store, token: store.pendingInviteToken!);
+        }
         if (!store.isLoggedIn) {
           if (!store.seenLanguage) return LanguageSelectScreen(store: store);
           if (!store.seenOnboarding) return OnboardingScreen(store: store);

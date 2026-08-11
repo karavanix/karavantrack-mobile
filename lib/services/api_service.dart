@@ -545,6 +545,45 @@ class ApiService {
     return response.statusCode == 200;
   }
 
+  // ─── Invites (driver-invite-by-link) ───────────────────────────────────
+
+  /// GET /invites/{token} — PUBLIC, no auth required. Returns the invite
+  /// status + offered load summary, or null if the token is unknown (404)
+  /// or the request otherwise failed — matches the `getLoad`/`getMe` idiom
+  /// of returning null on any non-200 rather than throwing.
+  Future<Map<String, dynamic>?> getInvite(String token) async {
+    final response = await _client.get(
+      Uri.parse(_url('/invites/$token')),
+      headers: const {'Content-Type': 'application/json'},
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  /// POST /invites/{token}/accept — requires carrier auth.
+  /// Unlike `acceptLoad` (plain bool) this returns a result map so the
+  /// caller can surface the backend's 409 "already accepted/expired/revoked"
+  /// message, per the invite API contract.
+  Future<Map<String, dynamic>> acceptInvite(String token) async {
+    final response = await _authed(
+      () => _client.post(
+        Uri.parse(_url('/invites/$token/accept')),
+        headers: _authHeaders,
+      ),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return {'success': true, 'loadId': data['load_id'] as String?};
+    }
+    return {
+      'success': false,
+      'statusCode': response.statusCode,
+      'message': _parseError(response),
+    };
+  }
+
   // ─── Companies ──────────────────────────────────────────────────────────
 
   /// GET /carriers/companies/{id}
