@@ -10,6 +10,7 @@ import 'services/gps_service.dart';
 import 'services/telegram_auth_service.dart';
 import 'services/location_permission_service.dart';
 import 'services/notification_service.dart';
+import 'widgets/location_disclosure_dialog.dart';
 import 'store/app_store.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -178,9 +179,12 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     }
   }
 
-  /// Ensures the "Always" location permission is granted, running the native
-  /// OS prompts if needed. The result is mirrored into the store, which drives
-  /// the Loads-screen blocking overlay (no dialog is shown here).
+  /// Ensures the "Always" location permission is granted. When the OS prompt
+  /// would actually appear, first shows an in-app prominent disclosure
+  /// explaining the background location collection and requires the user to
+  /// explicitly consent (Google Play's Prominent Disclosure & Consent
+  /// Requirement) before triggering the native OS prompt. The result is
+  /// mirrored into the store, which drives the Loads-screen blocking overlay.
   /// Returns true once Always is confirmed.
   Future<bool> _checkAlwaysLocationPermission() async {
     final isAlways = await LocationPermissionService.isAlwaysGranted();
@@ -190,7 +194,14 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
       return true;
     }
 
-    await LocationPermissionService.enforceAlwaysPermission();
+    if (await LocationPermissionService.canPromptForAlways()) {
+      final ctx = _navigatorKey.currentContext;
+      final consented =
+          ctx != null && mounted && await LocationDisclosureDialog.show(ctx);
+      if (consented) {
+        await LocationPermissionService.enforceAlwaysPermission();
+      }
+    }
 
     _permissionGranted = await LocationPermissionService.isAlwaysGranted();
     _store.setLocationPermissionGranted(_permissionGranted);

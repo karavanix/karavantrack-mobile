@@ -215,6 +215,14 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationIosStep3': 'Choose "Always"',
     'openAppSettings': 'Open Settings',
 
+    // Prominent background-location disclosure (shown before the OS prompt)
+    'locationDisclosureTitle': 'Background Location Access',
+    'locationDisclosureBody':
+        'YoolLive collects precise location data in the background — even when the app is closed or you\'re not using it — so dispatchers can track your active load in real time and share accurate ETAs with shippers. Location is only collected while you have an active load assigned.',
+    'locationDisclosurePrivacyPrefix': 'Learn how your data is used in our',
+    'locationDisclosureAllow': 'Allow',
+    'locationDisclosureDecline': 'Not Now',
+
     // Stepper labels (short)
     'stepAccepted': 'Accepted',
     'stepPickup': 'Pickup',
@@ -422,6 +430,14 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationIosStep3': 'Выберите «Всегда»',
     'openAppSettings': 'Открыть настройки',
 
+    // Prominent background-location disclosure (shown before the OS prompt)
+    'locationDisclosureTitle': 'Доступ к геолокации в фоновом режиме',
+    'locationDisclosureBody':
+        'YoolLive собирает точные данные о местоположении в фоновом режиме — даже когда приложение закрыто или не используется, — чтобы диспетчеры могли отслеживать ваш текущий рейс в реальном времени и сообщать грузоотправителям точное время прибытия. Местоположение собирается только пока за вами закреплён активный рейс.',
+    'locationDisclosurePrivacyPrefix': 'Узнайте, как используются ваши данные, в нашей',
+    'locationDisclosureAllow': 'Разрешить',
+    'locationDisclosureDecline': 'Не сейчас',
+
     // Stepper labels (short)
     'stepAccepted': 'Принят',
     'stepPickup': 'Погрузка',
@@ -628,6 +644,14 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationIosStep2': '"Joylashuv" ni tanlang',
     'alwaysLocationIosStep3': '"Doim" ni tanlang',
     'openAppSettings': 'Sozlamalarni ochish',
+
+    // Prominent background-location disclosure (shown before the OS prompt)
+    'locationDisclosureTitle': 'Fonda joylashuvga kirish',
+    'locationDisclosureBody':
+        'YoolLive fonda ham — ilova yopiq yoki foydalanilmayotgan bo\'lsa ham — aniq joylashuv ma\'lumotlarini to\'playdi, shunda dispetcherlar sizning faol reysingizni real vaqt rejimida kuzatishlari va yuk yuboruvchilarga aniq yetib borish vaqtini bildirishlari mumkin. Joylashuv faqat sizga faol reys biriktirilgan vaqtda to\'planadi.',
+    'locationDisclosurePrivacyPrefix': 'Ma\'lumotlaringiz qanday ishlatilishini bizning',
+    'locationDisclosureAllow': 'Ruxsat berish',
+    'locationDisclosureDecline': 'Hozir emas',
 
     // Stepper labels (short)
     'stepAccepted': 'Qabul',

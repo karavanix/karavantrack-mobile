@@ -20,6 +20,17 @@ class LocationPermissionService {
     return permission == LocationPermission.always;
   }
 
+  /// Returns `true` when the OS will actually surface a permission prompt for
+  /// "Always" (i.e. permission is merely un-requested or "while in use").
+  /// `false` when the user has permanently denied it — at that point only the
+  /// system Settings screen can change it, so callers should skip straight to
+  /// that instead of showing a disclosure for a prompt that won't appear.
+  static Future<bool> canPromptForAlways() async {
+    final permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.denied ||
+        permission == LocationPermission.whileInUse;
+  }
+
   /// Checks the current location permission level. If it is not "always",
   /// attempts to acquire it via the OS prompts (iOS/Android).
   ///
