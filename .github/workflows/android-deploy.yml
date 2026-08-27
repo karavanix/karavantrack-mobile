@@ -47,3 +47,10 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
+          # Google Play now requires this app's edits to go through manual
+          # review (see the Prominent Disclosure policy issue) — the API
+          # rejects an auto-submit-for-review with "Changes cannot be sent
+          # for review automatically". Committing without changesNotSentForReview
+          # still uploads and publishes to the internal track; review submission
+          # then happens from the Play Console UI.
+          changesNotSentForReview: true
