@@ -34,6 +34,8 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
   bool _loading = true;
   bool _accepting = false;
   bool _wantsLogin = false;
+  bool _autoContinueAttempted = false;
+  bool _autoContinuing = false;
   Map<String, dynamic>? _invite;
 
   @override
@@ -51,6 +53,30 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
       result = null;
     }
     if (!mounted) return;
+
+    // Own already-accepted invite (e.g. reopening a stale link): skip the
+    // dead-end "already accepted" screen and continue straight to the load,
+    // the same way a fresh accept would. The accept endpoint is idempotent
+    // for the accepting carrier, so re-running it just re-confirms the
+    // assignment and drives the normal post-accept navigation. Only tried
+    // once per screen instance so a genuine failure falls back to the
+    // regular status screen instead of retrying forever.
+    final status = result?['status'] as String?;
+    final acceptedByMe = result?['accepted_by_me'] as bool? ?? false;
+    if (status == 'accepted' &&
+        acceptedByMe &&
+        widget.store.isLoggedIn &&
+        !_autoContinueAttempted) {
+      _autoContinueAttempted = true;
+      setState(() {
+        _invite = result;
+        _loading = false;
+        _autoContinuing = true;
+      });
+      await _handleAccept();
+      return;
+    }
+
     setState(() {
       _invite = result;
       _loading = false;
@@ -78,6 +104,7 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
     if (!mounted) return;
     setState(() => _accepting = false);
     if (result['success'] != true) {
+      setState(() => _autoContinuing = false);
       _showError(result['message'] as String? ?? t.tr('inviteAcceptError'));
       // The invite state may have changed underneath us (e.g. a 409 race
       // with someone else accepting it) — re-fetch to show the right status.
@@ -109,6 +136,13 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
             message: t.tr('inviteNotFound'),
             onRetry: _fetchInvite,
             onDismiss: _dismiss,
+          );
+        }
+
+        if (_autoContinuing) {
+          return Scaffold(
+            appBar: AppBar(title: Text(t.tr('invite'))),
+            body: const Center(child: CircularProgressIndicator()),
           );
         }
 

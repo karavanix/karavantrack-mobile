@@ -547,14 +547,18 @@ class ApiService {
 
   // ─── Invites (driver-invite-by-link) ───────────────────────────────────
 
-  /// GET /invites/{token} — PUBLIC, no auth required. Returns the invite
-  /// status + offered load summary, or null if the token is unknown (404)
-  /// or the request otherwise failed — matches the `getLoad`/`getMe` idiom
-  /// of returning null on any non-200 rather than throwing.
+  /// GET /invites/{token} — PUBLIC, no auth required, but sends the bearer
+  /// token when we have one so the backend can tell us whether *we* are the
+  /// one who already accepted it (`accepted_by_me`) — that's what lets the
+  /// screen route a driver revisiting their own accepted link straight to
+  /// the load instead of a dead end. Returns the invite status + offered
+  /// load summary, or null if the token is unknown (404) or the request
+  /// otherwise failed — matches the `getLoad`/`getMe` idiom of returning
+  /// null on any non-200 rather than throwing.
   Future<Map<String, dynamic>?> getInvite(String token) async {
     final response = await _client.get(
       Uri.parse(_url('/invites/$token')),
-      headers: const {'Content-Type': 'application/json'},
+      headers: _authHeaders,
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
