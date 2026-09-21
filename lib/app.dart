@@ -54,6 +54,11 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
 
   // ─── Always-location permission ────────────────────────────────────────────
   bool _permissionGranted = false;
+  // Tracks whether the user was already logged in + profile-complete on the
+  // previous store change, so we only trigger the permission flow on the
+  // transition INTO that state (i.e. right before the Loads screen becomes
+  // reachable) instead of on every store change.
+  bool _wasReadyForTracking = false;
 
   void _handlePosition(Position position) => _store.onGpsPosition(position);
 
@@ -105,8 +110,28 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   }
 
   // Re-evaluate stream whenever store changes (load accepted, completed, logout).
-  // Synchronous — no I/O, uses cached _permissionGranted.
-  void _onStoreChanged() => _syncGpsStream();
+  // Synchronous — no I/O, uses cached _permissionGranted. Also catches the
+  // moment the user first becomes eligible to reach the Loads screen (login +
+  // profile completed) and only then kicks off the location permission
+  // flow — see _readyForTracking for why this must not run any earlier.
+  void _onStoreChanged() {
+    _syncGpsStream();
+    final readyForTracking = _readyForTracking;
+    if (readyForTracking &&
+        !_wasReadyForTracking &&
+        (Platform.isAndroid || Platform.isIOS)) {
+      _checkAlwaysLocationPermission().then((_) => _syncGpsStream());
+    }
+    _wasReadyForTracking = readyForTracking;
+  }
+
+  // Google Play's Permissions & Prominent Disclosure policy requires location
+  // access to be requested in context, once the user is actually about to use
+  // a feature that needs it — not upfront during language/onboarding/login.
+  // The Loads screen (inside MainShell) is the first place location is used,
+  // and it only renders once the user is logged in with a completed profile,
+  // so that's the earliest point we're allowed to ask.
+  bool get _readyForTracking => _store.isLoggedIn && _store.isProfileCompleted;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
@@ -117,7 +142,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
         _permissionGranted = granted;
         _store.setLocationPermissionGranted(granted);
         _syncGpsStream();
-        _checkAlwaysLocationPermission();
+        if (_readyForTracking) _checkAlwaysLocationPermission();
       });
     }
   }
@@ -152,9 +177,15 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     _store.setLocationPermissionGranted(_permissionGranted);
     _syncGpsStream();
 
-    // Check for "Always" location permission after splash is gone
-    // (delayed so the navigator context is available), then re-sync stream.
-    if (Platform.isAndroid || Platform.isIOS) {
+    // Check for "Always" location permission after splash is gone (delayed so
+    // the navigator context is available), then re-sync stream — but only for
+    // a returning user who is already logged in with a completed profile,
+    // i.e. one who will land straight on the Loads screen. A fresh user still
+    // going through language/onboarding/login must NOT see this yet (see
+    // _readyForTracking); for them _onStoreChanged() picks it up once they
+    // reach that state.
+    _wasReadyForTracking = _readyForTracking;
+    if (_wasReadyForTracking && (Platform.isAndroid || Platform.isIOS)) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await _checkAlwaysLocationPermission();
         _syncGpsStream();
