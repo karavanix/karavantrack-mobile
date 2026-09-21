@@ -496,6 +496,7 @@ class AppStore extends ChangeNotifier {
     _locationTimer = null;
     await stopBackgroundService();
     await clearBgActiveLoad();
+    await clearBgPendingPoints();
     await NotificationService.instance.deactivate();
     await _api.logout();
     // Clear cached profile

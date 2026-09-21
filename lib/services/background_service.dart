@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter_background_service/flutter_background_service.dart';
@@ -9,13 +10,21 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import 'api_service.dart' show kAuthTokenKey, kRefreshTokenKey;
+
 // ─── SharedPreferences keys (shared between UI and background isolate) ─────
 const String kBgActiveLoadId = 'bg_active_load_id';
 const String kBgCarrierId = 'bg_carrier_id';
 const String kBgAuthToken = 'bg_auth_token';
+// JSON-encoded list of points that couldn't be sent (offline, server error)
+// and are waiting to be flushed via the /location/batch endpoint.
+const String kBgPendingPoints = 'bg_pending_points';
 
 const String _kBaseUrl = 'https://api.yool.live';
 const String _kBasePath = '/api/v1';
+
+// Mirrors MaxLoadLocationBatchSize server-side (register_load_location_batch.go).
+const int _kMaxQueuedPoints = 500;
 
 // ─── Service configuration ──────────────────────────────────────────────────
 
@@ -54,6 +63,40 @@ const Duration _kStationaryInterval = Duration(minutes: 10);
 
 DateTime? _lastSentAt;
 
+// ─── Client-side jitter filtering ───────────────────────────────────────────
+// Conservative on purpose — these only reject fixes bad enough to be noise,
+// not real maneuvers. Tune against real driving data before tightening.
+
+// Urban GPS error alone runs 20-50m; a fix worse than that is more likely
+// noise than a real position, so it's dropped rather than recorded.
+const double _kMaxAcceptableAccuracyM = 50.0;
+
+// While parked, a new point is only kept if it moved further than GPS noise
+// could plausibly account for — floor of 15m, or 2x the fix's own reported
+// accuracy, whichever is larger. This is what turns a standing truck into a
+// single point on the map instead of a tangle of jitter.
+const double _kParkedHysteresisFloorM = 15.0;
+const double _kParkedHysteresisAccuracyMultiplier = 2.0;
+
+/// The last point actually kept (queued), used as the hysteresis anchor
+/// while parked. Deliberately NOT updated on a point that gets filtered out,
+/// so slow drift across many rejected fixes still gets caught once it
+/// exceeds the threshold relative to the last real position.
+Position? _lastKeptPosition;
+
+double _distanceMeters(Position a, Position b) {
+  const earthRadiusM = 6371000.0;
+  double toRad(double deg) => deg * math.pi / 180;
+  final dLat = toRad(b.latitude - a.latitude);
+  final dLng = toRad(b.longitude - a.longitude);
+  final h = math.sin(dLat / 2) * math.sin(dLat / 2) +
+      math.cos(toRad(a.latitude)) *
+          math.cos(toRad(b.latitude)) *
+          math.sin(dLng / 2) *
+          math.sin(dLng / 2);
+  return earthRadiusM * 2 * math.atan2(math.sqrt(h), math.sqrt(1 - h));
+}
+
 // ─── Live mode state (WebSocket fast mode) ──────────────────────────────────
 WebSocketChannel? _wsChannel;
 Timer? _liveTrackingWatchdog;
@@ -91,11 +134,72 @@ void onStart(ServiceInstance service) async {
   await _tick(service);
 }
 
+// ─── Token refresh (background isolate has no shared memory with the UI
+// isolate's ApiService, so it keeps its own minimal refresh logic) ──────────
+//
+// Refresh tokens are NOT single-use server-side — RefreshTokenUsecase only
+// checks a revocation cursor, not that the token hasn't been redeemed before
+// — so this isolate and the UI isolate can both refresh independently
+// without racing each other over the same refresh token.
+
+/// Decodes a JWT's `exp` claim without verifying the signature. Safe here:
+/// the token was already issued by our own server: this is only used to
+/// decide *when* to proactively refresh, not to trust the token's claims.
+DateTime? _jwtExpiry(String token) {
+  try {
+    final parts = token.split('.');
+    if (parts.length != 3) return null;
+    final payload = utf8.decode(base64Url.decode(base64Url.normalize(parts[1])));
+    final exp = (jsonDecode(payload) as Map<String, dynamic>)['exp'] as int?;
+    if (exp == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Redeems the refresh token and writes the new pair back to the keys both
+/// isolates read, so the UI isolate picks up the refreshed tokens too.
+Future<String?> _refreshAccessToken(SharedPreferences prefs) async {
+  final refreshToken = prefs.getString(kRefreshTokenKey);
+  if (refreshToken == null || refreshToken.isEmpty) return null;
+  try {
+    final response = await http.post(
+      Uri.parse('$_kBaseUrl$_kBasePath/auth/refresh'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'refresh_token': refreshToken}),
+    );
+    if (response.statusCode != 200) return null;
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final access = data['access_token'] as String?;
+    final refresh = data['refresh_token'] as String?;
+    if (access == null || refresh == null) return null;
+    await prefs.setString(kAuthTokenKey, access);
+    await prefs.setString(kRefreshTokenKey, refresh);
+    await prefs.setString(kBgAuthToken, access);
+    return access;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Returns a token good for at least 30 more seconds, refreshing first if
+/// the stored one is missing, expired, or close to expiring.
+Future<String?> _ensureFreshToken(SharedPreferences prefs) async {
+  final token = prefs.getString(kBgAuthToken);
+  if (token == null || token.isEmpty) return null;
+  final expiry = _jwtExpiry(token);
+  final staleSoon = expiry == null ||
+      expiry.isBefore(DateTime.now().toUtc().add(const Duration(seconds: 30)));
+  if (!staleSoon) return token;
+  return await _refreshAccessToken(prefs) ?? token;
+}
+
 // ─── WebSocket client ────────────────────────────────────────────────────────
 
 Future<void> _connectWs() async {
   final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString(kBgAuthToken) ?? '';
+  final token = await _ensureFreshToken(prefs) ?? '';
   if (token.isEmpty) return;
 
   final wsUri = Uri.parse(
@@ -185,7 +289,12 @@ Future<void> _sendPositionViaWs(Position pos) async {
   } catch (_) {}
 }
 
-// ─── Normal REST tick (unchanged) ───────────────────────────────────────────
+// ─── Normal REST tick — queue-and-flush ─────────────────────────────────────
+// Every fix is written to a local queue before it's ever sent, and each tick
+// tries to flush that queue via the batch endpoint. A point that fails to
+// send (no signal, server hiccup) simply stays queued and goes out with the
+// next successful flush, with its original recorded_at — instead of being
+// dropped, which is what happened before.
 
 Future<void> _tick(ServiceInstance service) async {
   // Update notification timestamp
@@ -200,11 +309,18 @@ Future<void> _tick(ServiceInstance service) async {
   // Read context written by UI isolate via SharedPreferences
   final prefs = await SharedPreferences.getInstance();
   final loadId = prefs.getString(kBgActiveLoadId);
-  final carrierId = prefs.getString(kBgCarrierId);
-  final token = prefs.getString(kBgAuthToken);
 
   if (loadId == null || loadId.isEmpty) return;
+
+  final token = await _ensureFreshToken(prefs);
   if (token == null || token.isEmpty) return;
+
+  // Always attempt to drain whatever is already queued, regardless of the
+  // movement interval below — this is what lets a backlog built up while
+  // offline empty out as soon as connectivity returns. Queued points carry
+  // their own load_id (see _enqueuePoint), so this also flushes anything
+  // stranded from a load that has since completed and is no longer active.
+  await _flushQueue(prefs: prefs, token: token);
 
   // Verify GPS is available
   try {
@@ -223,6 +339,10 @@ Future<void> _tick(ServiceInstance service) async {
       ),
     );
 
+    // A fix this imprecise is more likely noise than a real position —
+    // skip it rather than record it and retry next tick.
+    if (pos.accuracy > _kMaxAcceptableAccuracyM) return;
+
     final isMoving = (pos.speed) > _kMovingThresholdMps;
     final requiredInterval = isMoving ? _kMovingInterval : _kStationaryInterval;
     final now = DateTime.now();
@@ -232,43 +352,157 @@ Future<void> _tick(ServiceInstance service) async {
       return;
     }
 
-    await _postLocation(
-      token: token,
-      loadId: loadId,
-      carrierId: carrierId ?? '',
-      pos: pos,
-    );
-    _lastSentAt = now;
+    if (!isMoving && _lastKeptPosition != null) {
+      final hysteresisThreshold = math.max(
+        _kParkedHysteresisFloorM,
+        _kParkedHysteresisAccuracyMultiplier * pos.accuracy,
+      );
+      if (_distanceMeters(_lastKeptPosition!, pos) < hysteresisThreshold) {
+        // Parked, and within GPS noise of the last kept point — nothing to
+        // report. Still advance the gate so the next check waits out the
+        // full stationary interval instead of re-sampling every minute.
+        _lastSentAt = now;
+        return;
+      }
+    }
+
+    await _enqueuePoint(prefs, loadId, pos);
+    _lastKeptPosition = pos;
+    // Only advance the interval gate on a successful flush — while offline
+    // this means the tick timer (every 1 min) keeps sampling and queueing
+    // instead of waiting out the full 2-10 min interval, which is the
+    // point: capture as much of the real path as the queue cap allows.
+    final flushed = await _flushQueue(prefs: prefs, token: token);
+    if (flushed) _lastSentAt = now;
   } catch (_) {
     // Silently skip — will retry on next tick
   }
 }
 
-Future<void> _postLocation({
-  required String token,
-  required String loadId,
-  required String carrierId,
-  required Position pos,
-}) async {
+List<Map<String, dynamic>> _readQueue(SharedPreferences prefs) {
+  final raw = prefs.getString(kBgPendingPoints);
+  if (raw == null || raw.isEmpty) return [];
   try {
-    await http.post(
-      Uri.parse('$_kBaseUrl$_kBasePath/loads/$loadId/location'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'load_id': loadId,
-        'carrier_id': carrierId,
-        'lat': pos.latitude,
-        'lng': pos.longitude,
-        'speed_mps': pos.speed,
-        'accuracy_m': pos.accuracy,
-        'heading_deg': pos.heading,
-        'recorded_at': DateTime.now().toUtc().toIso8601String(),
-      }),
+    return (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+  } catch (_) {
+    return [];
+  }
+}
+
+Future<void> _enqueuePoint(
+  SharedPreferences prefs,
+  String loadId,
+  Position pos,
+) async {
+  final queue = _readQueue(prefs);
+  queue.add({
+    // Local-only id to identify this exact point when removing it from the
+    // queue after a successful send; stripped before it's sent to the API.
+    '_qid': '${DateTime.now().microsecondsSinceEpoch}_${queue.length}',
+    'load_id': loadId,
+    'lat': pos.latitude,
+    'lng': pos.longitude,
+    'speed_mps': pos.speed < 0 ? 0.0 : pos.speed,
+    'accuracy_m': pos.accuracy,
+    'heading_deg': pos.heading,
+    'recorded_at': DateTime.now().toUtc().toIso8601String(),
+  });
+  // Bound growth: keep the most recent points rather than let a long
+  // offline stretch (or a stuck load) grow this without limit.
+  if (queue.length > _kMaxQueuedPoints) {
+    queue.removeRange(0, queue.length - _kMaxQueuedPoints);
+  }
+  await prefs.setString(kBgPendingPoints, jsonEncode(queue));
+}
+
+/// Posts everything currently queued via the batch endpoint, one request per
+/// load_id (a queue can span more than one load if it wasn't fully drained
+/// before the driver moved on to the next). Points are matched by their
+/// local `_qid` when removing sent ones from the persisted queue afterwards,
+/// so a point enqueued while a request is in flight is never lost even if
+/// it races with this flush.
+Future<bool> _flushQueue({
+  required SharedPreferences prefs,
+  required String token,
+}) async {
+  final snapshot = _readQueue(prefs);
+  if (snapshot.isEmpty) return true;
+
+  final byLoad = <String, List<Map<String, dynamic>>>{};
+  for (final p in snapshot) {
+    final loadId = p['load_id'] as String?;
+    if (loadId == null || loadId.isEmpty) continue;
+    byLoad.putIfAbsent(loadId, () => []).add(p);
+  }
+
+  var currentToken = token;
+  final sentQids = <String>{};
+  var allOk = true;
+
+  for (final entry in byLoad.entries) {
+    final wirePoints = entry.value
+        .map((p) => {
+              'lat': p['lat'],
+              'lng': p['lng'],
+              'speed_mps': p['speed_mps'],
+              'accuracy_m': p['accuracy_m'],
+              'heading_deg': p['heading_deg'],
+              'recorded_at': p['recorded_at'],
+            })
+        .toList();
+    final body = jsonEncode({'points': wirePoints});
+    final uri = Uri.parse(
+      '$_kBaseUrl$_kBasePath/loads/${entry.key}/location/batch',
     );
-  } catch (_) {}
+
+    bool ok;
+    try {
+      var response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $currentToken',
+        },
+        body: body,
+      );
+      if (response.statusCode == 401) {
+        final refreshed = await _refreshAccessToken(prefs);
+        if (refreshed != null) {
+          currentToken = refreshed;
+          response = await http.post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $currentToken',
+            },
+            body: body,
+          );
+        }
+      }
+      ok = response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      ok = false;
+    }
+
+    if (ok) {
+      sentQids.addAll(entry.value.map((p) => p['_qid'] as String));
+    } else {
+      allOk = false;
+    }
+  }
+
+  if (sentQids.isNotEmpty) {
+    final current = _readQueue(prefs);
+    final remaining =
+        current.where((p) => !sentQids.contains(p['_qid'])).toList();
+    if (remaining.isEmpty) {
+      await prefs.remove(kBgPendingPoints);
+    } else {
+      await prefs.setString(kBgPendingPoints, jsonEncode(remaining));
+    }
+  }
+
+  return allOk;
 }
 
 // ─── Public API (called from UI isolate / AppStore) ─────────────────────────
@@ -301,9 +535,22 @@ Future<void> setBgActiveLoad({
 }
 
 /// Clear active-load context (call on complete or logout).
+///
+/// Deliberately does NOT touch the pending-points queue: queued points carry
+/// their own load_id and must survive a load completing so they still get
+/// flushed once the driver's next load starts the service again. Call
+/// [clearBgPendingPoints] separately on logout, where a stale queue from a
+/// previous account is no longer wanted.
 Future<void> clearBgActiveLoad() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.remove(kBgActiveLoadId);
   await prefs.remove(kBgCarrierId);
   await prefs.remove(kBgAuthToken);
+}
+
+/// Discards any not-yet-sent queued points. Call on logout only — a load
+/// completing should NOT call this (see [clearBgActiveLoad]).
+Future<void> clearBgPendingPoints() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove(kBgPendingPoints);
 }

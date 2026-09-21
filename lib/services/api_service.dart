@@ -11,6 +11,12 @@ const String _kBasePath = '/api/v1';
 
 String _url(String path) => '$_kBaseUrl$_kBasePath$path';
 
+// SharedPreferences keys for the token pair. Public because the background
+// isolate (background_service.dart) reads/writes the same keys to refresh
+// its own copy of the access token without going through this singleton.
+const String kAuthTokenKey = 'auth_token';
+const String kRefreshTokenKey = 'refresh_token';
+
 // ---------------------------------------------------------------------------
 // API Service — singleton HTTP client for the Carriers API
 // ---------------------------------------------------------------------------
@@ -18,8 +24,8 @@ class ApiService {
   ApiService._();
   static final ApiService instance = ApiService._();
 
-  static const String _tokenKey = 'auth_token';
-  static const String _refreshKey = 'refresh_token';
+  static const String _tokenKey = kAuthTokenKey;
+  static const String _refreshKey = kRefreshTokenKey;
 
   final http.Client _client = DebugService.createHttpClient();
 
