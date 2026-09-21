@@ -244,7 +244,24 @@ void _onWsMessage(dynamic raw) {
 
 // ─── Live mode (WebSocket GPS stream) ───────────────────────────────────────
 
-void _startLiveMode() {
+// The server's start_live_location is a one-way NATS publish — it has no
+// idea whether the phone actually managed to start streaming. This acks
+// back so the shipper's "Live" badge reflects reality instead of just the
+// shipper's own browser socket.
+Future<void> _startLiveMode() async {
+  final gpsOn = await Geolocator.isLocationServiceEnabled();
+  if (!gpsOn) {
+    await _sendLiveAckViaWs('failed', reason: 'gps_disabled');
+    return;
+  }
+
+  final perm = await Geolocator.checkPermission();
+  if (perm == LocationPermission.denied ||
+      perm == LocationPermission.deniedForever) {
+    await _sendLiveAckViaWs('failed', reason: 'no_permission');
+    return;
+  }
+
   // Reset the 5-minute watchdog — if no keepalive renewal arrives the driver
   // reverts to normal REST mode automatically.
   _liveTrackingWatchdog?.cancel();
@@ -257,13 +274,43 @@ void _startLiveMode() {
       accuracy: LocationAccuracy.bestForNavigation,
       distanceFilter: 10,
     ),
-  ).listen(_sendPositionViaWs);
+  ).listen(
+    _sendPositionViaWs,
+    onError: (_) {
+      // GPS got disabled (or another stream failure) mid-flight — tell the
+      // shipper the live stream actually died instead of leaving them
+      // looking at a badge that's frozen on the last known good state.
+      _sendLiveAckViaWs('failed', reason: 'gps_disabled');
+      _stopLiveMode();
+    },
+  );
+
+  await _sendLiveAckViaWs('started');
 }
 
 void _stopLiveMode() {
   _liveTrackingWatchdog?.cancel();
   _liveGpsSubscription?.cancel();
   _liveGpsSubscription = null;
+}
+
+Future<void> _sendLiveAckViaWs(String status, {String? reason}) async {
+  if (_wsChannel == null) return;
+
+  final prefs = await SharedPreferences.getInstance();
+  final loadId = prefs.getString(kBgActiveLoadId) ?? '';
+  if (loadId.isEmpty) return;
+
+  try {
+    _wsChannel!.sink.add(jsonEncode({
+      'event': 'live_location_ack',
+      'data': {
+        'load_id': loadId,
+        'status': status,
+        'reason': ?reason,
+      },
+    }));
+  } catch (_) {}
 }
 
 Future<void> _sendPositionViaWs(Position pos) async {
