@@ -675,11 +675,11 @@ class AppStore extends ChangeNotifier {
     _allLoads.addAll(_historyLoads);
   }
 
-  Future<void> acceptLoad(String loadId) async {
+  Future<void> acceptLoad(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.acceptLoad(loadId);
+      final success = await _api.acceptLoad(loadId, attachmentIds: attachmentIds);
       if (success) {
         await fetchLoads();
         if (profile != null && _api.accessToken != null) {
@@ -737,56 +737,56 @@ class AppStore extends ChangeNotifier {
     }
   }
 
-  Future<void> beginPickup(String loadId) async {
+  Future<void> beginPickup(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.beginPickup(loadId);
+      final success = await _api.beginPickup(loadId, attachmentIds: attachmentIds);
       if (success) await fetchLoads();
     } catch (_) {}
     _loadingIds.remove(loadId);
     notifyListeners();
   }
 
-  Future<void> confirmPickup(String loadId) async {
+  Future<void> confirmPickup(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.confirmPickup(loadId);
+      final success = await _api.confirmPickup(loadId, attachmentIds: attachmentIds);
       if (success) await fetchLoads();
     } catch (_) {}
     _loadingIds.remove(loadId);
     notifyListeners();
   }
 
-  Future<void> startLoad(String loadId) async {
+  Future<void> startLoad(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.startLoad(loadId);
+      final success = await _api.startLoad(loadId, attachmentIds: attachmentIds);
       if (success) await fetchLoads();
     } catch (_) {}
     _loadingIds.remove(loadId);
     notifyListeners();
   }
 
-  Future<void> beginDropoff(String loadId) async {
+  Future<void> beginDropoff(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.beginDropoff(loadId);
+      final success = await _api.beginDropoff(loadId, attachmentIds: attachmentIds);
       if (success) await fetchLoads();
     } catch (_) {}
     _loadingIds.remove(loadId);
     notifyListeners();
   }
 
-  Future<void> confirmDropoff(String loadId) async {
+  Future<void> confirmDropoff(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
       _sendCurrentLocation();
-      final success = await _api.confirmDropoff(loadId);
+      final success = await _api.confirmDropoff(loadId, attachmentIds: attachmentIds);
       if (success) {
         _locationTimer?.cancel();
         _locationTimer = null;
