@@ -587,10 +587,15 @@ class ApiService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return {'success': true, 'loadId': data['load_id'] as String?};
     }
+    String? code;
+    try {
+      code = (jsonDecode(response.body) as Map<String, dynamic>)['code'] as String?;
+    } catch (_) {}
     return {
       'success': false,
       'statusCode': response.statusCode,
       'message': _parseError(response),
+      'code': code,
     };
   }
 
