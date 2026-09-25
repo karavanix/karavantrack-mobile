@@ -54,6 +54,8 @@
 	<string>YoolLive uses your location to track active cargo deliveries and share your position with the dispatcher.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>YoolLive uses your location in the background to continuously track active cargo deliveries, even when the app is minimized.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>YoolLive uses your camera to attach proof-of-delivery photos to a load's status updates.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

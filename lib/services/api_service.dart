@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'debug_service.dart';
@@ -11,6 +12,12 @@ const String _kBasePath = '/api/v1';
 
 String _url(String path) => '$_kBaseUrl$_kBasePath$path';
 
+// SharedPreferences keys for the token pair. Public because the background
+// isolate (background_service.dart) reads/writes the same keys to refresh
+// its own copy of the access token without going through this singleton.
+const String kAuthTokenKey = 'auth_token';
+const String kRefreshTokenKey = 'refresh_token';
+
 // ---------------------------------------------------------------------------
 // API Service — singleton HTTP client for the Carriers API
 // ---------------------------------------------------------------------------
@@ -18,8 +25,8 @@ class ApiService {
   ApiService._();
   static final ApiService instance = ApiService._();
 
-  static const String _tokenKey = 'auth_token';
-  static const String _refreshKey = 'refresh_token';
+  static const String _tokenKey = kAuthTokenKey;
+  static const String _refreshKey = kRefreshTokenKey;
 
   final http.Client _client = DebugService.createHttpClient();
 
@@ -452,66 +459,110 @@ class ApiService {
   }
 
   /// POST /loads/{id}/accept
-  Future<bool> acceptLoad(String id) async {
+  Future<bool> acceptLoad(String id, {List<String>? attachmentIds}) async {
     final response = await _authed(
       () => _client.post(
         Uri.parse(_url('/loads/$id/accept')),
         headers: _authHeaders,
+        body: jsonEncode({'attachment_ids': attachmentIds ?? []}),
       ),
     );
     return response.statusCode == 200;
   }
 
   /// POST /loads/{id}/start
-  Future<bool> startLoad(String id) async {
+  Future<bool> startLoad(String id, {List<String>? attachmentIds}) async {
     final response = await _authed(
-      () => _client.post(Uri.parse(_url('/loads/$id/start')), headers: _authHeaders),
+      () => _client.post(
+        Uri.parse(_url('/loads/$id/start')),
+        headers: _authHeaders,
+        body: jsonEncode({'attachment_ids': attachmentIds ?? []}),
+      ),
     );
     return response.statusCode == 200;
   }
 
   /// POST /loads/{id}/pickup/begin  (accepted → picking_up)
-  Future<bool> beginPickup(String id) async {
+  Future<bool> beginPickup(String id, {List<String>? attachmentIds}) async {
     final response = await _authed(
       () => _client.post(
         Uri.parse(_url('/loads/$id/pickup/begin')),
         headers: _authHeaders,
+        body: jsonEncode({'attachment_ids': attachmentIds ?? []}),
       ),
     );
     return response.statusCode == 200;
   }
 
   /// POST /loads/{id}/pickup/confirm  (picking_up → picked_up)
-  Future<bool> confirmPickup(String id) async {
+  Future<bool> confirmPickup(String id, {List<String>? attachmentIds}) async {
     final response = await _authed(
       () => _client.post(
         Uri.parse(_url('/loads/$id/pickup/confirm')),
         headers: _authHeaders,
+        body: jsonEncode({'attachment_ids': attachmentIds ?? []}),
       ),
     );
     return response.statusCode == 200;
   }
 
   /// POST /loads/{id}/dropoff/begin  (in_transit → dropping_off)
-  Future<bool> beginDropoff(String id) async {
+  Future<bool> beginDropoff(String id, {List<String>? attachmentIds}) async {
     final response = await _authed(
       () => _client.post(
         Uri.parse(_url('/loads/$id/dropoff/begin')),
         headers: _authHeaders,
+        body: jsonEncode({'attachment_ids': attachmentIds ?? []}),
       ),
     );
     return response.statusCode == 200;
   }
 
   /// POST /loads/{id}/dropoff/confirm  (dropping_off → dropped_off)
-  Future<bool> confirmDropoff(String id) async {
+  Future<bool> confirmDropoff(String id, {List<String>? attachmentIds}) async {
     final response = await _authed(
       () => _client.post(
         Uri.parse(_url('/loads/$id/dropoff/confirm')),
         headers: _authHeaders,
+        body: jsonEncode({'attachment_ids': attachmentIds ?? []}),
       ),
     );
     return response.statusCode == 200;
+  }
+
+  // ─── Attachments (POD photos) ───────────────────────────────────────────
+
+  /// POST /attachments/image — uploads a proof-of-delivery photo and returns
+  /// its attachment ID, or null on failure. Private visibility: the shipper
+  /// side reads it back through the load's own history (see
+  /// phase-5-product-features), which resolves a presigned URL for a
+  /// private attachment rather than relying on it being public.
+  Future<String?> uploadImage(File file) async {
+    Future<http.Response> send() async {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse(_url('/attachments/image')),
+      );
+      if (_accessToken != null) {
+        request.headers['Authorization'] = 'Bearer $_accessToken';
+      }
+      request.fields['visibility'] = 'private';
+      request.fields['folder'] = 'pod';
+      request.fields['compress'] = 'true';
+      request.fields['width'] = '1600';
+      request.files.add(await http.MultipartFile.fromPath('file', file.path));
+      final streamed = await _client.send(request);
+      return http.Response.fromStream(streamed);
+    }
+
+    try {
+      final response = await _authed(send);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['ID'] as String?;
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// POST /loads/{id}/location
@@ -547,14 +598,18 @@ class ApiService {
 
   // ─── Invites (driver-invite-by-link) ───────────────────────────────────
 
-  /// GET /invites/{token} — PUBLIC, no auth required. Returns the invite
-  /// status + offered load summary, or null if the token is unknown (404)
-  /// or the request otherwise failed — matches the `getLoad`/`getMe` idiom
-  /// of returning null on any non-200 rather than throwing.
+  /// GET /invites/{token} — PUBLIC, no auth required, but sends the bearer
+  /// token when we have one so the backend can tell us whether *we* are the
+  /// one who already accepted it (`accepted_by_me`) — that's what lets the
+  /// screen route a driver revisiting their own accepted link straight to
+  /// the load instead of a dead end. Returns the invite status + offered
+  /// load summary, or null if the token is unknown (404) or the request
+  /// otherwise failed — matches the `getLoad`/`getMe` idiom of returning
+  /// null on any non-200 rather than throwing.
   Future<Map<String, dynamic>?> getInvite(String token) async {
     final response = await _client.get(
       Uri.parse(_url('/invites/$token')),
-      headers: const {'Content-Type': 'application/json'},
+      headers: _authHeaders,
     );
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
@@ -577,10 +632,15 @@ class ApiService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return {'success': true, 'loadId': data['load_id'] as String?};
     }
+    String? code;
+    try {
+      code = (jsonDecode(response.body) as Map<String, dynamic>)['code'] as String?;
+    } catch (_) {}
     return {
       'success': false,
       'statusCode': response.statusCode,
       'message': _parseError(response),
+      'code': code,
     };
   }
 

@@ -205,7 +205,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                 ),
               ),
               if (store.loadsBlocked)
-                LoadsBlockedOverlay(gpsOff: !store.gpsEnabled),
+                LoadsBlockedOverlay(
+                  reason: !store.gpsEnabled
+                      ? BlockedReason.gpsOff
+                      : !store.locationPermissionGranted
+                          ? BlockedReason.alwaysPermission
+                          : BlockedReason.preciseLocation,
+                ),
             ],
           ),
         );

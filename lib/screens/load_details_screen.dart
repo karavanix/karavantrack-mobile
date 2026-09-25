@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/load.dart';
 import '../services/api_service.dart';
 import '../store/app_store.dart';
@@ -27,6 +29,24 @@ class LoadDetailsScreen extends StatefulWidget {
 class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
   List<LoadHistoryItem> _history = [];
   bool _historyLoading = false;
+
+  // ─── Optional POD photo (see phase-5-product-features) ──────────────────
+  // Attachable to any driver action, never required. Uploaded synchronously
+  // before the status-change request fires — "ждём загрузки фото" — so a
+  // failed upload blocks the status change rather than silently dropping
+  // the photo.
+  File? _pendingPhoto;
+  bool _uploadingPhoto = false;
+
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
+    if (picked != null && mounted) {
+      setState(() => _pendingPhoto = File(picked.path));
+    }
+  }
 
   @override
   void initState() {
@@ -68,28 +88,51 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
   }
 
   Future<void> _handleAction(BuildContext context, LoadItem load) async {
+    List<String>? attachmentIds;
+
+    if (_pendingPhoto != null) {
+      setState(() => _uploadingPhoto = true);
+      final attachmentId = await ApiService.instance.uploadImage(_pendingPhoto!);
+      if (!mounted) return;
+      setState(() => _uploadingPhoto = false);
+
+      if (attachmentId == null) {
+        // "Ждём загрузки фото" — a failed upload blocks the status change
+        // rather than silently proceeding without the photo the driver
+        // meant to attach.
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).tr('podUploadFailed'))),
+          );
+        }
+        return;
+      }
+      attachmentIds = [attachmentId];
+    }
+
     switch (load.status) {
       case LoadStatus.assigned:
-        await widget.store.acceptLoad(load.id);
+        await widget.store.acceptLoad(load.id, attachmentIds: attachmentIds);
         break;
       case LoadStatus.accepted:
-        await widget.store.beginPickup(load.id);
+        await widget.store.beginPickup(load.id, attachmentIds: attachmentIds);
         break;
       case LoadStatus.pickingUp:
-        await widget.store.confirmPickup(load.id);
+        await widget.store.confirmPickup(load.id, attachmentIds: attachmentIds);
         break;
       case LoadStatus.pickedUp:
-        await widget.store.startLoad(load.id);
+        await widget.store.startLoad(load.id, attachmentIds: attachmentIds);
         break;
       case LoadStatus.inTransit:
-        await widget.store.beginDropoff(load.id);
+        await widget.store.beginDropoff(load.id, attachmentIds: attachmentIds);
         break;
       case LoadStatus.droppingOff:
-        await widget.store.confirmDropoff(load.id);
+        await widget.store.confirmDropoff(load.id, attachmentIds: attachmentIds);
         break;
       default:
         break;
     }
+    if (mounted) setState(() => _pendingPhoto = null);
     // Re-fetch history after status change
     _fetchDetail();
   }
@@ -299,12 +342,62 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
                 ),
               ),
 
+              // ─── Optional POD photo ───────────────────────────────────
+              if (actionKey != null) ...[
+                const SizedBox(height: 16),
+                if (_uploadingPhoto)
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        t.tr('podUploadingPhoto'),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      if (_pendingPhoto != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            _pendingPhoto!,
+                            width: 48,
+                            height: 48,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () => setState(() => _pendingPhoto = null),
+                          tooltip: t.tr('podRemovePhoto'),
+                        ),
+                      ] else
+                        OutlinedButton.icon(
+                          onPressed: _pickPhoto,
+                          icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                          label: Text(t.tr('podAddPhoto')),
+                        ),
+                    ],
+                  ),
+              ],
+
               // ─── Action button ────────────────────────────────────────
               if (actionKey != null) ...[
                 const SizedBox(height: 16),
                 SizedBox(
                   height: 52,
-                  child: isLoading
+                  child: (isLoading || _uploadingPhoto)
                       ? const Center(child: CircularProgressIndicator())
                       : ElevatedButton(
                           onPressed: (load.status == LoadStatus.assigned &&

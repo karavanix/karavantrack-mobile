@@ -54,6 +54,12 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
 
   // ─── Always-location permission ────────────────────────────────────────────
   bool _permissionGranted = false;
+  // Precise (vs. approximate/reduced) location accuracy — a separate axis
+  // from Always/WhenInUse on both platforms since Android 12 / iOS 14. Fixes
+  // still arrive with approximate accuracy, just fuzzed to ~1-3km, which is
+  // useless for tracking a specific truck and can't be told apart from a bad
+  // fix without checking this explicitly.
+  bool _preciseGranted = false;
   // Tracks whether the user was already logged in + profile-complete on the
   // previous store change, so we only trigger the permission flow on the
   // transition INTO that state (i.e. right before the Loads screen becomes
@@ -121,6 +127,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
         !_wasReadyForTracking &&
         (Platform.isAndroid || Platform.isIOS)) {
       _checkAlwaysLocationPermission().then((_) => _syncGpsStream());
+      _refreshPreciseLocation().then((_) => _syncGpsStream());
     }
     _wasReadyForTracking = readyForTracking;
   }
@@ -144,6 +151,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
         _syncGpsStream();
         if (_readyForTracking) _checkAlwaysLocationPermission();
       });
+      _refreshPreciseLocation();
     }
   }
 
@@ -175,6 +183,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     // Populate permission cache, then sync stream (activeLoad is now known too).
     _permissionGranted = await LocationPermissionService.isAlwaysGranted();
     _store.setLocationPermissionGranted(_permissionGranted);
+    await _refreshPreciseLocation();
     _syncGpsStream();
 
     // Check for "Always" location permission after splash is gone (delayed so
@@ -188,6 +197,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     if (_wasReadyForTracking && (Platform.isAndroid || Platform.isIOS)) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await _checkAlwaysLocationPermission();
+        await _refreshPreciseLocation();
         _syncGpsStream();
       });
     }
@@ -197,7 +207,10 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   /// Call _permissionGranted = await isAlwaysGranted() before this whenever
   /// the permission state may have changed (app resume, permission flow).
   void _syncGpsStream() {
-    final shouldRun = _gpsEnabled && (_store.activeLoad != null) && _permissionGranted;
+    final shouldRun = _gpsEnabled &&
+        (_store.activeLoad != null) &&
+        _permissionGranted &&
+        _preciseGranted;
 
     if (shouldRun && !_streamActive) {
       _streamActive = true;
@@ -237,6 +250,16 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     _permissionGranted = await LocationPermissionService.isAlwaysGranted();
     _store.setLocationPermissionGranted(_permissionGranted);
     return _permissionGranted;
+  }
+
+  /// Re-reads precise-location accuracy from the OS and mirrors it into the
+  /// store. Unlike Always, there's no in-app upgrade flow to trigger here
+  /// (no OS prompt exists for re-requesting precise accuracy once the choice
+  /// has been made) — this only ever detects the current state, which the
+  /// blocking overlay turns into a "go fix it in Settings" prompt.
+  Future<void> _refreshPreciseLocation() async {
+    _preciseGranted = await LocationPermissionService.isPreciseGranted();
+    _store.setPreciseLocationGranted(_preciseGranted);
   }
 
   /// Polls GPS enabled status every 2 seconds, mirroring the state into the

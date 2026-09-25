@@ -182,16 +182,25 @@ class AppStore extends ChangeNotifier {
   // the first GPS/permission check completes.
   bool _gpsEnabled = true;
   bool _locationPermissionGranted = true;
+  bool _preciseLocationGranted = true;
 
   bool get gpsEnabled => _gpsEnabled;
   bool get locationPermissionGranted => _locationPermissionGranted;
+  bool get preciseLocationGranted => _preciseLocationGranted;
 
   /// True when the Loads content should be obscured by the blocking overlay.
-  bool get loadsBlocked => !_gpsEnabled || !_locationPermissionGranted;
+  bool get loadsBlocked =>
+      !_gpsEnabled || !_locationPermissionGranted || !_preciseLocationGranted;
 
   void setGpsEnabled(bool value) {
     if (_gpsEnabled == value) return;
     _gpsEnabled = value;
+    notifyListeners();
+  }
+
+  void setPreciseLocationGranted(bool value) {
+    if (_preciseLocationGranted == value) return;
+    _preciseLocationGranted = value;
     notifyListeners();
   }
 
@@ -496,6 +505,7 @@ class AppStore extends ChangeNotifier {
     _locationTimer = null;
     await stopBackgroundService();
     await clearBgActiveLoad();
+    await clearBgPendingPoints();
     await NotificationService.instance.deactivate();
     await _api.logout();
     // Clear cached profile
@@ -674,11 +684,11 @@ class AppStore extends ChangeNotifier {
     _allLoads.addAll(_historyLoads);
   }
 
-  Future<void> acceptLoad(String loadId) async {
+  Future<void> acceptLoad(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.acceptLoad(loadId);
+      final success = await _api.acceptLoad(loadId, attachmentIds: attachmentIds);
       if (success) {
         await fetchLoads();
         if (profile != null && _api.accessToken != null) {
@@ -736,56 +746,56 @@ class AppStore extends ChangeNotifier {
     }
   }
 
-  Future<void> beginPickup(String loadId) async {
+  Future<void> beginPickup(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.beginPickup(loadId);
+      final success = await _api.beginPickup(loadId, attachmentIds: attachmentIds);
       if (success) await fetchLoads();
     } catch (_) {}
     _loadingIds.remove(loadId);
     notifyListeners();
   }
 
-  Future<void> confirmPickup(String loadId) async {
+  Future<void> confirmPickup(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.confirmPickup(loadId);
+      final success = await _api.confirmPickup(loadId, attachmentIds: attachmentIds);
       if (success) await fetchLoads();
     } catch (_) {}
     _loadingIds.remove(loadId);
     notifyListeners();
   }
 
-  Future<void> startLoad(String loadId) async {
+  Future<void> startLoad(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.startLoad(loadId);
+      final success = await _api.startLoad(loadId, attachmentIds: attachmentIds);
       if (success) await fetchLoads();
     } catch (_) {}
     _loadingIds.remove(loadId);
     notifyListeners();
   }
 
-  Future<void> beginDropoff(String loadId) async {
+  Future<void> beginDropoff(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      final success = await _api.beginDropoff(loadId);
+      final success = await _api.beginDropoff(loadId, attachmentIds: attachmentIds);
       if (success) await fetchLoads();
     } catch (_) {}
     _loadingIds.remove(loadId);
     notifyListeners();
   }
 
-  Future<void> confirmDropoff(String loadId) async {
+  Future<void> confirmDropoff(String loadId, {List<String>? attachmentIds}) async {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
       _sendCurrentLocation();
-      final success = await _api.confirmDropoff(loadId);
+      final success = await _api.confirmDropoff(loadId, attachmentIds: attachmentIds);
       if (success) {
         _locationTimer?.cancel();
         _locationTimer = null;
@@ -807,7 +817,11 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _sendGpsPointToApi(LoadItem load, Position pos) async {
     final point = TrackingPoint(
-      timestampUtc: DateTime.now().toUtc(),
+      // The fix's own timestamp (already UTC), not the moment this runs —
+      // matters most for _sendCurrentLocation, which can replay a position
+      // that's up to 10 minutes stale, and for points parked in
+      // _offlineBuffers while the network is down.
+      timestampUtc: pos.timestamp,
       latitude: pos.latitude,
       longitude: pos.longitude,
       speedKmh: pos.speed * 3.6,

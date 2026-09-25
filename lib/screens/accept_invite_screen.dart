@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import '../widgets/info_row.dart';
 import '../utils/formatters.dart';
 import 'login_screen.dart';
+import 'load_details_screen.dart';
 
 /// Landing screen for a driver-invite-by-link
 /// (`https://app.yool.live/invite/{token}` / `yoollive://invite/{token}`).
@@ -34,6 +35,9 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
   bool _loading = true;
   bool _accepting = false;
   bool _wantsLogin = false;
+  bool _autoContinueAttempted = false;
+  bool _autoContinuing = false;
+  bool _blockedByActiveLoad = false;
   Map<String, dynamic>? _invite;
 
   @override
@@ -51,6 +55,30 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
       result = null;
     }
     if (!mounted) return;
+
+    // Own already-accepted invite (e.g. reopening a stale link): skip the
+    // dead-end "already accepted" screen and continue straight to the load,
+    // the same way a fresh accept would. The accept endpoint is idempotent
+    // for the accepting carrier, so re-running it just re-confirms the
+    // assignment and drives the normal post-accept navigation. Only tried
+    // once per screen instance so a genuine failure falls back to the
+    // regular status screen instead of retrying forever.
+    final status = result?['status'] as String?;
+    final acceptedByMe = result?['accepted_by_me'] as bool? ?? false;
+    if (status == 'accepted' &&
+        acceptedByMe &&
+        widget.store.isLoggedIn &&
+        !_autoContinueAttempted) {
+      _autoContinueAttempted = true;
+      setState(() {
+        _invite = result;
+        _loading = false;
+        _autoContinuing = true;
+      });
+      await _handleAccept();
+      return;
+    }
+
     setState(() {
       _invite = result;
       _loading = false;
@@ -77,15 +105,37 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
     final result = await widget.store.acceptInvite(widget.token);
     if (!mounted) return;
     setState(() => _accepting = false);
-    if (result['success'] != true) {
-      _showError(result['message'] as String? ?? t.tr('inviteAcceptError'));
-      // The invite state may have changed underneath us (e.g. a 409 race
-      // with someone else accepting it) — re-fetch to show the right status.
-      _fetchInvite();
+
+    if (result['success'] == true) {
+      // store.acceptInvite() already cleared pendingInviteToken and
+      // replicated acceptLoad's refresh/background-tracking side effects —
+      // take the driver straight to the load instead of leaving them on
+      // MainShell to go find it themselves.
+      final loadId = result['loadId'] as String?;
+      if (loadId != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => LoadDetailsScreen(store: widget.store, loadId: loadId),
+          ),
+        );
+      }
+      return;
     }
-    // On success, store.acceptInvite() already cleared pendingInviteToken and
-    // replicated acceptLoad's refresh/background-tracking side effects;
-    // _HomeRouter will move on to MainShell on its next rebuild automatically.
+
+    setState(() => _autoContinuing = false);
+
+    if (result['code'] == 'CARRIER_HAS_ACTIVE_LOAD') {
+      // Not an invite-state race — this is about the driver themselves
+      // already being busy, so re-fetching the invite wouldn't change
+      // anything. Show a dedicated message instead of the generic switch.
+      setState(() => _blockedByActiveLoad = true);
+      return;
+    }
+
+    _showError(result['message'] as String? ?? t.tr('inviteAcceptError'));
+    // The invite state may have changed underneath us (e.g. a 409 race
+    // with someone else accepting it) — re-fetch to show the right status.
+    _fetchInvite();
   }
 
   @override
@@ -109,6 +159,21 @@ class _AcceptInviteScreenState extends State<AcceptInviteScreen> {
             message: t.tr('inviteNotFound'),
             onRetry: _fetchInvite,
             onDismiss: _dismiss,
+          );
+        }
+
+        if (_blockedByActiveLoad) {
+          return _MessageScreen(
+            title: t.tr('invite'),
+            message: t.tr('inviteCarrierHasActiveLoad'),
+            onDismiss: _dismiss,
+          );
+        }
+
+        if (_autoContinuing) {
+          return Scaffold(
+            appBar: AppBar(title: Text(t.tr('invite'))),
+            body: const Center(child: CircularProgressIndicator()),
           );
         }
 

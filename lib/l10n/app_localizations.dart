@@ -92,6 +92,10 @@ class AppLocalizations extends InheritedWidget {
     'active': 'Active',
     'history': 'History',
     'statusHistory': 'Status History',
+    'podAddPhoto': 'Add photo',
+    'podRemovePhoto': 'Remove photo',
+    'podUploadingPhoto': 'Uploading photo...',
+    'podUploadFailed': "Couldn't upload the photo. Please try again.",
     'noPendingLoads': 'No pending loads',
     'endOfList': 'End of list',
     'noActiveLoad': 'No active load',
@@ -215,6 +219,17 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationIosStep3': 'Choose "Always"',
     'openAppSettings': 'Open Settings',
 
+    // Precise-location accuracy dialog
+    'preciseLocationTitle': 'Precise Location Required',
+    'preciseLocationMessage':
+        'Only approximate location was granted, which is too imprecise to track a specific truck. Please switch to precise location.',
+    'preciseLocationStep1': 'Tap "Open Settings" below',
+    'preciseLocationStep2': 'Select "Permissions" → "Location"',
+    'preciseLocationStep3': 'Turn on "Use precise location"',
+    'preciseLocationIosStep1': 'Tap "Open Settings" below',
+    'preciseLocationIosStep2': 'Select "Location"',
+    'preciseLocationIosStep3': 'Turn on "Precise Location"',
+
     // Prominent background-location disclosure (shown before the OS prompt)
     'locationDisclosureTitle': 'Background Location Access',
     'locationDisclosureBody':
@@ -237,13 +252,15 @@ class AppLocalizations extends InheritedWidget {
     'inviteCompany': 'Company',
     'inviteLoginAndAccept': 'Log in & accept',
     'inviteNotFound': 'This invite link is invalid or no longer exists',
-    'inviteStatusAccepted': 'This invite has already been accepted',
+    'inviteStatusAccepted': 'This load has already been accepted by another driver',
     'inviteStatusExpired': 'This invite has expired',
     'inviteStatusRevoked': 'This invite has been revoked',
+    'inviteCarrierHasActiveLoad':
+        'You already have an active load. Finish it before accepting a new one.',
     'inviteLoadError':
         'Could not load invite details. Check your connection and try again',
     'inviteAcceptError': 'Could not accept this load',
-    'inviteGoToApp': 'Go to app',
+    'inviteGoToApp': 'Go to my loads',
     'tryAgain': 'Try again',
   };
 
@@ -307,6 +324,10 @@ class AppLocalizations extends InheritedWidget {
     'active': 'Активные',
     'history': 'История',
     'statusHistory': 'История статусов',
+    'podAddPhoto': 'Добавить фото',
+    'podRemovePhoto': 'Убрать фото',
+    'podUploadingPhoto': 'Загрузка фото...',
+    'podUploadFailed': 'Не удалось загрузить фото. Попробуйте ещё раз.',
     'noPendingLoads': 'Нет ожидающих грузов',
     'endOfList': 'Конец списка',
     'noActiveLoad': 'Нет активного груза',
@@ -430,6 +451,17 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationIosStep3': 'Выберите «Всегда»',
     'openAppSettings': 'Открыть настройки',
 
+    // Диалог точной геолокации
+    'preciseLocationTitle': 'Требуется точная геолокация',
+    'preciseLocationMessage':
+        'Предоставлен доступ только к приблизительному местоположению — этого недостаточно для отслеживания конкретного грузовика. Включите точную геолокацию.',
+    'preciseLocationStep1': 'Нажмите «Открыть настройки» ниже',
+    'preciseLocationStep2': 'Выберите «Разрешения» → «Местоположение»',
+    'preciseLocationStep3': 'Включите «Точное местоположение»',
+    'preciseLocationIosStep1': 'Нажмите «Открыть настройки» ниже',
+    'preciseLocationIosStep2': 'Выберите «Геолокация»',
+    'preciseLocationIosStep3': 'Включите «Точная геопозиция»',
+
     // Prominent background-location disclosure (shown before the OS prompt)
     'locationDisclosureTitle': 'Доступ к геолокации в фоновом режиме',
     'locationDisclosureBody':
@@ -452,13 +484,15 @@ class AppLocalizations extends InheritedWidget {
     'inviteCompany': 'Компания',
     'inviteLoginAndAccept': 'Войти и принять',
     'inviteNotFound': 'Ссылка-приглашение недействительна или больше не существует',
-    'inviteStatusAccepted': 'Это приглашение уже принято',
+    'inviteStatusAccepted': 'Этот груз уже принят другим водителем',
     'inviteStatusExpired': 'Срок действия этого приглашения истёк',
     'inviteStatusRevoked': 'Это приглашение отозвано',
+    'inviteCarrierHasActiveLoad':
+        'У вас уже есть активный груз. Сначала завершите его, чтобы принять новый.',
     'inviteLoadError':
         'Не удалось загрузить приглашение. Проверьте соединение и попробуйте снова',
     'inviteAcceptError': 'Не удалось принять этот груз',
-    'inviteGoToApp': 'Перейти в приложение',
+    'inviteGoToApp': 'К моим грузам',
     'tryAgain': 'Повторить',
   };
 
@@ -522,6 +556,10 @@ class AppLocalizations extends InheritedWidget {
     'active': 'Faol',
     'history': 'Tarix',
     'statusHistory': 'Status tarixi',
+    'podAddPhoto': 'Foto qo\'shish',
+    'podRemovePhoto': 'Fotoni olib tashlash',
+    'podUploadingPhoto': 'Foto yuklanmoqda...',
+    'podUploadFailed': 'Fotoni yuklab bo\'lmadi. Qayta urinib ko\'ring.',
     'noPendingLoads': 'Kutilayotgan yuklar yo\'q',
     'endOfList': 'Ro\'yxat oxiri',
     'noActiveLoad': 'Faol yuk yo\'q',
@@ -645,6 +683,18 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationIosStep3': '"Doim" ni tanlang',
     'openAppSettings': 'Sozlamalarni ochish',
 
+    // Aniq joylashuv dialogi
+    'preciseLocationTitle': 'Aniq joylashuv kerak',
+    'preciseLocationMessage':
+        'Faqat taxminiy joylashuvga ruxsat berilgan — bu aniq yuk mashinasini kuzatish uchun yetarli emas. Aniq joylashuvni yoqing.',
+    'preciseLocationStep1': 'Quyidagi "Sozlamalarni ochish" tugmasini bosing',
+    'preciseLocationStep2': '"Ruxsatlar" → "Joylashuv" ni tanlang',
+    'preciseLocationStep3': '"Aniq joylashuvdan foydalanish" ni yoqing',
+    'preciseLocationIosStep1':
+        'Quyidagi "Sozlamalarni ochish" tugmasini bosing',
+    'preciseLocationIosStep2': '"Joylashuv" ni tanlang',
+    'preciseLocationIosStep3': '"Aniq joylashuv"ni yoqing',
+
     // Prominent background-location disclosure (shown before the OS prompt)
     'locationDisclosureTitle': 'Fonda joylashuvga kirish',
     'locationDisclosureBody':
@@ -667,13 +717,15 @@ class AppLocalizations extends InheritedWidget {
     'inviteCompany': 'Kompaniya',
     'inviteLoginAndAccept': 'Kirish va qabul qilish',
     'inviteNotFound': 'Taklif havolasi yaroqsiz yoki mavjud emas',
-    'inviteStatusAccepted': 'Bu taklif allaqachon qabul qilingan',
+    'inviteStatusAccepted': 'Bu yukni allaqachon boshqa haydovchi qabul qilgan',
     'inviteStatusExpired': 'Bu taklifning muddati tugagan',
     'inviteStatusRevoked': 'Bu taklif bekor qilingan',
+    'inviteCarrierHasActiveLoad':
+        "Sizda allaqachon faol yuk bor. Yangisini qabul qilishdan oldin uni yakunlang.",
     'inviteLoadError':
         "Taklif ma'lumotlarini yuklab bo'lmadi. Ulanishni tekshirib, qayta urinib ko'ring",
     'inviteAcceptError': "Bu yukni qabul qilib bo'lmadi",
-    'inviteGoToApp': "Ilovaga o'tish",
+    'inviteGoToApp': "Yuklarimga o'tish",
     'tryAgain': "Qayta urinish",
   };
 
