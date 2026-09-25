@@ -808,7 +808,11 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _sendGpsPointToApi(LoadItem load, Position pos) async {
     final point = TrackingPoint(
-      timestampUtc: DateTime.now().toUtc(),
+      // The fix's own timestamp (already UTC), not the moment this runs —
+      // matters most for _sendCurrentLocation, which can replay a position
+      // that's up to 10 minutes stale, and for points parked in
+      // _offlineBuffers while the network is down.
+      timestampUtc: pos.timestamp,
       latitude: pos.latitude,
       longitude: pos.longitude,
       speedKmh: pos.speed * 3.6,

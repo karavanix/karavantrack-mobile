@@ -330,7 +330,13 @@ Future<void> _sendPositionViaWs(Position pos) async {
         'speed_mps': pos.speed < 0 ? 0.0 : pos.speed,
         'accuracy_m': pos.accuracy,
         'heading_deg': pos.heading,
-        'recorded_at': DateTime.now().toUtc().toIso8601String(),
+        // The fix's own timestamp (already UTC — see Position.fromMap),
+        // not the moment this function runs. The stream can hand us a
+        // backlog of fixes in one dispatch; stamping them all with "now"
+        // collapses their true spacing to milliseconds, which is
+        // indistinguishable from a GPS teleport once it reaches the
+        // server's speed-plausibility check.
+        'recorded_at': pos.timestamp.toIso8601String(),
       },
     }));
   } catch (_) {}
@@ -452,7 +458,11 @@ Future<void> _enqueuePoint(
     'speed_mps': pos.speed < 0 ? 0.0 : pos.speed,
     'accuracy_m': pos.accuracy,
     'heading_deg': pos.heading,
-    'recorded_at': DateTime.now().toUtc().toIso8601String(),
+    // The fix's own timestamp (already UTC), not enqueue time — see the
+    // matching note in _sendPositionViaWs. This matters even more here:
+    // a point can sit in the queue for hours before a flush actually
+    // sends it, so "now" would be wrong by however long it waited.
+    'recorded_at': pos.timestamp.toIso8601String(),
   });
   // Bound growth: keep the most recent points rather than let a long
   // offline stretch (or a stuck load) grow this without limit.
