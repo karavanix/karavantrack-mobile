@@ -219,6 +219,17 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationIosStep3': 'Choose "Always"',
     'openAppSettings': 'Open Settings',
 
+    // Precise-location accuracy dialog
+    'preciseLocationTitle': 'Precise Location Required',
+    'preciseLocationMessage':
+        'Only approximate location was granted, which is too imprecise to track a specific truck. Please switch to precise location.',
+    'preciseLocationStep1': 'Tap "Open Settings" below',
+    'preciseLocationStep2': 'Select "Permissions" → "Location"',
+    'preciseLocationStep3': 'Turn on "Use precise location"',
+    'preciseLocationIosStep1': 'Tap "Open Settings" below',
+    'preciseLocationIosStep2': 'Select "Location"',
+    'preciseLocationIosStep3': 'Turn on "Precise Location"',
+
     // Prominent background-location disclosure (shown before the OS prompt)
     'locationDisclosureTitle': 'Background Location Access',
     'locationDisclosureBody':
@@ -440,6 +451,17 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationIosStep3': 'Выберите «Всегда»',
     'openAppSettings': 'Открыть настройки',
 
+    // Диалог точной геолокации
+    'preciseLocationTitle': 'Требуется точная геолокация',
+    'preciseLocationMessage':
+        'Предоставлен доступ только к приблизительному местоположению — этого недостаточно для отслеживания конкретного грузовика. Включите точную геолокацию.',
+    'preciseLocationStep1': 'Нажмите «Открыть настройки» ниже',
+    'preciseLocationStep2': 'Выберите «Разрешения» → «Местоположение»',
+    'preciseLocationStep3': 'Включите «Точное местоположение»',
+    'preciseLocationIosStep1': 'Нажмите «Открыть настройки» ниже',
+    'preciseLocationIosStep2': 'Выберите «Геолокация»',
+    'preciseLocationIosStep3': 'Включите «Точная геопозиция»',
+
     // Prominent background-location disclosure (shown before the OS prompt)
     'locationDisclosureTitle': 'Доступ к геолокации в фоновом режиме',
     'locationDisclosureBody':
@@ -660,6 +682,18 @@ class AppLocalizations extends InheritedWidget {
     'alwaysLocationIosStep2': '"Joylashuv" ni tanlang',
     'alwaysLocationIosStep3': '"Doim" ni tanlang',
     'openAppSettings': 'Sozlamalarni ochish',
+
+    // Aniq joylashuv dialogi
+    'preciseLocationTitle': 'Aniq joylashuv kerak',
+    'preciseLocationMessage':
+        'Faqat taxminiy joylashuvga ruxsat berilgan — bu aniq yuk mashinasini kuzatish uchun yetarli emas. Aniq joylashuvni yoqing.',
+    'preciseLocationStep1': 'Quyidagi "Sozlamalarni ochish" tugmasini bosing',
+    'preciseLocationStep2': '"Ruxsatlar" → "Joylashuv" ni tanlang',
+    'preciseLocationStep3': '"Aniq joylashuvdan foydalanish" ni yoqing',
+    'preciseLocationIosStep1':
+        'Quyidagi "Sozlamalarni ochish" tugmasini bosing',
+    'preciseLocationIosStep2': '"Joylashuv" ni tanlang',
+    'preciseLocationIosStep3': '"Aniq joylashuv"ni yoqing',
 
     // Prominent background-location disclosure (shown before the OS prompt)
     'locationDisclosureTitle': 'Fonda joylashuvga kirish',

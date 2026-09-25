@@ -182,16 +182,25 @@ class AppStore extends ChangeNotifier {
   // the first GPS/permission check completes.
   bool _gpsEnabled = true;
   bool _locationPermissionGranted = true;
+  bool _preciseLocationGranted = true;
 
   bool get gpsEnabled => _gpsEnabled;
   bool get locationPermissionGranted => _locationPermissionGranted;
+  bool get preciseLocationGranted => _preciseLocationGranted;
 
   /// True when the Loads content should be obscured by the blocking overlay.
-  bool get loadsBlocked => !_gpsEnabled || !_locationPermissionGranted;
+  bool get loadsBlocked =>
+      !_gpsEnabled || !_locationPermissionGranted || !_preciseLocationGranted;
 
   void setGpsEnabled(bool value) {
     if (_gpsEnabled == value) return;
     _gpsEnabled = value;
+    notifyListeners();
+  }
+
+  void setPreciseLocationGranted(bool value) {
+    if (_preciseLocationGranted == value) return;
+    _preciseLocationGranted = value;
     notifyListeners();
   }
 

@@ -20,6 +20,23 @@ class LocationPermissionService {
     return permission == LocationPermission.always;
   }
 
+  /// Returns `true` when the OS has granted precise (full) location accuracy,
+  /// as opposed to the reduced/approximate accuracy a user can pick on the
+  /// permission prompt since Android 12 and iOS 14. Approximate accuracy is
+  /// a ~1-3km fuzz — useless for tracking a specific truck, but Geolocator
+  /// happily returns fixes anyway, so this can't be inferred from a normal
+  /// position stream and must be checked explicitly.
+  ///
+  /// Unlike the Always upgrade, there is no in-app re-request for downgrading
+  /// from approximate back to precise on either platform once the initial
+  /// prompt has been answered — only the system Settings screen can change
+  /// it, so callers should route straight there (mirroring how
+  /// [canPromptForAlways] being false is handled).
+  static Future<bool> isPreciseGranted() async {
+    final accuracy = await Geolocator.getLocationAccuracy();
+    return accuracy == LocationAccuracyStatus.precise;
+  }
+
   /// Returns `true` when the OS will actually surface a permission prompt for
   /// "Always" (i.e. permission is merely un-requested or "while in use").
   /// `false` when the user has permanently denied it — at that point only the
