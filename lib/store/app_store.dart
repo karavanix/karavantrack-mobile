@@ -775,8 +775,26 @@ class AppStore extends ChangeNotifier {
   /// a network blip. Stopping stays tied to confirmDropoff/logout.
   Future<void> _resumeTrackingIfActive() async {
     final load = _activeLoad;
-    if (load == null || !load.status.isActive) return;
+    if (load == null || !_isTrackedStatus(load.status)) return;
     await _startTracking(load.id);
+  }
+
+  /// Statuses during which the truck is on the road and gets tracked. Not
+  /// the same as LoadStatus.isActive: that one also covers droppedOff (the
+  /// load still shows as active while the shipper hasn't confirmed), but
+  /// the driver's job is done by then — resuming there would restart the
+  /// tracker the moment confirmDropoff stopped it.
+  static bool _isTrackedStatus(LoadStatus status) {
+    switch (status) {
+      case LoadStatus.accepted:
+      case LoadStatus.pickingUp:
+      case LoadStatus.pickedUp:
+      case LoadStatus.inTransit:
+      case LoadStatus.droppingOff:
+        return true;
+      default:
+        return false;
+    }
   }
 
   Future<void> _refreshPendingCounts() async {
