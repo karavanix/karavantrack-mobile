@@ -12,7 +12,7 @@ import '../services/api_service.dart' show kAuthTokenKey, kRefreshTokenKey;
 // ─── The one tracking policy, shared by every platform ─────────────────────
 //
 // Everything that decides WHAT gets recorded and HOW it reaches the server
-// lives here: the adaptive 2/10-minute sampling, jitter filtering, the
+// lives here: the recording rule (moved + 2 min), jitter filtering, the
 // persistent offline queue, token refresh, the WebSocket used for
 // start/stop_live_location, live-mode streaming and its ack.
 //
@@ -37,12 +37,16 @@ const String _kBasePath = '/api/v1';
 // Mirrors MaxLoadLocationBatchSize server-side (register_load_location_batch.go).
 const int _kMaxQueuedPoints = 500;
 
-// ─── Adaptive interval (normal mode) ───────────────────────────────────────
-// Speed threshold (m/s) above which the truck is considered moving (~5 km/h).
-const double _kMovingThresholdMps = 1.5;
-const Duration _kMovingInterval = Duration(minutes: 2);
-const Duration _kStationaryInterval = Duration(minutes: 10);
+// ─── Recording rule (normal mode) ──────────────────────────────────────────
+// A fix is taken every tick, whatever the network is doing. It becomes a
+// recorded point only if the truck has really moved since the last recorded
+// point (see the noise threshold below) and at least _kMinRecordInterval has
+// passed since that point. Parked within GPS noise → nothing is recorded.
+//
+// Whether the network is up has no say in any of this: offline, points go to
+// the queue exactly as they would online and are sent once it comes back.
 const Duration _kTickInterval = Duration(minutes: 1);
+const Duration _kMinRecordInterval = Duration(minutes: 2);
 
 // Upper bounds so one hung request or GPS fix can't wedge the tracker: a tick
 // and a flush each run one at a time, so without these a half-open
@@ -58,12 +62,17 @@ const Duration _kFixTimeout = Duration(seconds: 30);
 // noise than a real position, so it's dropped rather than recorded.
 const double _kMaxAcceptableAccuracyM = 50.0;
 
-// While parked, a new point is only kept if it moved further than GPS noise
-// could plausibly account for — floor of 15m, or 2x the fix's own reported
+// "Moved" means further from the last recorded point than GPS noise could
+// plausibly account for — floor of 15m, or 2x the fix's own reported
 // accuracy, whichever is larger. This is what turns a standing truck into a
 // single point on the map instead of a tangle of jitter.
-const double _kParkedHysteresisFloorM = 15.0;
-const double _kParkedHysteresisAccuracyMultiplier = 2.0;
+//
+// Movement is judged by this displacement, not by the fix's speed: a single
+// fix's speed is unreliable (it read ~1 m/s for a walking driver, and cold
+// fixes can report speed on a parked truck), while any real movement over
+// the 2-minute record interval shows up as displacement far above 15m.
+const double _kNoiseFloorM = 15.0;
+const double _kNoiseAccuracyMultiplier = 2.0;
 
 double _distanceMeters(Position a, Position b) {
   const earthRadiusM = 6371000.0;
@@ -212,13 +221,13 @@ class TrackerCore {
   bool _ticking = false;
   Future<bool>? _inflightFlush;
 
-  DateTime? _lastSentAt;
-
-  /// The last point actually kept (queued), used as the hysteresis anchor
-  /// while parked. Deliberately NOT updated on a point that gets filtered out,
-  /// so slow drift across many rejected fixes still gets caught once it
-  /// exceeds the threshold relative to the last real position.
+  /// The last point actually recorded (queued): the anchor for both the
+  /// "moved?" check and the record interval. Deliberately NOT updated on a fix
+  /// that gets filtered out, so slow drift across many rejected fixes still
+  /// gets caught once it exceeds the threshold relative to the last real
+  /// position.
   Position? _lastKeptPosition;
+  DateTime? _lastRecordedAt;
 
   // Live mode state (WebSocket fast mode)
   WebSocketChannel? _wsChannel;
@@ -510,39 +519,27 @@ class TrackerCore {
       // skip it rather than record it and retry next tick.
       if (pos.accuracy > _kMaxAcceptableAccuracyM) return;
 
-      final isMoving = (pos.speed) > _kMovingThresholdMps;
-      final requiredInterval = isMoving
-          ? _kMovingInterval
-          : _kStationaryInterval;
       final now = DateTime.now();
+      final last = _lastKeptPosition;
+      final lastAt = _lastRecordedAt;
 
-      if (_lastSentAt != null &&
-          now.difference(_lastSentAt!) < requiredInterval) {
-        return;
-      }
+      // The very first fix after start is always recorded, so the map shows
+      // where tracking began.
+      if (last != null && lastAt != null) {
+        if (now.difference(lastAt) < _kMinRecordInterval) return;
 
-      if (!isMoving && _lastKeptPosition != null) {
-        final hysteresisThreshold = math.max(
-          _kParkedHysteresisFloorM,
-          _kParkedHysteresisAccuracyMultiplier * pos.accuracy,
+        final noiseThreshold = math.max(
+          _kNoiseFloorM,
+          _kNoiseAccuracyMultiplier * pos.accuracy,
         );
-        if (_distanceMeters(_lastKeptPosition!, pos) < hysteresisThreshold) {
-          // Parked, and within GPS noise of the last kept point — nothing to
-          // report. Still advance the gate so the next check waits out the
-          // full stationary interval instead of re-sampling every minute.
-          _lastSentAt = now;
-          return;
-        }
+        // Parked: within GPS noise of the last recorded point.
+        if (_distanceMeters(last, pos) < noiseThreshold) return;
       }
 
       await _enqueuePoint(prefs, loadId, pos);
       _lastKeptPosition = pos;
-      // Only advance the interval gate on a successful flush — while offline
-      // this means the tick timer (every 1 min) keeps sampling and queueing
-      // instead of waiting out the full 2-10 min interval, which is the
-      // point: capture as much of the real path as the queue cap allows.
-      final flushed = await _flushQueue(prefs: prefs, token: token);
-      if (flushed) _lastSentAt = now;
+      _lastRecordedAt = now;
+      await _flushQueue(prefs: prefs, token: token);
     } catch (_) {
       // Silently skip — will retry on next tick
     }
