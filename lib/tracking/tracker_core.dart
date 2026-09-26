@@ -12,8 +12,9 @@ import '../services/api_service.dart' show kAuthTokenKey, kRefreshTokenKey;
 // ─── The one tracking policy, shared by every platform ─────────────────────
 //
 // Everything that decides WHAT gets recorded and HOW it reaches the server
-// lives here: the recording rule (moved + 2 min), jitter filtering, the
-// persistent offline queue, token refresh, the WebSocket used for
+// lives here: the recording rule (moved + 2 min, or 5 min regardless),
+// jitter filtering, the persistent offline queue, token refresh, the
+// WebSocket used for
 // start/stop_live_location, live-mode streaming and its ack.
 //
 // What differs per platform is only WHERE this code runs (see
@@ -41,12 +42,22 @@ const int _kMaxQueuedPoints = 500;
 // A fix is taken every tick, whatever the network is doing. It becomes a
 // recorded point only if the truck has really moved since the last recorded
 // point (see the noise threshold below) and at least _kMinRecordInterval has
-// passed since that point. Parked within GPS noise → nothing is recorded.
+// passed since that point.
+//
+// Parked within GPS noise, a fix is still recorded once _kMaxRecordInterval
+// has passed since the last recorded point — a pulse. It's just an upper bound
+// on the record interval, not a separate "parked mode": without it the server
+// can't tell a truck standing still from a tracker that died, since both are
+// silence. The server treats silence longer than 10 min as a gap in the track,
+// so a pulse every ~5 min keeps a stop a stop. No pulse when there's no usable
+// fix (GPS off, no permission, accuracy worse than 50 m) — that silence
+// really is a gap.
 //
 // Whether the network is up has no say in any of this: offline, points go to
 // the queue exactly as they would online and are sent once it comes back.
 const Duration _kTickInterval = Duration(minutes: 1);
 const Duration _kMinRecordInterval = Duration(minutes: 2);
+const Duration _kMaxRecordInterval = Duration(minutes: 5);
 
 // Upper bounds so one hung request or GPS fix can't wedge the tracker: a tick
 // and a flush each run one at a time, so without these a half-open
@@ -65,7 +76,7 @@ const double _kMaxAcceptableAccuracyM = 50.0;
 // "Moved" means further from the last recorded point than GPS noise could
 // plausibly account for — floor of 15m, or 2x the fix's own reported
 // accuracy, whichever is larger. This is what turns a standing truck into a
-// single point on the map instead of a tangle of jitter.
+// few pulses at one spot instead of a tangle of jitter.
 //
 // Movement is judged by this displacement, not by the fix's speed: a single
 // fix's speed is unreliable (it read ~1 m/s for a walking driver, and cold
@@ -526,14 +537,17 @@ class TrackerCore {
       // The very first fix after start is always recorded, so the map shows
       // where tracking began.
       if (last != null && lastAt != null) {
-        if (now.difference(lastAt) < _kMinRecordInterval) return;
+        final sinceLast = now.difference(lastAt);
+        if (sinceLast < _kMinRecordInterval) return;
 
         final noiseThreshold = math.max(
           _kNoiseFloorM,
           _kNoiseAccuracyMultiplier * pos.accuracy,
         );
-        // Parked: within GPS noise of the last recorded point.
-        if (_distanceMeters(last, pos) < noiseThreshold) return;
+        // Parked: within GPS noise of the last recorded point. Recorded
+        // anyway once it's time for a pulse.
+        final parked = _distanceMeters(last, pos) < noiseThreshold;
+        if (parked && sinceLast < _kMaxRecordInterval) return;
       }
 
       await _enqueuePoint(prefs, loadId, pos);
