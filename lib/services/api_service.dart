@@ -12,9 +12,10 @@ const String _kBasePath = '/api/v1';
 
 String _url(String path) => '$_kBaseUrl$_kBasePath$path';
 
-// SharedPreferences keys for the token pair. Public because the background
-// isolate (background_service.dart) reads/writes the same keys to refresh
-// its own copy of the access token without going through this singleton.
+// SharedPreferences keys for the token pair. Public because the Android
+// tracker isolate (PrefsTokenSource in tracking/tracker_core.dart) reads and
+// writes the same keys to refresh its own copy of the access token without
+// going through this singleton.
 const String kAuthTokenKey = 'auth_token';
 const String kRefreshTokenKey = 'refresh_token';
 
@@ -563,37 +564,6 @@ class ApiService {
       }
     } catch (_) {}
     return null;
-  }
-
-  /// POST /loads/{id}/location
-  Future<bool> registerLocation({
-    required String loadId,
-    required String carrierId,
-    required double lat,
-    required double lng,
-    required double speedMps,
-    required double accuracyM,
-    double? headingDeg,
-    required DateTime recordedAt,
-  }) async {
-    final body = <String, dynamic>{
-      'load_id': loadId,
-      'carrier_id': carrierId,
-      'lat': lat,
-      'lng': lng,
-      'speed_mps': speedMps,
-      'accuracy_m': accuracyM,
-      'recorded_at': recordedAt.toUtc().toIso8601String(),
-      'heading_deg': ?headingDeg,
-    };
-    final response = await _authed(
-      () => _client.post(
-        Uri.parse(_url('/loads/$loadId/location')),
-        headers: _authHeaders,
-        body: jsonEncode(body),
-      ),
-    );
-    return response.statusCode == 200;
   }
 
   // ─── Invites (driver-invite-by-link) ───────────────────────────────────
