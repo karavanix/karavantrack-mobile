@@ -7,23 +7,23 @@ import 'package:geolocator/geolocator.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../models/load.dart';
-import '../models/tracking_point.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
-import '../services/background_service.dart';
 import '../services/debug_service.dart';
 import '../services/first_run_service.dart';
 import '../services/locale_service.dart';
 import '../services/notification_service.dart';
 import '../services/theme_service.dart';
+import '../tracking/tracker_core.dart';
+import '../tracking/tracker_runner.dart';
 
 /// Central state management for the app.
 class AppStore extends ChangeNotifier {
   AppStore() {
     _nowUtc = DateTime.now().toUtc();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       _nowUtc = DateTime.now().toUtc();
-      _checkSilenceAlerts();
+      if (t.tick % 5 == 0) _refreshPendingCounts();
       notifyListeners();
     });
     _loadSavedLocale();
@@ -36,7 +36,6 @@ class AppStore extends ChangeNotifier {
   final ApiService _api = ApiService.instance;
 
   Timer? _clockTimer;
-  Timer? _locationTimer;
   DateTime _nowUtc = DateTime.now().toUtc();
 
   Future<void> init() async {
@@ -49,7 +48,6 @@ class AppStore extends ChangeNotifier {
       notifyListeners();
       await _loadProfile();
       await fetchLoads();
-      _startLocationTimer();
       NotificationService.instance.initialize().catchError((_) {});
     }
   }
@@ -210,12 +208,9 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Per-load tracking state (keyed by load id)
-  final Map<String, TrackingPoint?> _lastLocalPoints = {};
-  final Map<String, TrackingPoint?> _lastDeliveredPoints = {};
-  final Map<String, List<TrackingPoint>> _offlineBuffers = {};
-  final Map<String, bool> _silenceAlertSent = {};
-  final Map<String, DateTime?> _silenceAlertAt = {};
+  // Points the tracker has queued but not delivered yet, per load id —
+  // polled from the tracker's persisted queue (see _refreshPendingCounts).
+  Map<String, int> _pendingCounts = const {};
 
   // ─── Getters ────────────────────────────────────────────────────────────
 
@@ -237,53 +232,22 @@ class AppStore extends ChangeNotifier {
 
   Position? get lastGpsPosition => _lastGpsPosition;
 
-  TrackingPoint? lastLocalPoint(String loadId) => _lastLocalPoints[loadId];
-  TrackingPoint? lastDeliveredPoint(String loadId) =>
-      _lastDeliveredPoints[loadId];
-  int offlineBufferCount(String loadId) => _offlineBuffers[loadId]?.length ?? 0;
-  int get totalOfflineBufferCount {
-    int total = 0;
-    for (final buf in _offlineBuffers.values) {
-      total += buf.length;
-    }
-    return total;
-  }
+  int offlineBufferCount(String loadId) => _pendingCounts[loadId] ?? 0;
 
   // ─── Lifecycle ──────────────────────────────────────────────────────────
 
   @override
   void dispose() {
     _clockTimer?.cancel();
-    _locationTimer?.cancel();
     super.dispose();
   }
 
   // ─── GPS callback ───────────────────────────────────────────────────────
 
+  // Only feeds the UI's "GPS" indicator. Recording and sending points is
+  // entirely the tracker's job (tracking/tracker_core.dart).
   void onGpsPosition(Position position) {
     _lastGpsPosition = position;
-    if (!networkOnline) return;
-    if (_activeLoad != null && _activeLoad!.status.isActive) {
-      _sendGpsPointToApi(_activeLoad!, position);
-    }
-  }
-
-  // ─── Periodic location reporting ────────────────────────────────────────
-
-  /// Starts (or restarts) a timer that sends the current GPS position to the
-  /// backend every 10 minutes, even when the device is stationary.
-  void _startLocationTimer() {
-    _locationTimer?.cancel();
-    _locationTimer = Timer.periodic(const Duration(minutes: 10), (_) {
-      _sendCurrentLocation();
-    });
-  }
-
-  /// Sends the most recent GPS fix for the active load, if one exists.
-  void _sendCurrentLocation() {
-    if (_activeLoad == null || !_activeLoad!.status.isActive) return;
-    if (_lastGpsPosition == null) return;
-    _sendGpsPointToApi(_activeLoad!, _lastGpsPosition!);
   }
 
   // ─── Auth ───────────────────────────────────────────────────────────────
@@ -501,9 +465,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    _locationTimer?.cancel();
-    _locationTimer = null;
-    await stopBackgroundService();
+    await TrackerRunner.stop();
     await clearBgActiveLoad();
     await clearBgPendingPoints();
     await NotificationService.instance.deactivate();
@@ -524,11 +486,7 @@ class AppStore extends ChangeNotifier {
     _isInitialFetching = false;
     _isFetchingPending = false;
     _isFetchingHistory = false;
-    _lastLocalPoints.clear();
-    _lastDeliveredPoints.clear();
-    _offlineBuffers.clear();
-    _silenceAlertSent.clear();
-    _silenceAlertAt.clear();
+    _pendingCounts = const {};
     notifyListeners();
   }
 
@@ -608,6 +566,7 @@ class AppStore extends ChangeNotifier {
     _isInitialFetching = false;
     _rebuildAllLoads();
     notifyListeners();
+    await _resumeTrackingIfActive();
   }
 
   Future<void> refreshHistory() async {
@@ -691,16 +650,7 @@ class AppStore extends ChangeNotifier {
       final success = await _api.acceptLoad(loadId, attachmentIds: attachmentIds);
       if (success) {
         await fetchLoads();
-        if (profile != null && _api.accessToken != null) {
-          await setBgActiveLoad(
-            loadId: _activeLoad?.id ?? loadId,
-            carrierId: profile!.id,
-            token: _api.accessToken!,
-          );
-          await startBackgroundService();
-        }
-        _sendCurrentLocation();
-        _startLocationTimer();
+        await _startTracking(_activeLoad?.id ?? loadId);
       }
     } catch (_) {}
     _loadingIds.remove(loadId);
@@ -726,16 +676,8 @@ class AppStore extends ChangeNotifier {
         clearPendingInvite();
         await fetchLoads();
         final loadId = result['loadId'] as String?;
-        if (profile != null && _api.accessToken != null) {
-          await setBgActiveLoad(
-            loadId: _activeLoad?.id ?? loadId ?? '',
-            carrierId: profile!.id,
-            token: _api.accessToken!,
-          );
-          await startBackgroundService();
-        }
-        _sendCurrentLocation();
-        _startLocationTimer();
+        final trackedId = _activeLoad?.id ?? loadId;
+        if (trackedId != null) await _startTracking(trackedId);
       }
       return result;
     } catch (e) {
@@ -794,18 +736,15 @@ class AppStore extends ChangeNotifier {
     _loadingIds.add(loadId);
     notifyListeners();
     try {
-      _sendCurrentLocation();
+      // Get the tail of the trip out while the tracker is still running —
+      // anything left over still flushes later, tagged with its own load_id,
+      // so a slow network must not hold up the driver's button for long.
+      await TrackerRunner.flushNow()
+          .timeout(const Duration(seconds: 10), onTimeout: () {});
       final success = await _api.confirmDropoff(loadId, attachmentIds: attachmentIds);
       if (success) {
-        _locationTimer?.cancel();
-        _locationTimer = null;
-        await stopBackgroundService();
+        await TrackerRunner.stop();
         await clearBgActiveLoad();
-        _offlineBuffers.remove(loadId);
-        _lastLocalPoints.remove(loadId);
-        _lastDeliveredPoints.remove(loadId);
-        _silenceAlertSent.remove(loadId);
-        _silenceAlertAt.remove(loadId);
         await fetchLoads();
       }
     } catch (_) {}
@@ -815,108 +754,45 @@ class AppStore extends ChangeNotifier {
 
   // ─── Tracking ───────────────────────────────────────────────────────────
 
-  Future<void> _sendGpsPointToApi(LoadItem load, Position pos) async {
-    final point = TrackingPoint(
-      // The fix's own timestamp (already UTC), not the moment this runs —
-      // matters most for _sendCurrentLocation, which can replay a position
-      // that's up to 10 minutes stale, and for points parked in
-      // _offlineBuffers while the network is down.
-      timestampUtc: pos.timestamp,
-      latitude: pos.latitude,
-      longitude: pos.longitude,
-      speedKmh: pos.speed * 3.6,
-      accuracyM: pos.accuracy,
-      headingDeg: pos.heading,
+  /// Hands the load to the tracker and starts it (idempotent — a running
+  /// tracker is left alone).
+  Future<void> _startTracking(String loadId) async {
+    if (profile == null || _api.accessToken == null) return;
+    await setBgActiveLoad(
+      loadId: loadId,
+      carrierId: profile!.id,
+      token: _api.accessToken!,
     );
-    _lastLocalPoints[load.id] = point;
-
-    if (networkOnline) {
-      final buffer = _offlineBuffers[load.id];
-      if (buffer != null && buffer.isNotEmpty) {
-        await _flushBuffer(load.id);
-      }
-      await _deliverPoint(load, point);
-    } else {
-      _offlineBuffers.putIfAbsent(load.id, () => []).add(point);
-    }
-    notifyListeners();
+    await TrackerRunner.start();
   }
 
-  Future<void> _deliverPoint(LoadItem load, TrackingPoint point) async {
+  /// Resumes tracking for a load that is already active — after an app
+  /// restart, a phone reboot, or logging back in — instead of only ever
+  /// starting it at the moment a load is accepted.
+  ///
+  /// Deliberately never STOPS tracking: getActiveLoad() returns null on any
+  /// failed request too, so "no active load" here can't be told apart from
+  /// a network blip. Stopping stays tied to confirmDropoff/logout.
+  Future<void> _resumeTrackingIfActive() async {
+    final load = _activeLoad;
+    if (load == null || !load.status.isActive) return;
+    await _startTracking(load.id);
+  }
+
+  Future<void> _refreshPendingCounts() async {
     try {
-      final ok = await _api.registerLocation(
-        loadId: load.id,
-        carrierId: profile?.id ?? '',
-        lat: point.latitude,
-        lng: point.longitude,
-        speedMps: point.speedMps,
-        accuracyM: point.accuracyM,
-        headingDeg: point.headingDeg,
-        recordedAt: point.timestampUtc,
-      );
-      if (ok) {
-        _lastDeliveredPoints[load.id] = point;
-        _silenceAlertSent[load.id] = false;
-        _silenceAlertAt[load.id] = null;
-      }
-    } catch (_) {
-      _offlineBuffers.putIfAbsent(load.id, () => []).add(point);
-    }
-  }
-
-  Future<void> _flushBuffer(String loadId) async {
-    final buffer = _offlineBuffers[loadId];
-    if (buffer == null || buffer.isEmpty) return;
-    final points = List<TrackingPoint>.from(buffer);
-    points.sort((a, b) => a.timestampUtc.compareTo(b.timestampUtc));
-    buffer.clear();
-
-    // Find the load for delivering
-    LoadItem? load = _activeLoad?.id == loadId ? _activeLoad : null;
-    if (load == null) {
-      for (final l in _allLoads) {
-        if (l.id == loadId) {
-          load = l;
-          break;
-        }
-      }
-    }
-    if (load == null) return;
-
-    for (final point in points) {
-      await _deliverPoint(load, point);
-    }
+      final counts = await TrackerRunner.pendingCounts();
+      if (mapEquals(counts, _pendingCounts)) return;
+      _pendingCounts = counts;
+      notifyListeners();
+    } catch (_) {}
   }
 
   void setNetworkOnline(bool value) {
     if (networkOnline == value) return;
     networkOnline = value;
-    if (value) {
-      // Flush all offline buffers
-      for (final loadId in _offlineBuffers.keys.toList()) {
-        _flushBuffer(loadId);
-      }
-    }
+    // Don't make a backlog built up offline wait for the next tick.
+    if (value) TrackerRunner.flushNow();
     notifyListeners();
-  }
-
-  void _checkSilenceAlerts() {
-    if (_activeLoad == null || !_activeLoad!.status.isActive) return;
-    final loadId = _activeLoad!.id;
-
-    DateTime? lastSeen;
-    final delivered = _lastDeliveredPoints[loadId];
-    if (delivered != null) {
-      lastSeen = delivered.timestampUtc;
-    }
-    if (lastSeen == null) return;
-
-    final silence = _nowUtc.difference(lastSeen);
-    if (silence >= const Duration(seconds: 10) &&
-        _silenceAlertSent[loadId] != true) {
-      _silenceAlertSent[loadId] = true;
-      _silenceAlertAt[loadId] = _nowUtc;
-      // In a full implementation, this would trigger a push notification
-    }
   }
 }
