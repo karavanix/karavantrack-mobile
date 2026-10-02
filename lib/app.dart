@@ -65,6 +65,15 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   // transition INTO that state (i.e. right before the Loads screen becomes
   // reachable) instead of on every store change.
   bool _wasReadyForTracking = false;
+  // The disclosure → OS prompt flow is in progress. Every OS prompt (and the
+  // settings page Android 11+ opens for "Allow all the time") pauses and
+  // resumes the app, and each resume re-runs the check — without this guard
+  // every resume stacked another disclosure dialog on top of the first.
+  bool _locationFlowRunning = false;
+  // The disclosure was already shown since login. If it didn't end in
+  // Always (Not Now, or declined at the OS prompt), don't show it again on
+  // every resume — the Loads-screen overlay explains what's missing.
+  bool _disclosureShown = false;
 
   void _handlePosition(Position position) => _store.onGpsPosition(position);
 
@@ -126,6 +135,7 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
     if (readyForTracking &&
         !_wasReadyForTracking &&
         (Platform.isAndroid || Platform.isIOS)) {
+      _disclosureShown = false;
       _checkAlwaysLocationPermission().then((_) => _syncGpsStream());
       _refreshPreciseLocation().then((_) => _syncGpsStream());
     }
@@ -229,27 +239,38 @@ class _DriverTrackingAppState extends State<DriverTrackingApp>
   /// explicitly consent (Google Play's Prominent Disclosure & Consent
   /// Requirement) before triggering the native OS prompt. The result is
   /// mirrored into the store, which drives the Loads-screen blocking overlay.
+  /// The disclosure is shown at most once per login; the OS notification
+  /// prompt is held back until this flow is done so it can't cover it.
   /// Returns true once Always is confirmed.
   Future<bool> _checkAlwaysLocationPermission() async {
-    final isAlways = await LocationPermissionService.isAlwaysGranted();
-    if (isAlways) {
-      _permissionGranted = true;
-      _store.setLocationPermissionGranted(true);
-      return true;
-    }
-
-    if (await LocationPermissionService.canPromptForAlways()) {
-      final ctx = _navigatorKey.currentContext;
-      final consented =
-          ctx != null && mounted && await LocationDisclosureDialog.show(ctx);
-      if (consented) {
-        await LocationPermissionService.enforceAlwaysPermission();
+    if (_locationFlowRunning) return _permissionGranted;
+    _locationFlowRunning = true;
+    try {
+      final isAlways = await LocationPermissionService.isAlwaysGranted();
+      if (isAlways) {
+        _permissionGranted = true;
+        _store.setLocationPermissionGranted(true);
+        return true;
       }
-    }
 
-    _permissionGranted = await LocationPermissionService.isAlwaysGranted();
-    _store.setLocationPermissionGranted(_permissionGranted);
-    return _permissionGranted;
+      if (!_disclosureShown &&
+          await LocationPermissionService.canPromptForAlways()) {
+        final ctx = _navigatorKey.currentContext;
+        if (ctx != null && ctx.mounted) {
+          _disclosureShown = true;
+          if (await LocationDisclosureDialog.show(ctx)) {
+            await LocationPermissionService.enforceAlwaysPermission();
+          }
+        }
+      }
+
+      _permissionGranted = await LocationPermissionService.isAlwaysGranted();
+      _store.setLocationPermissionGranted(_permissionGranted);
+      return _permissionGranted;
+    } finally {
+      _locationFlowRunning = false;
+      NotificationService.instance.allowPermissionPrompt();
+    }
   }
 
   /// Re-reads precise-location accuracy from the OS and mirrors it into the
