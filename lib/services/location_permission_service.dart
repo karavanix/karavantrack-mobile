@@ -7,7 +7,8 @@ import 'package:permission_handler/permission_handler.dart'
 /// Service that requests "Allow all the time" (Always) location permission.
 ///
 /// Attempts the native permission prompts (iOS can request an "Always" upgrade
-/// exactly once after "While Using"; Android can re-prompt). The granted result
+/// exactly once after "While Using"; Android 11+ sends the user to the app's
+/// location settings page for "Allow all the time"). The granted result
 /// is returned to the caller, which mirrors it into the AppStore so the Loads
 /// screen can show its frosted blocking overlay when Always is not granted.
 class LocationPermissionService {
@@ -86,10 +87,15 @@ class LocationPermissionService {
       if (permission == LocationPermission.always) return true;
     }
 
-    // Android: a second Geolocator.requestPermission() does work here
-    // (unlike iOS where it silently does nothing after the first call).
+    // Android 10+: ACCESS_BACKGROUND_LOCATION has to be requested on its own.
+    // A second Geolocator.requestPermission() bundles it with FINE/COARSE,
+    // and Android 11+ silently drops such a mixed request — the system
+    // dialog closes before it's drawn. permission_handler's locationAlways
+    // asks for ACCESS_BACKGROUND_LOCATION alone, which on Android 11+ opens
+    // the app's location settings page with "Allow all the time".
     if (Platform.isAndroid && permission == LocationPermission.whileInUse) {
-      permission = await Geolocator.requestPermission();
+      await permission_handler.Permission.locationAlways.request();
+      permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.always) return true;
     }
 

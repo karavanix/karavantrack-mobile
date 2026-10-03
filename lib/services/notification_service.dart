@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -16,6 +17,19 @@ class NotificationService {
   bool _initialized = false;
   bool _listenersSetUp = false;
 
+  // Right after login app.dart shows the background-location disclosure; an
+  // OS notification prompt fired at the same moment covers its buttons.
+  // initialize() waits here until app.dart has finished the location flow.
+  final Completer<void> _permissionPromptAllowed = Completer<void>();
+
+  /// Lets [initialize] show the OS notification prompt. Called by app.dart
+  /// once the location disclosure/permission flow is over.
+  void allowPermissionPrompt() {
+    if (!_permissionPromptAllowed.isCompleted) {
+      _permissionPromptAllowed.complete();
+    }
+  }
+
   /// Called when a foreground FCM message arrives. Wire this up in app.dart.
   void Function(RemoteMessage)? onForegroundMessage;
 
@@ -26,6 +40,8 @@ class NotificationService {
 
     await Firebase.initializeApp();
     final messaging = FirebaseMessaging.instance;
+
+    await _permissionPromptAllowed.future;
 
     final settings = await messaging.requestPermission(
       alert: true,
