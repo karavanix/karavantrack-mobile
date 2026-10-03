@@ -12,10 +12,12 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - build/**
-    - packages/**/example/**
-  errors:
-    null_check_always_fails: ignore   # or 'warning' instead of error
-    unchecked_use_of_nullable_value: ignore
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
 
 linter:
   # The lint rules applied to this project can be customized in the

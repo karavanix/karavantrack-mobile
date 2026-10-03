@@ -120,3 +120,8 @@ app.*.symbols
 
 # Service Account
 service-account.json
+# Local build configuration (copy env/dev.example.json)
+/env/dev.json
+
+# gen-l10n output
+/lib/ui/core/l10n/generated/

@@ -1,0 +1,107 @@
+import 'package:dio/dio.dart';
+import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
+
+import '../data/repositories/auth_repository.dart';
+import '../data/repositories/invite_repository.dart';
+import '../data/repositories/profile_repository.dart';
+import '../data/repositories/push_repository.dart';
+import '../data/repositories/settings_repository.dart';
+import '../data/services/api/account_api.dart';
+import '../data/services/api/api_client.dart';
+import '../data/services/api/auth_api.dart';
+import '../data/services/api/invites_api.dart';
+import '../data/services/app_info_service.dart';
+import '../data/services/apple_sign_in_service.dart';
+import '../data/services/deep_link_service.dart';
+import '../data/services/local_store.dart';
+import '../data/services/push_service.dart';
+import '../data/services/telegram_auth_service.dart';
+import '../domain/use_cases/session_lifecycle.dart';
+import '../routing/app_startup.dart';
+
+/// The services that talk to the platform or the network directly. Tests
+/// replace them with fakes.
+class Services {
+  Services({
+    required this.store,
+    required this.telegram,
+    PushService? push,
+    DeepLinkService? links,
+    AppleSignInService? apple,
+    AppInfoService? appInfo,
+    this.http,
+  }) : push = push ?? FirebasePushService(),
+       links = links ?? DeepLinkService(),
+       apple = apple ?? AppleSignInService(),
+       appInfo = appInfo ?? AppInfoService();
+
+  final LocalStore store;
+  final TelegramAuthService telegram;
+  final PushService push;
+  final DeepLinkService links;
+  final AppleSignInService apple;
+  final AppInfoService appInfo;
+
+  /// Replaces the network under every API client.
+  final HttpClientAdapter? http;
+}
+
+/// The object graph: services first, repositories on top of them. Views and
+/// view models get what they need with `context.read<T>()`.
+List<SingleChildWidget> providers(Services services) => [
+  Provider<LocalStore>.value(value: services.store),
+  Provider<TelegramAuthService>.value(value: services.telegram),
+  Provider<PushService>.value(value: services.push),
+  Provider<DeepLinkService>.value(value: services.links),
+  Provider<AppleSignInService>.value(value: services.apple),
+  Provider<AppInfoService>.value(value: services.appInfo),
+  Provider(create: (_) => AuthApi(ApiClient.public(adapter: services.http))),
+  ChangeNotifierProvider(
+    create: (context) => AuthRepository(
+      api: context.read(),
+      store: context.read(),
+      apple: context.read(),
+      telegram: context.read(),
+    ),
+  ),
+  Provider(
+    create: (context) => ApiClient.authenticated(
+      tokens: context.read<AuthRepository>(),
+      adapter: services.http,
+    ),
+  ),
+  Provider(create: (context) => AccountApi(context.read())),
+  Provider(create: (context) => InvitesApi(context.read())),
+  ChangeNotifierProvider(
+    create: (context) => SettingsRepository(store: context.read()),
+  ),
+  ChangeNotifierProvider(
+    create: (context) =>
+        ProfileRepository(api: context.read(), store: context.read()),
+  ),
+  ChangeNotifierProvider(
+    create: (context) =>
+        InviteRepository(api: context.read(), links: context.read()),
+  ),
+  Provider(
+    create: (context) => PushRepository(
+      push: context.read(),
+      api: context.read(),
+      store: context.read(),
+    ),
+  ),
+  // Not lazy: it restores the session and must hear every sign-in and
+  // sign-out from the start.
+  Provider(
+    lazy: false,
+    create: (context) => SessionLifecycle(
+      auth: context.read(),
+      profile: context.read(),
+      push: context.read(),
+      invites: context.read(),
+      account: context.read(),
+    )..start(),
+  ),
+  ChangeNotifierProvider(create: (_) => AppStartup()..run(const [])),
+];
