@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../data/repositories/connectivity_repository.dart';
 import '../../../data/repositories/loads_repository.dart';
 import '../../../data/repositories/location_repository.dart';
+import '../../../data/repositories/tracking_repository.dart';
 import '../../../domain/models/load.dart';
 import '../../../domain/models/location_state.dart';
 import '../../../domain/use_cases/advance_load.dart';
@@ -17,6 +18,7 @@ class LoadsViewModel extends ChangeNotifier {
     required this._loads,
     required this._location,
     required this._connectivity,
+    required this._tracking,
     required this._advance,
   }) {
     refresh = Command0(_loads.refresh);
@@ -24,11 +26,13 @@ class LoadsViewModel extends ChangeNotifier {
     _loads.addListener(notifyListeners);
     _location.addListener(notifyListeners);
     _connectivity.addListener(notifyListeners);
+    _tracking.addListener(notifyListeners);
   }
 
   final LoadsRepository _loads;
   final LocationRepository _location;
   final ConnectivityRepository _connectivity;
+  final TrackingRepository _tracking;
   final AdvanceLoadUseCase _advance;
 
   late final Command0<void> refresh;
@@ -59,6 +63,17 @@ class LoadsViewModel extends ChangeNotifier {
 
   LocationProblem? get locationProblem => _location.state.problem;
 
+  /// The active load's location is being recorded and sent.
+  bool get tracking {
+    final load = active;
+    return load != null && _tracking.enabled && _tracking.loadId == load.id;
+  }
+
+  /// Points that haven't reached the server for a while (no signal), or
+  /// null while they go out normally: a few always wait for the next
+  /// batch, that's not worth a word.
+  int? get pointsQueued => _tracking.queueStuck ? _tracking.pending : null;
+
   /// The load whose step is being sent, for its spinner.
   String? get advancing => advance.running ? _advancing : null;
 
@@ -80,6 +95,7 @@ class LoadsViewModel extends ChangeNotifier {
     _loads.removeListener(notifyListeners);
     _location.removeListener(notifyListeners);
     _connectivity.removeListener(notifyListeners);
+    _tracking.removeListener(notifyListeners);
     refresh.dispose();
     advance.dispose();
     super.dispose();

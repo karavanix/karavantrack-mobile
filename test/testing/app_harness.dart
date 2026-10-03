@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'fake_backend.dart';
 import 'fake_local_store.dart';
 import 'fake_services.dart';
+import 'fake_tracking_service.dart';
 
 /// The real App and object graph on a fake device and backend, driven the
 /// way a driver would.
@@ -25,6 +26,7 @@ class Harness {
   final connectivity = FakeConnectivityService();
   final lifecycle = FakeAppLifecycleService();
   final camera = FakeCameraService();
+  late final tracking = FakeTrackingService(backend);
 
   Future<void> start(WidgetTester tester) async {
     // The stepper's pulse never ends; "reduce motion" holds it still so
@@ -35,6 +37,7 @@ class Harness {
     final services = Services(
       store: store,
       telegram: telegram,
+      tracking: tracking,
       push: push,
       links: links,
       apple: FakeAppleSignInService(),

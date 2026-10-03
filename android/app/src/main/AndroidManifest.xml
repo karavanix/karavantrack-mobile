@@ -67,13 +67,10 @@
             android:value="2" />
         <meta-data android:name="com.google.android.geo.API_KEY"
                android:value="AIzaSyAsnUwJNmk7Y5CHRG2NkSzbtTTekFm-Axs"/>
-        <!-- Background location service -->
-        <service
-            android:name="id.flutter.flutter_background_service.BackgroundService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="location"
-            tools:replace="android:exported" />
+        <!-- flutter_background_geolocation; empty in local builds (debug
+             needs none), set from the BG_LICENSE_KEY secret in CI. -->
+        <meta-data android:name="com.transistorsoft.locationmanager.license"
+            android:value="${bgLicenseKey}" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

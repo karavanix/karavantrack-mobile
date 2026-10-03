@@ -62,15 +62,18 @@
 	<array>
 		<string>fetch</string>
 		<string>location</string>
-		<string>processing</string>
 		<string>remote-notification</string>
 	</array>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>YoolLive uses your location in the background to continuously track active cargo deliveries, even when the app is minimized.</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>dev.flutter.background_service</string>
+		<string>com.transistorsoft.fetch</string>
 	</array>
+	<key>NSMotionUsageDescription</key>
+	<string>YoolLive uses motion data to tell whether you are driving or parked, so it can switch GPS off during stops and save battery.</string>
+	<key>TSLocationManagerLicense</key>
+	<string>$(BG_LICENSE_KEY)</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

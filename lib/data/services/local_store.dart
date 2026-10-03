@@ -27,6 +27,10 @@ abstract final class StoreKeys {
   static const cachedActiveLoad = 'cached_active_load';
   static const pushDeviceId = 'fcm_device_id';
 
+  /// The load the tracking library stamps on points, given back to it on
+  /// every launch (its configuration is rebuilt then).
+  static const trackingLoadId = 'tracking_load_id';
+
   static const all = {
     accessToken,
     refreshToken,
@@ -38,6 +42,7 @@ abstract final class StoreKeys {
     cachedProfile,
     cachedActiveLoad,
     pushDeviceId,
+    trackingLoadId,
   };
 }
 

@@ -168,6 +168,7 @@ GoRouter createRouter({
                     loads: context.read(),
                     location: context.read(),
                     connectivity: context.read(),
+                    tracking: context.read(),
                     advance: context.read(),
                   ),
                   dispose: (vm) => vm.dispose(),

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:driver_tracking_app/data/services/tracking/tracking_service.dart';
 
 import 'fake_server.dart';
 
@@ -73,6 +74,12 @@ class FakeBackend {
   /// In the order the server lists them.
   final loads = <String, FakeLoad>{};
 
+  /// Load ids of the GPS points taken, in the order they came.
+  final takenPoints = <String>[];
+
+  /// Points that came for a load the server doesn't know.
+  int droppedPoints = 0;
+
   /// Every photo upload fails (with a 500).
   bool failUploads = false;
   int uploads = 0;
@@ -113,6 +120,31 @@ class FakeBackend {
     for (var i = 1; i <= count; i++) {
       loads['P$i'] = FakeLoad('P$i');
     }
+  }
+
+  /// `POST /tracking/locations`, answered as the real server does: about
+  /// the load of the batch's latest point, "stop" once it's confirmed,
+  /// cancelled or unknown. The real one checks each point's time against
+  /// the load's window; here every point of a known load is taken. The
+  /// library talks to the server with its own HTTP client, so this isn't
+  /// behind [server].
+  BatchResult takePoints(List<String?> loadIds) {
+    for (final id in loadIds) {
+      if (loads[id] case final load?) {
+        takenPoints.add(load.id);
+      } else {
+        droppedPoints++;
+      }
+    }
+    final latest = loads[loadIds.last];
+    return BatchResult(
+      status: 200,
+      stopTracking:
+          latest == null ||
+          latest.status == 'confirmed' ||
+          latest.status == 'cancelled',
+      loadStatus: latest?.status,
+    );
   }
 
   int _issued = 0;

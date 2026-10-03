@@ -27,6 +27,7 @@ class LoadsRepository extends ChangeNotifier {
 
   final _loads = <String, Load>{};
   String? _activeId;
+  bool _activeKnown = false;
   final _pending = _Paged();
   final _history = _Paged();
   Future<Result<void>>? _refreshing;
@@ -40,6 +41,11 @@ class LoadsRepository extends ChangeNotifier {
     final load? when load.status.isActive => load,
     _ => null,
   };
+
+  /// [active] is the server's word since sign-in, not just the copy saved
+  /// on the device or nothing fetched yet. Only then does "no active load"
+  /// really mean there's none.
+  bool get activeKnown => _activeKnown;
 
   /// Assigned loads waiting to be accepted, in the server's order.
   List<Load> get pending => [
@@ -98,6 +104,7 @@ class LoadsRepository extends ChangeNotifier {
     if (epoch != _epoch) return const Result.ok(null);
     if (active case Ok(:final value)) {
       _activeId = value == null ? null : _put(value);
+      _activeKnown = true;
     }
     final error = switch ((active, pending)) {
       (Error(:final error), _) || (_, Error(:final error)) => error,
@@ -131,7 +138,10 @@ class LoadsRepository extends ChangeNotifier {
     switch (result) {
       case Ok(:final value):
         _put(value);
-        if (value.status.isActive) _activeId = value.id;
+        if (value.status.isActive) {
+          _activeId = value.id;
+          _activeKnown = true;
+        }
       // Reassigned to someone else or deleted: it's no longer ours.
       case Error(error: HttpException(statusCode: 403 || 404)):
         _forget(id);
@@ -163,6 +173,7 @@ class LoadsRepository extends ChangeNotifier {
     _epoch++;
     _loads.clear();
     _activeId = null;
+    _activeKnown = false;
     _pending.reset();
     _history.reset();
     _refreshing = null;

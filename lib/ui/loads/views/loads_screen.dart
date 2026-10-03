@@ -150,6 +150,8 @@ class _LoadsScreenState extends State<LoadsScreen> {
                             ? _ActiveLoadPanel(
                                 load: active,
                                 online: vm.online,
+                                tracking: vm.tracking,
+                                pointsQueued: vm.pointsQueued,
                                 advancing: vm.advancing == active.id,
                                 onAction: () => vm.advance.execute(active),
                                 onTap: () => _openDetails(context, active.id),
@@ -244,6 +246,8 @@ class _ActiveLoadPanel extends StatelessWidget {
   const _ActiveLoadPanel({
     required this.load,
     required this.online,
+    required this.tracking,
+    required this.pointsQueued,
     required this.advancing,
     required this.onAction,
     required this.onTap,
@@ -251,6 +255,8 @@ class _ActiveLoadPanel extends StatelessWidget {
 
   final Load load;
   final bool online;
+  final bool tracking;
+  final int? pointsQueued;
   final bool advancing;
   final VoidCallback onAction;
   final VoidCallback onTap;
@@ -349,7 +355,6 @@ class _ActiveLoadPanel extends StatelessWidget {
                   ),
 
                   // ── Status pills row ────────────────────────────────
-                  // GPS and unsent-points pills come with the tracker.
                   const SizedBox(height: 16),
                   Wrap(
                     spacing: 8,
@@ -359,6 +364,17 @@ class _ActiveLoadPanel extends StatelessWidget {
                         label: online ? t.online : t.offline,
                         color: online ? colors.success : colors.warning,
                       ),
+                      StatusPill(
+                        label: tracking ? t.gpsActive : t.gpsWaiting,
+                        color: tracking
+                            ? colors.success
+                            : colors.mutedForeground,
+                      ),
+                      if (pointsQueued case final count?)
+                        StatusPill(
+                          label: t.pointsQueued(count),
+                          color: colors.warning,
+                        ),
                     ],
                   ),
 
