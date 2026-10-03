@@ -22,6 +22,9 @@ abstract final class StoreKeys {
   static const darkTheme = 'app_theme_dark';
   static const seenLanguage = 'seen_language';
   static const seenOnboarding = 'seen_onboarding';
+  static const pendingVerificationEmail = 'pending_verification_email';
+  static const cachedProfile = 'cached_profile';
+  static const pushDeviceId = 'fcm_device_id';
 
   static const all = {
     accessToken,
@@ -30,6 +33,9 @@ abstract final class StoreKeys {
     darkTheme,
     seenLanguage,
     seenOnboarding,
+    pendingVerificationEmail,
+    cachedProfile,
+    pushDeviceId,
   };
 }
 

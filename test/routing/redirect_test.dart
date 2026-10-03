@@ -5,19 +5,23 @@ import 'package:flutter_test/flutter_test.dart';
 RouteState state({
   bool ready = true,
   bool signedIn = true,
-  bool profileCompleted = true,
+  ProfileGate profile = ProfileGate.complete,
   bool seenLanguage = true,
   bool seenOnboarding = true,
   bool pendingVerification = false,
   String? inviteToken,
+  bool inviteSignInRequested = false,
+  String? acceptedLoadId,
 }) => RouteState(
   ready: ready,
   signedIn: signedIn,
-  profileCompleted: profileCompleted,
+  profile: profile,
   seenLanguage: seenLanguage,
   seenOnboarding: seenOnboarding,
   pendingVerification: pendingVerification,
   inviteToken: inviteToken,
+  inviteSignInRequested: inviteSignInRequested,
+  acceptedLoadId: acceptedLoadId,
 );
 
 void main() {
@@ -38,7 +42,7 @@ void main() {
         Routes.verifyEmail,
       ),
       'signed in, no profile': (
-        state(profileCompleted: false),
+        state(profile: ProfileGate.incomplete),
         Routes.profileSetup,
       ),
       'signed in with profile': (state(), null),
@@ -51,14 +55,52 @@ void main() {
         ),
         Routes.invite('tok'),
       ),
-      'invite when signed in': (state(inviteToken: 'tok'), Routes.invite('tok')),
+      'invite when signed in': (
+        state(inviteToken: 'tok'),
+        Routes.invite('tok'),
+      ),
       'invite waits for the profile': (
-        state(profileCompleted: false, inviteToken: 'tok'),
+        state(profile: ProfileGate.incomplete, inviteToken: 'tok'),
         Routes.profileSetup,
       ),
       'e-mail code comes before an invite': (
         state(signedIn: false, pendingVerification: true, inviteToken: 'tok'),
         Routes.verifyEmail,
+      ),
+      'profile still loading keeps the splash': (
+        state(profile: ProfileGate.loading),
+        Routes.splash,
+      ),
+      'profile unavailable offline': (
+        state(profile: ProfileGate.unavailable),
+        Routes.noConnection,
+      ),
+      'invite waits for the profile to load': (
+        state(profile: ProfileGate.loading, inviteToken: 'tok'),
+        Routes.splash,
+      ),
+      '"Log in & accept" goes straight to login, skipping first-run': (
+        state(
+          signedIn: false,
+          seenLanguage: false,
+          seenOnboarding: false,
+          inviteToken: 'tok',
+          inviteSignInRequested: true,
+        ),
+        Routes.login,
+      ),
+      '"Log in & accept": the code screen still comes first': (
+        state(
+          signedIn: false,
+          pendingVerification: true,
+          inviteToken: 'tok',
+          inviteSignInRequested: true,
+        ),
+        Routes.verifyEmail,
+      ),
+      '"Log in & accept": back on the invite once signed in': (
+        state(inviteToken: 'tok', inviteSignInRequested: true),
+        Routes.invite('tok'),
       ),
       'splash comes before everything': (
         state(ready: false, pendingVerification: true, inviteToken: 'tok'),
@@ -78,10 +120,7 @@ void main() {
 
     test('lets the required route itself through', () {
       expect(redirect(state(signedIn: false), Routes.login), isNull);
-      expect(
-        redirect(state(inviteToken: 'tok'), Routes.invite('tok')),
-        isNull,
-      );
+      expect(redirect(state(inviteToken: 'tok'), Routes.invite('tok')), isNull);
     });
 
     test('in the app, leaves entry screens for the loads tab', () {
@@ -93,6 +132,7 @@ void main() {
         Routes.verifyEmail,
         Routes.profileSetup,
         Routes.invite('old'),
+        Routes.noConnection,
       ]) {
         expect(redirect(state(), entry), Routes.loads, reason: entry);
       }
@@ -108,5 +148,13 @@ void main() {
         expect(redirect(state(), route), isNull, reason: route);
       }
     });
+  });
+
+  test('leaving an accepted invite goes to its load', () {
+    expect(
+      redirect(state(acceptedLoadId: 'L7'), Routes.invite('tok')),
+      Routes.loadDetails('L7'),
+    );
+    expect(redirect(state(acceptedLoadId: 'L7'), Routes.login), Routes.loads);
   });
 }

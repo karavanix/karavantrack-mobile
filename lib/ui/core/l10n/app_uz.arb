@@ -184,5 +184,17 @@
   "inviteLoadError": "Taklif ma'lumotlarini yuklab bo'lmadi. Ulanishni tekshirib, qayta urinib ko'ring",
   "inviteAcceptError": "Bu yukni qabul qilib bo'lmadi",
   "inviteGoToApp": "Yuklarimga o'tish",
-  "tryAgain": "Qayta urinish"
+  "tryAgain": "Qayta urinish",
+  "errorNetwork": "Internet aloqasi yo'q. Ulanishni tekshirib, qayta urinib ko'ring.",
+  "errorServer": "Bizning tomonda nimadir xato ketdi. Keyinroq qayta urinib ko'ring.",
+  "errorTooManyRequests": "So'rovlar juda ko'p. Bir daqiqa kutib, qayta urinib ko'ring.",
+  "errorWrongCredentials": "Email yoki parol noto'g'ri.",
+  "errorEmailTaken": "Bu email bilan hisob allaqachon mavjud. Unga kiring.",
+  "errorInvalidEmail": "To'g'ri email manzilini kiriting.",
+  "errorPasswordTooShort": "Parol kamida 8 ta belgidan iborat bo'lishi kerak.",
+  "errorCodeWrong": "Kod noto'g'ri. Xatni tekshirib, qayta urinib ko'ring.",
+  "errorCodeExpired": "Kodning muddati tugagan. «Ro'yxatdan o'tishga qaytish» tugmasini bosing va shaklni qayta yuboring — yangi kod keladi.",
+  "errorCodeTooMany": "Noto'g'ri urinishlar juda ko'p. «Ro'yxatdan o'tishga qaytish» tugmasini bosing va shaklni qayta yuboring — yangi kod keladi.",
+  "errorSignInFailed": "Kirib bo'lmadi. Qayta urinib ko'ring.",
+  "verifyBackToSignUp": "Ro'yxatdan o'tishga qaytish"
 }

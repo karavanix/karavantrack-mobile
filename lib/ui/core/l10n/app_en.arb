@@ -184,5 +184,17 @@
   "inviteLoadError": "Could not load invite details. Check your connection and try again",
   "inviteAcceptError": "Could not accept this load",
   "inviteGoToApp": "Go to my loads",
-  "tryAgain": "Try again"
+  "tryAgain": "Try again",
+  "errorNetwork": "No internet connection. Check it and try again.",
+  "errorServer": "Something went wrong on our side. Please try again later.",
+  "errorTooManyRequests": "Too many requests. Wait a minute and try again.",
+  "errorWrongCredentials": "Wrong email or password.",
+  "errorEmailTaken": "An account with this email already exists. Sign in instead.",
+  "errorInvalidEmail": "Enter a valid email address.",
+  "errorPasswordTooShort": "The password must be at least 8 characters.",
+  "errorCodeWrong": "Wrong code. Check the email and try again.",
+  "errorCodeExpired": "The code has expired. Tap “Back to sign up” and send the form again to get a new code.",
+  "errorCodeTooMany": "Too many wrong attempts. Tap “Back to sign up” and send the form again to get a new code.",
+  "errorSignInFailed": "Couldn't sign in. Please try again.",
+  "verifyBackToSignUp": "Back to sign up"
 }

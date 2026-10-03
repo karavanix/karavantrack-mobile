@@ -1,0 +1,164 @@
+import 'package:driver_tracking_app/data/repositories/auth_repository.dart';
+import 'package:driver_tracking_app/data/services/api/api_client.dart';
+import 'package:driver_tracking_app/data/services/api/api_exception.dart';
+import 'package:driver_tracking_app/data/services/api/auth_api.dart';
+import 'package:driver_tracking_app/data/services/apple_sign_in_service.dart';
+import 'package:driver_tracking_app/data/services/local_store.dart';
+import 'package:driver_tracking_app/utils/result.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../../testing/fake_services.dart';
+import '../../testing/test_graph.dart';
+
+void main() {
+  test('password sign-in stores the tokens', () async {
+    final g = TestGraph();
+
+    final result = await g.auth.signInWithPassword(
+      email: 'driver@yool.live',
+      password: 'password1',
+    );
+
+    expect(result, isA<Ok<void>>());
+    expect(g.auth.isSignedIn, isTrue);
+    expect(g.store.values[StoreKeys.refreshToken], isNotNull);
+  });
+
+  test('a wrong password is a 403 and leaves the user signed out', () async {
+    final g = TestGraph();
+
+    final result = await g.auth.signInWithPassword(
+      email: 'driver@yool.live',
+      password: 'nope',
+    );
+
+    expect(
+      (result as Error<void>).error,
+      isA<HttpException>().having((e) => e.statusCode, 'status', 403),
+    );
+    expect(g.auth.isSignedIn, isFalse);
+  });
+
+  group('sign-up', () {
+    Future<TestGraph> signedUp() async {
+      final g = TestGraph();
+      await g.auth.signUp(
+        email: 'new@yool.live',
+        password: 'password1',
+        firstName: 'Bek',
+        lastName: '',
+      );
+      return g;
+    }
+
+    test('waits for the code, and the wait survives a restart', () async {
+      final g = await signedUp();
+      expect(g.auth.pendingVerificationEmail, 'new@yool.live');
+
+      // The app is killed while the driver reads the e-mail.
+      final restarted = TestGraph(backend: g.backend, store: g.store);
+      expect(restarted.auth.pendingVerificationEmail, 'new@yool.live');
+
+      final result = await restarted.auth.verifyEmail('123456');
+      expect(result, isA<Ok<void>>());
+      expect(restarted.auth.isSignedIn, isTrue);
+      expect(restarted.auth.pendingVerificationEmail, isNull);
+      expect(
+        g.store.values.containsKey(StoreKeys.pendingVerificationEmail),
+        isFalse,
+      );
+    });
+
+    test('a wrong code keeps waiting', () async {
+      final g = await signedUp();
+
+      final result = await g.auth.verifyEmail('000000');
+
+      expect(
+        (result as Error<void>).error,
+        isA<HttpException>().having((e) => e.code, 'code', 'OTP_MISMATCH'),
+      );
+      expect(g.auth.pendingVerificationEmail, 'new@yool.live');
+      expect(g.auth.isSignedIn, isFalse);
+    });
+
+    test('going back keeps the form to refill', () async {
+      final g = await signedUp();
+
+      await g.auth.cancelVerification();
+
+      expect(g.auth.pendingVerificationEmail, isNull);
+      expect(g.auth.lastSignUp?.email, 'new@yool.live');
+      expect(g.auth.lastSignUp?.firstName, 'Bek');
+    });
+
+    test('a verified e-mail is a conflict and nothing waits', () async {
+      final g = TestGraph();
+
+      final result = await g.auth.signUp(
+        email: 'driver@yool.live',
+        password: 'password1',
+        firstName: '',
+        lastName: '',
+      );
+
+      expect(
+        (result as Error<void>).error,
+        isA<HttpException>().having((e) => e.statusCode, 'status', 409),
+      );
+      expect(g.auth.pendingVerificationEmail, isNull);
+    });
+  });
+
+  group('Telegram', () {
+    test('opens Telegram, then signs in when the code comes back', () async {
+      final g = TestGraph();
+
+      expect(await g.auth.startTelegramSignIn(), isA<Ok<void>>());
+      expect(g.telegram.opened.single.queryParameters['state'], 'st');
+
+      g.telegram.redirect(code: 'tg-code', state: 'st');
+      await settle();
+      expect(g.auth.telegramInProgress, isTrue);
+      await pumpUntil(() => g.auth.isSignedIn);
+      expect(g.auth.telegramInProgress, isFalse);
+    });
+
+    test('a code from a cold start waits for the repository', () async {
+      final telegram = FakeTelegramAuthService();
+      // Delivered before anything subscribed.
+      telegram.redirect(code: 'tg-code', state: 'st');
+      final g = TestGraph();
+      final auth = AuthRepository(
+        api: AuthApi(ApiClient.public(adapter: g.backend.server)),
+        store: g.store,
+        apple: g.apple,
+        telegram: telegram,
+      );
+
+      await pumpUntil(() => auth.isSignedIn);
+    });
+
+    test('a rejected code is reported on telegramErrors', () async {
+      final g = TestGraph();
+      final errors = <Exception>[];
+      g.auth.telegramErrors.listen(errors.add);
+
+      g.telegram.redirect(code: 'bad', state: 'st');
+      await pumpUntil(() => errors.isNotEmpty);
+
+      expect(errors.single, isA<HttpException>());
+      expect(g.auth.isSignedIn, isFalse);
+      expect(g.auth.telegramInProgress, isFalse);
+    });
+  });
+
+  test('closing the Apple sheet is not an error worth showing', () async {
+    final g = TestGraph();
+
+    final result = await g.auth.signInWithApple();
+
+    expect((result as Error<void>).error, isA<AppleSignInCancelled>());
+    expect(g.backend.requestsTo('/auth/apple'), isEmpty);
+  });
+}

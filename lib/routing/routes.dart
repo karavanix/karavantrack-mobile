@@ -6,9 +6,10 @@ abstract final class Routes {
   static const onboarding = '/onboarding';
   static const login = '/login';
   static const profileSetup = '/profile-setup';
+  static const noConnection = '/no-connection';
 
   static const loads = '/loads';
-  static const history = '/history';
+  static const history = '/loads/history';
   static const settings = '/settings';
 
   static String invite(String token) => '$invitePrefix/$token';

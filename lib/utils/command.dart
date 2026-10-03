@@ -9,8 +9,13 @@ typedef CommandAction1<T, A> = Future<Result<T>> Function(A);
 /// [running] while it executes, then [completed] or [error] until the next
 /// run or [clearResult]. A second [execute] while one is running is ignored,
 /// so a double tap can't send the same request twice.
+///
+/// A command may outlive its screen: a successful sign-in navigates away
+/// and disposes the view model while the action is still returning.
+/// After [dispose] it finishes quietly instead of notifying.
 abstract class Command<T> extends ChangeNotifier {
   bool _running = false;
+  bool _disposed = false;
   Result<T>? _result;
 
   bool get running => _running;
@@ -24,6 +29,17 @@ abstract class Command<T> extends ChangeNotifier {
   void clearResult() {
     _result = null;
     notifyListeners();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   Future<void> _execute(CommandAction0<T> action) async {

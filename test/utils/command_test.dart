@@ -50,4 +50,15 @@ void main() {
 
     expect(calls, 1);
   });
+
+  test('finishes quietly when disposed while running', () async {
+    final gate = Completer<Result<void>>();
+    final command = Command0(() => gate.future);
+
+    final run = command.execute();
+    command.dispose();
+    gate.complete(const Result.ok(null));
+
+    await expectLater(run, completes);
+  });
 }

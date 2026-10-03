@@ -12,8 +12,7 @@ class FakeLocalStore implements LocalStore {
   bool? getBool(String key) => values[key] as bool?;
 
   @override
-  Future<void> setString(String key, String value) async =>
-      values[key] = value;
+  Future<void> setString(String key, String value) async => values[key] = value;
 
   @override
   Future<void> setBool(String key, bool value) async => values[key] = value;

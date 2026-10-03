@@ -9,9 +9,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../../testing/fake_local_store.dart';
 import '../../../testing/fake_server.dart';
+import '../../../testing/fake_services.dart';
 
 /// The real chain — ApiClient, AuthInterceptor, AuthRepository, AuthApi —
 /// over a fake network.
+AuthRepository authRepository(FakeServer server, FakeLocalStore store) =>
+    AuthRepository(
+      api: AuthApi(ApiClient.public(adapter: server)),
+      store: store,
+      apple: FakeAppleSignInService(),
+      telegram: FakeTelegramAuthService(),
+    );
+
 void main() {
   late FakeServer server;
   late FakeLocalStore store;
@@ -42,10 +51,7 @@ void main() {
       StoreKeys.accessToken: 'old',
       StoreKeys.refreshToken: 'r1',
     });
-    auth = AuthRepository(
-      api: AuthApi(ApiClient.public(adapter: server)),
-      store: store,
-    );
+    auth = authRepository(server, store);
     api = ApiClient.authenticated(tokens: auth, adapter: server);
   });
 
@@ -54,10 +60,7 @@ void main() {
 
   test('sends the current access token', () async {
     store.values[StoreKeys.accessToken] = 'new';
-    auth = AuthRepository(
-      api: AuthApi(ApiClient.public(adapter: server)),
-      store: store,
-    );
+    auth = authRepository(server, store);
     api = ApiClient.authenticated(tokens: auth, adapter: server);
 
     final result = await getPath('/carrier/loads');
@@ -74,9 +77,10 @@ void main() {
     ]);
 
     expect(server.requestsTo('/auth/refresh'), hasLength(1));
-    expect([
-      for (final r in results) (r as Ok<String>).value,
-    ], ['/a', '/b', '/c']);
+    expect(
+      [for (final r in results) (r as Ok<String>).value],
+      ['/a', '/b', '/c'],
+    );
     expect(auth.accessToken, 'new');
     expect(store.values[StoreKeys.accessToken], 'new');
     expect(store.values[StoreKeys.refreshToken], 'r2');
@@ -85,10 +89,7 @@ void main() {
 
   test('a rejected refresh token signs out', () async {
     store.values[StoreKeys.refreshToken] = 'revoked';
-    auth = AuthRepository(
-      api: AuthApi(ApiClient.public(adapter: server)),
-      store: store,
-    );
+    auth = authRepository(server, store);
     api = ApiClient.authenticated(tokens: auth, adapter: server);
     var notified = 0;
     auth.addListener(() => notified++);
