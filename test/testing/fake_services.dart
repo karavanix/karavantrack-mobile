@@ -109,6 +109,8 @@ class FakeLocationStatusService implements LocationStatusService {
   /// What the driver picks at the system prompts.
   LocationAccess grantAtWhileInUse = LocationAccess.whileInUse;
   LocationAccess grantAtAlways = LocationAccess.always;
+  bool grantMotion = true;
+  final changed = StreamController<void>.broadcast();
 
   final requests = <String>[];
   int settingsOpened = 0;
@@ -131,6 +133,15 @@ class FakeLocationStatusService implements LocationStatusService {
     requests.add('always');
     access = grantAtAlways;
   }
+
+  @override
+  Future<bool> requestMotion() async {
+    requests.add('motion');
+    return grantMotion;
+  }
+
+  @override
+  Stream<void> get changes => changed.stream;
 
   @override
   Future<void> openAppSettings() async => settingsOpened++;

@@ -36,6 +36,9 @@ class LocationDisclosureDialog {
               children: [
                 Text(t.locationDisclosureBody),
                 const SizedBox(height: 12),
+                // The physical activity prompt follows the location ones.
+                Text(t.locationDisclosureMotion),
+                const SizedBox(height: 12),
                 Text.rich(
                   TextSpan(
                     children: [

@@ -11,6 +11,7 @@ import '../data/repositories/location_repository.dart';
 import '../data/repositories/profile_repository.dart';
 import '../data/repositories/push_repository.dart';
 import '../data/repositories/settings_repository.dart';
+import '../data/repositories/tracking_repository.dart';
 import '../data/services/api/account_api.dart';
 import '../data/services/api/api_client.dart';
 import '../data/services/api/attachments_api.dart';
@@ -27,9 +28,12 @@ import '../data/services/local_store.dart';
 import '../data/services/location_status_service.dart';
 import '../data/services/push_service.dart';
 import '../data/services/telegram_auth_service.dart';
+import '../data/services/tracking/tracking_service.dart';
 import '../domain/use_cases/advance_load.dart';
 import '../domain/use_cases/session_lifecycle.dart';
+import '../domain/use_cases/tracking_lifecycle.dart';
 import '../routing/app_startup.dart';
+import '../ui/core/l10n/tracking_texts.dart';
 
 /// The services that talk to the platform or the network directly. Tests
 /// replace them with fakes.
@@ -37,6 +41,8 @@ class Services {
   Services({
     required this.store,
     required this.telegram,
+    required this.tracking,
+    this.trackingAtLaunch = TrackingSnapshot.off,
     PushService? push,
     DeepLinkService? links,
     AppleSignInService? apple,
@@ -50,13 +56,17 @@ class Services {
        links = links ?? DeepLinkService(),
        apple = apple ?? AppleSignInService(),
        appInfo = appInfo ?? AppInfoService(),
-       location = location ?? PermissionHandlerLocationStatusService(),
+       location = location ?? TrackingLocationStatusService(),
        connectivity = connectivity ?? ConnectivityService(),
        lifecycle = lifecycle ?? AppLifecycleService(),
        camera = camera ?? CameraService();
 
   final LocalStore store;
   final TelegramAuthService telegram;
+
+  /// Made ready in main before anything else (see TrackingRepository.ready).
+  final TrackingService tracking;
+  final TrackingSnapshot trackingAtLaunch;
   final PushService push;
   final DeepLinkService links;
   final AppleSignInService apple;
@@ -75,6 +85,7 @@ class Services {
 List<SingleChildWidget> providers(Services services) => [
   Provider<LocalStore>.value(value: services.store),
   Provider<TelegramAuthService>.value(value: services.telegram),
+  Provider<TrackingService>.value(value: services.tracking),
   Provider<PushService>.value(value: services.push),
   Provider<DeepLinkService>.value(value: services.links),
   Provider<AppleSignInService>.value(value: services.apple),
@@ -118,9 +129,20 @@ List<SingleChildWidget> providers(Services services) => [
         LoadsRepository(api: context.read(), store: context.read()),
   ),
   Provider(create: (context) => AttachmentRepository(api: context.read())),
+  ChangeNotifierProvider(
+    create: (context) => TrackingRepository(
+      service: context.read(),
+      store: context.read(),
+      texts: () => trackingTexts(services.store),
+      launch: services.trackingAtLaunch,
+    ),
+  ),
   Provider(
-    create: (context) =>
-        AdvanceLoadUseCase(loads: context.read(), attachments: context.read()),
+    create: (context) => AdvanceLoadUseCase(
+      loads: context.read(),
+      attachments: context.read(),
+      tracking: context.read(),
+    ),
   ),
   ChangeNotifierProvider(
     create: (context) => LocationRepository(service: context.read()),
@@ -149,8 +171,21 @@ List<SingleChildWidget> providers(Services services) => [
       location: context.read(),
       connectivity: context.read(),
       lifecycle: context.read(),
+      tracking: context.read(),
     )..start(),
     dispose: (_, session) => session.dispose(),
+  ),
+  // Not lazy either: tracking must resume for the active load whatever
+  // screen the app opens on.
+  Provider(
+    lazy: false,
+    create: (context) => TrackingLifecycle(
+      auth: context.read(),
+      loads: context.read(),
+      location: context.read(),
+      tracking: context.read(),
+    )..start(),
+    dispose: (_, lifecycle) => lifecycle.dispose(),
   ),
   ChangeNotifierProvider(create: (_) => AppStartup()..run(const [])),
 ];

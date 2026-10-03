@@ -7,6 +7,7 @@ import '../../data/repositories/loads_repository.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../data/repositories/push_repository.dart';
+import '../../data/repositories/tracking_repository.dart';
 import '../../data/services/api/account_api.dart';
 import '../../data/services/app_lifecycle_service.dart';
 import '../../utils/logger.dart';
@@ -30,6 +31,7 @@ class SessionLifecycle {
     required this._location,
     required this._connectivity,
     required this._lifecycle,
+    required this._tracking,
   });
 
   final AuthRepository _auth;
@@ -41,6 +43,7 @@ class SessionLifecycle {
   final LocationRepository _location;
   final ConnectivityRepository _connectivity;
   final AppLifecycleService _lifecycle;
+  final TrackingRepository _tracking;
 
   bool _signedIn = false;
   bool _online = true;
@@ -88,6 +91,7 @@ class SessionLifecycle {
   Future<void> _ended() async {
     log.info('[session] ended, clearing user data');
     _location.reset();
+    await _tracking.reset();
     await _profile.clear();
     await _loads.clear();
     await _push.unregister();
@@ -124,6 +128,9 @@ class SessionLifecycle {
   }
 
   Future<void> signOut() async {
+    // Logout revokes the tracking library's tokens too: whatever it still
+    // has queued goes now or never.
+    await _tracking.flush();
     // Best effort: the server revokes the refresh token; offline, the
     // local sign-out still happens.
     await _account.logout().timeout(
@@ -135,6 +142,8 @@ class SessionLifecycle {
   }
 
   Future<Result<void>> deleteAccount() async {
+    // The points belong to the load and stay with it on the server.
+    await _tracking.flush();
     final result = await _account.delete();
     if (result is Ok<void>) {
       _invites.clear();
