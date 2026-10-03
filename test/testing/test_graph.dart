@@ -1,13 +1,20 @@
+import 'package:driver_tracking_app/data/repositories/attachment_repository.dart';
 import 'package:driver_tracking_app/data/repositories/auth_repository.dart';
+import 'package:driver_tracking_app/data/repositories/connectivity_repository.dart';
 import 'package:driver_tracking_app/data/repositories/invite_repository.dart';
+import 'package:driver_tracking_app/data/repositories/loads_repository.dart';
+import 'package:driver_tracking_app/data/repositories/location_repository.dart';
 import 'package:driver_tracking_app/data/repositories/profile_repository.dart';
 import 'package:driver_tracking_app/data/repositories/push_repository.dart';
 import 'package:driver_tracking_app/data/repositories/settings_repository.dart';
 import 'package:driver_tracking_app/data/services/api/account_api.dart';
 import 'package:driver_tracking_app/data/services/api/api_client.dart';
+import 'package:driver_tracking_app/data/services/api/attachments_api.dart';
 import 'package:driver_tracking_app/data/services/api/auth_api.dart';
 import 'package:driver_tracking_app/data/services/api/invites_api.dart';
+import 'package:driver_tracking_app/data/services/api/loads_api.dart';
 import 'package:driver_tracking_app/data/services/local_store.dart';
+import 'package:driver_tracking_app/domain/use_cases/advance_load.dart';
 import 'package:driver_tracking_app/domain/use_cases/session_lifecycle.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -46,6 +53,9 @@ class TestGraph {
   final links = FakeDeepLinkService();
   final apple = FakeAppleSignInService();
   final telegram = FakeTelegramAuthService();
+  final locationService = FakeLocationStatusService();
+  final connectivityService = FakeConnectivityService();
+  final lifecycle = FakeAppLifecycleService();
 
   late final auth = AuthRepository(
     api: AuthApi(ApiClient.public(adapter: backend.server)),
@@ -62,12 +72,29 @@ class TestGraph {
   late final profile = ProfileRepository(api: account, store: store);
   late final invites = InviteRepository(api: InvitesApi(_client), links: links);
   late final pushes = PushRepository(push: push, api: account, store: store);
+  late final loads = LoadsRepository(api: LoadsApi(_client), store: store);
+  late final attachments = AttachmentRepository(api: AttachmentsApi(_client));
+  late final advance = AdvanceLoadUseCase(
+    loads: loads,
+    attachments: attachments,
+  );
+  late final location = LocationRepository(
+    service: locationService,
+    pollInterval: const Duration(days: 1),
+  );
+  late final connectivity = ConnectivityRepository(
+    service: connectivityService,
+  );
   late final session = SessionLifecycle(
     auth: auth,
     profile: profile,
     push: pushes,
     invites: invites,
     account: account,
+    loads: loads,
+    location: location,
+    connectivity: connectivity,
+    lifecycle: lifecycle,
   )..start();
 }
 
