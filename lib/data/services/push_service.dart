@@ -6,7 +6,9 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import '../../utils/logger.dart';
 
-typedef PushMessage = ({String? title, String? body});
+/// [loadId] comes from the message data: the server sends it with every
+/// notification about a load (assigned, cancelled, …).
+typedef PushMessage = ({String? title, String? body, String? loadId});
 
 /// Push notifications (FCM).
 abstract interface class PushService {
@@ -20,6 +22,10 @@ abstract interface class PushService {
   /// Messages that arrive while the app is in the foreground (the system
   /// doesn't show those itself).
   Stream<PushMessage> get foregroundMessages;
+
+  /// The load of a notification the driver tapped, including the one that
+  /// launched the app.
+  Stream<String> get openedLoadIds;
 
   /// Invalidates this device's token; the server drops it on the next send.
   Future<void> deleteToken();
@@ -80,7 +86,23 @@ class FirebasePushService implements PushService {
     await _messaging();
     yield* FirebaseMessaging.onMessage
         .where((m) => m.notification != null)
-        .map((m) => (title: m.notification!.title, body: m.notification!.body));
+        .map(
+          (m) => (
+            title: m.notification!.title,
+            body: m.notification!.body,
+            loadId: m.data['load_id'] as String?,
+          ),
+        );
+  }
+
+  @override
+  Stream<String> get openedLoadIds async* {
+    final messaging = await _messaging();
+    final initial = await messaging.getInitialMessage();
+    if (initial?.data['load_id'] case final String id) yield id;
+    await for (final message in FirebaseMessaging.onMessageOpenedApp) {
+      if (message.data['load_id'] case final String id) yield id;
+    }
   }
 
   @override
