@@ -52,6 +52,7 @@ android {
             // Required by the tracking library, resource shrinking off.
             isMinifyEnabled = true
             isShrinkResources = false
+            proguardFiles("proguard-rules.pro")
         }
     }
 }
