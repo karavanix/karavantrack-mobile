@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -37,7 +39,11 @@ class LocationDisclosureDialog {
                 Text(t.locationDisclosureBody),
                 const SizedBox(height: 12),
                 // The physical activity prompt follows the location ones.
-                Text(t.locationDisclosureMotion),
+                Text(
+                  Platform.isIOS
+                      ? t.locationDisclosureMotionIos
+                      : t.locationDisclosureMotion,
+                ),
                 const SizedBox(height: 12),
                 Text.rich(
                   TextSpan(

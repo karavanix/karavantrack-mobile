@@ -114,19 +114,41 @@ class _GpsOffContent extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          t.gpsOffMessage,
+          Platform.isIOS ? t.gpsOffIosMessage : t.gpsOffMessage,
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.textTheme.bodyMedium?.color?.withAlpha(180),
             height: 1.5,
           ),
         ),
+        // No app may open Location Services on iOS, only its own page in
+        // Settings: the way from there is spelled out.
+        if (Platform.isIOS) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withAlpha(80),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _InstructionStep(number: '1', text: t.gpsOffIosStep1),
+                const SizedBox(height: 6),
+                _InstructionStep(number: '2', text: t.gpsOffIosStep2),
+                const SizedBox(height: 6),
+                _InstructionStep(number: '3', text: t.gpsOffIosStep3),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            icon: const Icon(Icons.location_on),
-            label: Text(t.turnOnGps),
+            icon: Icon(Platform.isIOS ? Icons.settings : Icons.location_on),
+            label: Text(Platform.isIOS ? t.openAppSettings : t.turnOnGps),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
@@ -179,7 +201,7 @@ class _PermissionContent extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          t.alwaysLocationMessage,
+          Platform.isIOS ? t.alwaysLocationIosMessage : t.alwaysLocationMessage,
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.textTheme.bodyMedium?.color?.withAlpha(180),
