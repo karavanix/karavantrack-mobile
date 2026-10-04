@@ -91,21 +91,21 @@ class ApiClient {
       ),
     );
     if (adapter != null) dio.httpClientAdapter = adapter;
-    // Method, URL, status and timing only: bodies and headers carry tokens
-    // and personal data, and the log can be shared from the phone.
-    dio.interceptors.add(
-      TalkerDioLogger(
-        talker: log,
-        settings: const TalkerDioLoggerSettings(
-          printRequestHeaders: false,
-          printRequestData: false,
-          printResponseHeaders: false,
-          printResponseData: false,
-          printResponseMessage: false,
-          printErrorHeaders: false,
-        ),
-      ),
-    );
+    dio.interceptors.add(quietHttpLog());
     return dio;
   }
 }
+
+/// Method, URL, status and timing only: bodies and headers carry tokens
+/// and personal data, and the log can be shared from the phone.
+TalkerDioLogger quietHttpLog() => TalkerDioLogger(
+  talker: log,
+  settings: const TalkerDioLoggerSettings(
+    printRequestHeaders: false,
+    printRequestData: false,
+    printResponseHeaders: false,
+    printResponseData: false,
+    printResponseMessage: false,
+    printErrorHeaders: false,
+  ),
+);

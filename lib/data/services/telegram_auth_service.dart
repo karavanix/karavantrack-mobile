@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../utils/logger.dart';
 import '../../utils/result.dart';
+import 'api/api_client.dart';
 import 'api/api_exception.dart';
 
 /// The code Telegram hands back once the driver confirms the login.
@@ -58,16 +59,17 @@ class TelegramAuthService {
   TelegramAuthService({
     this._channel = const MethodChannel('yool.live.app/telegram_auth'),
     Dio? http,
-  }) : _http =
-           http ??
-           Dio(
-             BaseOptions(
-               connectTimeout: const Duration(seconds: 15),
-               receiveTimeout: const Duration(seconds: 15),
-               // Telegram shows it under "This login attempt came from".
-               headers: {'User-Agent': _userAgent},
-             ),
-           );
+  }) : _http = http ?? _createDio();
+
+  static Dio _createDio() => Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+      // Telegram shows the OS from it under "This login attempt came
+      // from" ("Android" / "iOS"; the app name doesn't come through).
+      headers: {'User-Agent': _userAgent},
+    ),
+  )..interceptors.add(quietHttpLog());
 
   static const clientId = '8966637225';
   static const _scope = 'openid profile phone';
