@@ -2,23 +2,27 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
     as bg;
 import 'package:permission_handler/permission_handler.dart' as ph;
 
 import '../../domain/models/location_state.dart';
 import '../../utils/logger.dart';
+import 'system_prompt.dart';
 
 /// The phone's location settings: reading them, asking for access, and
 /// sending the driver to the system settings.
 abstract interface class LocationStatusService {
   Future<LocationState> read();
 
-  /// The system "while using the app" prompt.
-  Future<void> requestWhileInUse();
+  /// The system "while using the app" prompt. Returns the access it ended
+  /// with: right after a prompt [read] may still report the old one.
+  Future<LocationAccess> requestWhileInUse();
 
-  /// The upgrade to "all the time". Needs "while using" first.
-  Future<void> requestAlways();
+  /// The upgrade to "all the time". Needs "while using" first. Returns once
+  /// the driver has answered, with the access it ended with.
+  Future<LocationAccess> requestAlways();
 
   /// Physical activity (Android) / Motion & Fitness (iOS): without it the
   /// library can't tell driving from standing and only wakes up once the
@@ -80,6 +84,7 @@ class TrackingLocationStatusService implements LocationStatusService {
 
   @override
   Future<bool> requestMotion() async {
+    if (Platform.isIOS) return _requestMotionIOS();
     try {
       final status = await bg.BackgroundGeolocation.requestPermission(
         bg.Permission.motion,
@@ -93,25 +98,71 @@ class TrackingLocationStatusService implements LocationStatusService {
     }
   }
 
-  @override
-  Future<void> requestWhileInUse() async {
-    final status = await ph.Permission.locationWhenInUse.request();
-    log.info('[location] while-in-use request: $status');
+  /// Motion & Fitness through permission_handler: the library's request
+  /// gives up after about 30 s with the prompt still up, and its result
+  /// can't be trusted until the prompt is closed anyway.
+  Future<bool> _requestMotionIOS() async {
+    final shown = await withLifecycle(
+      (lifecycle) => untilPromptAnswered(
+        () => ph.Permission.sensors.request(),
+        lifecycle: lifecycle,
+        current: () => WidgetsBinding.instance.lifecycleState,
+      ),
+    );
+    final status = await ph.Permission.sensors.status;
+    log.info('[location] motion request: $status (prompt shown: $shown)');
+    return status.isGranted;
   }
 
   @override
-  Future<void> requestAlways() async {
-    // iOS may silently ignore a second prompt that comes right after the
-    // first one.
-    if (Platform.isIOS) {
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-    }
+  Future<LocationAccess> requestWhileInUse() async {
+    final status = await ph.Permission.locationWhenInUse.request();
+    log.info('[location] while-in-use request: $status');
+    if (!Platform.isIOS) return (await read()).access;
+    // The prompt's own answer: the library's providerState still has the
+    // old one at this point.
+    return status.isGranted || status.isLimited
+        ? LocationAccess.whileInUse
+        : LocationAccess.denied;
+  }
+
+  @override
+  Future<LocationAccess> requestAlways() async {
+    if (Platform.isIOS) return _requestAlwaysIOS();
     // On Android 10+ the background permission has to be asked for on its
     // own: bundled with FINE/COARSE, Android 11+ drops the whole request
     // without showing anything. Alone, it opens the app's location page
     // with "Allow all the time".
     final status = await ph.Permission.locationAlways.request();
     log.info('[location] always request: $status');
+    return (await read()).access;
+  }
+
+  /// permission_handler returns at once here, before the driver answers
+  /// (its README, WARNING 1): the answer is the app coming back from under
+  /// the prompt. Then the access straight from Core Location, which
+  /// permission_handler's status reads: the library's may lag behind.
+  Future<LocationAccess> _requestAlwaysIOS() async {
+    // iOS may silently ignore a second prompt that comes right after the
+    // first one.
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    final shown = await withLifecycle(
+      (lifecycle) => untilPromptAnswered(
+        () => ph.Permission.locationAlways.request(),
+        lifecycle: lifecycle,
+        current: () => WidgetsBinding.instance.lifecycleState,
+      ),
+    );
+    final always = await ph.Permission.locationAlways.status;
+    final whileInUse = await ph.Permission.locationWhenInUse.status;
+    log.info(
+      '[location] always request: $always, while in use: $whileInUse '
+      '(prompt shown: $shown)',
+    );
+    if (always.isGranted) return LocationAccess.always;
+    return whileInUse.isGranted
+        ? LocationAccess.whileInUse
+        : LocationAccess.denied;
   }
 
   @override

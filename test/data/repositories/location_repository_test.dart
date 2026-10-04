@@ -43,6 +43,59 @@ void main() {
     expect(location.promptsDone, isTrue);
   });
 
+  test('the library still reporting the old access right after a prompt '
+      'skips nothing (iOS providerState)', () async {
+    phone.readLags = true;
+
+    await location.requestAccess(allow);
+
+    expect(phone.requests, ['whileInUse', 'always', 'motion']);
+    expect(location.state.access, LocationAccess.always);
+    expect(location.state.problem, isNull);
+  });
+
+  test('"Don\'t Allow" at the first prompt: no upgrade, no physical '
+      'activity, the overlay explains', () async {
+    phone
+      ..readLags = true
+      ..grantAtWhileInUse = LocationAccess.denied;
+
+    await location.requestAccess(allow);
+
+    expect(phone.requests, ['whileInUse']);
+    expect(location.state.problem, LocationProblem.noAlwaysAccess);
+    expect(location.promptsDone, isTrue);
+  });
+
+  test('while the "all the time" prompt is up, physical activity waits '
+      'and the prompts are not done', () async {
+    final prompt = phone.alwaysPrompt = Completer<void>();
+
+    final flow = location.requestAccess(allow);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    expect(phone.requests, ['whileInUse', 'always']);
+    expect(location.promptsDone, isFalse);
+
+    prompt.complete();
+    await flow;
+
+    expect(phone.requests, ['whileInUse', 'always', 'motion']);
+    expect(location.promptsDone, isTrue);
+  });
+
+  test('"Keep Only While Using": physical activity is still asked, the '
+      'overlay explains', () async {
+    phone
+      ..readLags = true
+      ..grantAtAlways = LocationAccess.whileInUse;
+
+    await location.requestAccess(allow);
+
+    expect(phone.requests, ['whileInUse', 'always', 'motion']);
+    expect(location.state.problem, LocationProblem.noAlwaysAccess);
+  });
+
   test('"Not now": no system prompt, the overlay explains', () async {
     await location.requestAccess(notNow);
 
