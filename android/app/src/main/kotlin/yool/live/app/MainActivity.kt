@@ -6,7 +6,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
@@ -41,6 +43,22 @@ class MainActivity : FlutterActivity() {
         intent?.data?.takeIf { isTelegramRedirect(it) }?.let { uri ->
             pendingTelegramUri = uri
         }
+    }
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        // The system location toggle, for the "GPS is off" overlay.
+        // permission_handler can only open the app's own settings page.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "yool.live.app/settings")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "openLocationSettings" -> {
+                        startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
     }
 
     override fun onNewIntent(intent: Intent) {

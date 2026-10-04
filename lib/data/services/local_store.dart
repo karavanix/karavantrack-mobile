@@ -24,6 +24,7 @@ abstract final class StoreKeys {
   static const seenOnboarding = 'seen_onboarding';
   static const pendingVerificationEmail = 'pending_verification_email';
   static const cachedProfile = 'cached_profile';
+  static const cachedActiveLoad = 'cached_active_load';
   static const pushDeviceId = 'fcm_device_id';
 
   static const all = {
@@ -35,6 +36,7 @@ abstract final class StoreKeys {
     seenOnboarding,
     pendingVerificationEmail,
     cachedProfile,
+    cachedActiveLoad,
     pushDeviceId,
   };
 }

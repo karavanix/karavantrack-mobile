@@ -8,6 +8,7 @@ import '../data/repositories/push_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/services/push_service.dart';
 import '../routing/router.dart';
+import '../routing/routes.dart';
 import 'core/l10n/l10n.dart';
 import 'core/themes/app_theme.dart';
 
@@ -28,21 +29,45 @@ class _AppState extends State<App> {
   );
   final _messenger = GlobalKey<ScaffoldMessengerState>();
   late final StreamSubscription<PushMessage> _pushes;
+  late final StreamSubscription<String> _openedLoads;
+  String? _loadToOpen;
 
   @override
   void initState() {
     super.initState();
+    final push = context.read<PushRepository>();
     // The system doesn't show a push that arrives while the app is open.
-    _pushes = context.read<PushRepository>().foregroundMessages.listen((m) {
+    _pushes = push.foregroundMessages.listen((m) {
       final text = m.title ?? m.body;
       if (text == null) return;
       _messenger.currentState?.showSnackBar(SnackBar(content: Text(text)));
     });
+    _openedLoads = push.openedLoadIds.listen((id) {
+      _loadToOpen = id;
+      _openTappedLoad();
+    });
+    _router.routerDelegate.addListener(_openTappedLoad);
+  }
+
+  /// A tapped notification opens its load, once the driver is in the app:
+  /// a tap that launched it waits out the splash and sign-in screens.
+  void _openTappedLoad() {
+    final id = _loadToOpen;
+    if (id == null) return;
+    final path = _router.routerDelegate.currentConfiguration.uri.path;
+    if (!path.startsWith(Routes.loads) && !path.startsWith(Routes.settings)) {
+      return;
+    }
+    _loadToOpen = null;
+    // Not from inside the router's own notification.
+    scheduleMicrotask(() => _router.go(Routes.loadDetails(id)));
   }
 
   @override
   void dispose() {
     _pushes.cancel();
+    _openedLoads.cancel();
+    _router.routerDelegate.removeListener(_openTappedLoad);
     _router.dispose();
     super.dispose();
   }
