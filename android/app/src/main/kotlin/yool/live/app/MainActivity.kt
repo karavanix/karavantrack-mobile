@@ -1,6 +1,5 @@
 package yool.live.app
 
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
 import android.net.Uri
@@ -18,18 +17,12 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // The 1.x tracker's notification channel ("KaravanTrack Location
+        // Service") survives an app update; the tracking library brings its
+        // own, so drop the old one from the app's notification settings.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "karavantrack_location",
-                "KaravanTrack Location Service",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Running in background to track location"
-            }
-
-            val notificationManager: NotificationManager =
-                getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+            getSystemService(NotificationManager::class.java)
+                .deleteNotificationChannel("karavantrack_location")
         }
 
         // Cold-start: app launched by the redirect App Link.
