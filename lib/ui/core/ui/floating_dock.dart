@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 
 const double kDockHeight = 64.0;
@@ -6,11 +8,17 @@ const double kDockBreathingRoom = 20.0;
 
 /// Bottom inset a screen hosted under the floating dock should reserve
 /// so its last content is fully visible above the dock.
+///
+/// The shell's Scaffold extends its body behind the dock and already puts
+/// the dock's height (system inset included) into the body's bottom
+/// padding: counted again, a fifth of a phone screen went unused (Honor,
+/// 05.10).
 double dockClearance(BuildContext context) =>
-    kDockHeight +
-    kDockBottomMargin +
-    kDockBreathingRoom +
-    MediaQuery.of(context).padding.bottom;
+    math.max(
+      MediaQuery.paddingOf(context).bottom,
+      kDockHeight + kDockBottomMargin,
+    ) +
+    kDockBreathingRoom;
 
 class FloatingDockItem {
   const FloatingDockItem({
