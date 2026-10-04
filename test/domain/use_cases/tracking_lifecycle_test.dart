@@ -146,6 +146,55 @@ void main() {
       },
     );
 
+    group('stopped while the app was closed, a saved load', () {
+      /// The driver dropped off A; the library stopped in the background
+      /// (the server's word). The copy saved on the device still says
+      /// "dropped off". The app starts again, with no answer yet.
+      Future<TestGraph> relaunch(FakeBackend backend) async {
+        backend.activeLoadId = 'A';
+        final first = await driver(backend: backend);
+        await first.loads.refresh();
+        await tracks(first, 'A');
+        backend.loads['A']!.status = 'dropped_off';
+        await first.loads.refresh();
+
+        final g = TestGraph(backend: backend, store: first.store);
+        backend.online = false;
+        g
+          ..session
+          ..trackingLifecycle;
+        await g.location.requestAccess(() async => true);
+        await settle();
+        expect(g.loads.active?.id, 'A');
+        return g;
+      }
+
+      test('is no reason to start: the server is asked first', () async {
+        final backend = FakeBackend();
+        final g = await relaunch(backend);
+        expect(g.trackingService.calls, isNot(contains('start')));
+
+        backend
+          ..loads['A']!.status = 'confirmed'
+          ..online = true;
+        await g.loads.refresh();
+        await settle();
+
+        expect(g.loads.active, isNull);
+        expect(g.trackingService.calls, isNot(contains('start')));
+      });
+
+      test('still active on the server: followed once it says so', () async {
+        final backend = FakeBackend();
+        final g = await relaunch(backend);
+
+        backend.online = true;
+        await g.loads.refresh();
+
+        await tracks(g, 'A');
+      });
+    });
+
     test(
       'with no signal and nothing saved: the library is left alone',
       () async {

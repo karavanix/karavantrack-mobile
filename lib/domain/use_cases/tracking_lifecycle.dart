@@ -12,7 +12,10 @@ import '../models/location_state.dart';
 /// "dropped off" included (the server takes points until then and shows
 /// where the truck went after the drop-off).
 ///
-/// - An active load: tracking follows it.
+/// - An active load: tracking follows it. Tracking that is off starts
+///   only on the server's word, not for the copy saved on the device: it
+///   may be off because the server stopped it in the background, the
+///   load confirmed since.
 /// - The server says there's no active load: tracking stops. A failed
 ///   fetch or an empty cache stops nothing: after a reboot the library
 ///   resumes on its own, and an app with no signal mustn't switch it off.
@@ -64,6 +67,7 @@ class TrackingLifecycle {
     final load = _loads.active;
     if (load != null) {
       if (_tracking.enabled && _tracking.loadId == load.id) return;
+      if (!_tracking.enabled && !_loads.activeKnown) return;
       if (!_canStart) return;
       unawaited(_tracking.follow(load.id));
     } else if (_loads.activeKnown && _tracking.enabled) {
