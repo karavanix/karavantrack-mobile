@@ -37,9 +37,10 @@ void main() {
       await g.advance(g.loads.pending.single);
 
       await tracks(g, 'P1');
-      // The hint comes after the start, or the library would ignore it.
-      final calls = g.trackingService.calls;
-      expect(calls.indexOf('pace:true'), greaterThan(calls.indexOf('start')));
+      // It starts moving: no change of pace on top, which would record the
+      // same fix again.
+      expect(g.tracking.isMoving, isTrue);
+      expect(g.trackingService.calls, isNot(contains('pace:true')));
       expect(g.store.values[StoreKeys.trackingLoadId], 'P1');
     });
 
@@ -59,10 +60,51 @@ void main() {
       g.backend.activeLoadId = 'A';
       await g.loads.refresh();
       await tracks(g, 'A');
+      g.trackingService.park();
+      await pumpUntil(() => !g.tracking.isMoving);
 
       await g.advance(g.loads.active!); // picking up
       await g.advance(g.loads.active!); // picked up
       expect(g.trackingService.calls, isNot(contains('pace:true')));
+
+      await g.advance(g.loads.active!); // on the way
+      expect(g.trackingService.calls.last, 'pace:true');
+    });
+
+    test('"On the way" while still moving says nothing more', () async {
+      final g = await driver();
+      g.backend.activeLoadId = 'A';
+      await g.loads.refresh();
+      await tracks(g, 'A');
+
+      await g.advance(g.loads.active!); // picking up
+      await g.advance(g.loads.active!); // picked up
+      await g.advance(g.loads.active!); // on the way
+
+      expect(g.tracking.isMoving, isTrue);
+      expect(g.trackingService.calls, isNot(contains('pace:true')));
+    });
+
+    test('"On the way" after a relaunch says moving, whatever the library '
+        'reported at launch', () async {
+      final backend = FakeBackend()..activeLoadId = 'A';
+      final first = await driver(backend: backend);
+      await first.loads.refresh();
+      await tracks(first, 'A');
+      await first.advance(first.loads.active!); // picking up
+      await first.advance(first.loads.active!); // picked up
+
+      // Relaunched: the library tracks, its state may say moving.
+      final g = TestGraph(backend: backend, store: first.store);
+      g.trackingService
+        ..enabled = true
+        ..isMoving = true;
+      await g.loads.refresh();
+      g
+        ..session
+        ..trackingLifecycle;
+      await g.location.requestAccess(() async => true);
+      await settle();
 
       await g.advance(g.loads.active!); // on the way
       expect(g.trackingService.calls.last, 'pace:true');

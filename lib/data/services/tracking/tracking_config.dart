@@ -85,6 +85,12 @@ const locationTemplate =
 /// out, so nothing set here survives by accident.
 bg.Config trackingConfig(TrackingSetup setup) => bg.Config(
   reset: true,
+  // start() goes straight to moving: tracking starts when the driver
+  // accepts a load, about to set off. Started stationary and then told
+  // it's moving (changePace), the library recorded the same fix up to six
+  // times (Honor, 04.10). Standing still, it's stationary again after
+  // stopTimeout.
+  isMoving: true,
   geolocation: bg.GeoConfig(
     desiredAccuracy: bg.DesiredAccuracy.high,
     // Elastic: the library scales it with speed, so a point comes about

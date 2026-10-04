@@ -75,6 +75,8 @@ class FakeTrackingService implements TrackingService {
     calls.add('start');
     if (failStart) throw Exception('no permission');
     enabled = true;
+    // The production config starts moving (isMoving: true).
+    isMoving = true;
     _enabled.add(true);
     return _snapshot;
   }
@@ -92,6 +94,12 @@ class FakeTrackingService implements TrackingService {
   Future<void> changePace(bool moving) async {
     calls.add('pace:$moving');
     isMoving = moving;
+  }
+
+  /// The library notices the phone stands still (stopTimeout).
+  void park() {
+    isMoving = false;
+    _motion.add(false);
   }
 
   /// The library takes a point (only while tracking).

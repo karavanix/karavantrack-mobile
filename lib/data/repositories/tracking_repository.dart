@@ -33,6 +33,7 @@ class TrackingRepository extends ChangeNotifier {
       ..add(
         _service.motionChanges.listen((moving) {
           _isMoving = moving;
+          if (!moving) _movingSinceStart = false;
           notifyListeners();
         }),
       )
@@ -75,6 +76,7 @@ class TrackingRepository extends ChangeNotifier {
 
   bool _enabled;
   bool _isMoving;
+  bool _movingSinceStart = false;
   String? _loadId;
   int _pending = 0;
   DateTime? _oldestPendingAt;
@@ -120,6 +122,7 @@ class TrackingRepository extends ChangeNotifier {
     await _store.setString(StoreKeys.trackingLoadId, loadId);
     await _service.configure(_setup());
     _apply(await _service.start());
+    _movingSinceStart = _isMoving;
   });
 
   /// Stops tracking. Queued points stay and go out with the next batch.
@@ -128,8 +131,12 @@ class TrackingRepository extends ChangeNotifier {
   /// The driver did something (accepted the load, set off): assume
   /// they're about to move rather than waiting for the motion sensors,
   /// which would miss the first few hundred metres.
+  ///
+  /// Tracking starts moving already: told again right after, the library
+  /// records the same fix once more. Only our own start counts, not the
+  /// state read at launch.
   Future<void> moving() => _serial(() async {
-    if (!_enabled) return;
+    if (!_enabled || _movingSinceStart) return;
     await _service.changePace(true);
     _isMoving = true;
     notifyListeners();
@@ -163,6 +170,7 @@ class TrackingRepository extends ChangeNotifier {
   Future<void> _stop() async {
     if (!_enabled) return;
     log.info('[tracking] stop ($_loadId)');
+    _movingSinceStart = false;
     _apply(await _service.stop());
   }
 
