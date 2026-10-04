@@ -254,7 +254,7 @@ class _LoadDetailsScreenState extends State<LoadDetailsScreen> {
               ),
 
               // ─── Optional POD photo ───────────────────────────────────
-              if (action != null) ...[
+              if (_vm.photoAllowed) ...[
                 const SizedBox(height: 16),
                 if (uploadingPhoto)
                   Row(

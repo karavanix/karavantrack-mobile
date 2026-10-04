@@ -47,6 +47,7 @@ void main() {
 
     expect(vm.load?.history.single.to, LoadStatus.accepted);
     expect(vm.nextAction, LoadAction.beginPickup);
+    expect(vm.photoAllowed, isTrue);
   });
 
   test('the photo goes with the step, then is cleared', () async {
@@ -98,6 +99,7 @@ void main() {
     await pumpUntil(() => !vm.fetch.running);
 
     expect(vm.nextAction, LoadAction.accept);
+    expect(vm.photoAllowed, isFalse);
     expect(vm.acceptBlock, AcceptBlock.activeLoad);
 
     g.backend.loads['A']!.status = 'dropped_off';

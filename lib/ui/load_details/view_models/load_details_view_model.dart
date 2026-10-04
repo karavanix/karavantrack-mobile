@@ -41,6 +41,8 @@ class LoadDetailsViewModel extends ChangeNotifier {
 
   LoadAction? get nextAction => load?.status.nextAction;
 
+  bool get photoAllowed => nextAction?.takesPhoto ?? false;
+
   AcceptBlock? get acceptBlock => switch (load) {
     final load? => AcceptBlock.of(_loads.active, load),
     null => null,
