@@ -23,6 +23,8 @@ class PushRepository {
 
   Stream<PushMessage> get foregroundMessages => _push.foregroundMessages;
 
+  Stream<String> get openedLoadIds => _push.openedLoadIds;
+
   /// Asks for the notification permission (the system prompt, the first
   /// time) and sends the token to the server; later token changes follow
   /// on their own. Safe to call again.

@@ -2,21 +2,32 @@ import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
+import '../data/repositories/attachment_repository.dart';
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/connectivity_repository.dart';
 import '../data/repositories/invite_repository.dart';
+import '../data/repositories/loads_repository.dart';
+import '../data/repositories/location_repository.dart';
 import '../data/repositories/profile_repository.dart';
 import '../data/repositories/push_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/services/api/account_api.dart';
 import '../data/services/api/api_client.dart';
+import '../data/services/api/attachments_api.dart';
 import '../data/services/api/auth_api.dart';
 import '../data/services/api/invites_api.dart';
+import '../data/services/api/loads_api.dart';
 import '../data/services/app_info_service.dart';
+import '../data/services/app_lifecycle_service.dart';
 import '../data/services/apple_sign_in_service.dart';
+import '../data/services/camera_service.dart';
+import '../data/services/connectivity_service.dart';
 import '../data/services/deep_link_service.dart';
 import '../data/services/local_store.dart';
+import '../data/services/location_status_service.dart';
 import '../data/services/push_service.dart';
 import '../data/services/telegram_auth_service.dart';
+import '../domain/use_cases/advance_load.dart';
 import '../domain/use_cases/session_lifecycle.dart';
 import '../routing/app_startup.dart';
 
@@ -30,11 +41,19 @@ class Services {
     DeepLinkService? links,
     AppleSignInService? apple,
     AppInfoService? appInfo,
+    LocationStatusService? location,
+    ConnectivityService? connectivity,
+    AppLifecycleService? lifecycle,
+    CameraService? camera,
     this.http,
   }) : push = push ?? FirebasePushService(),
        links = links ?? DeepLinkService(),
        apple = apple ?? AppleSignInService(),
-       appInfo = appInfo ?? AppInfoService();
+       appInfo = appInfo ?? AppInfoService(),
+       location = location ?? PermissionHandlerLocationStatusService(),
+       connectivity = connectivity ?? ConnectivityService(),
+       lifecycle = lifecycle ?? AppLifecycleService(),
+       camera = camera ?? CameraService();
 
   final LocalStore store;
   final TelegramAuthService telegram;
@@ -42,6 +61,10 @@ class Services {
   final DeepLinkService links;
   final AppleSignInService apple;
   final AppInfoService appInfo;
+  final LocationStatusService location;
+  final ConnectivityService connectivity;
+  final AppLifecycleService lifecycle;
+  final CameraService camera;
 
   /// Replaces the network under every API client.
   final HttpClientAdapter? http;
@@ -56,6 +79,10 @@ List<SingleChildWidget> providers(Services services) => [
   Provider<DeepLinkService>.value(value: services.links),
   Provider<AppleSignInService>.value(value: services.apple),
   Provider<AppInfoService>.value(value: services.appInfo),
+  Provider<LocationStatusService>.value(value: services.location),
+  Provider<ConnectivityService>.value(value: services.connectivity),
+  Provider<AppLifecycleService>.value(value: services.lifecycle),
+  Provider<CameraService>.value(value: services.camera),
   Provider(create: (_) => AuthApi(ApiClient.public(adapter: services.http))),
   ChangeNotifierProvider(
     create: (context) => AuthRepository(
@@ -73,6 +100,8 @@ List<SingleChildWidget> providers(Services services) => [
   ),
   Provider(create: (context) => AccountApi(context.read())),
   Provider(create: (context) => InvitesApi(context.read())),
+  Provider(create: (context) => LoadsApi(context.read())),
+  Provider(create: (context) => AttachmentsApi(context.read())),
   ChangeNotifierProvider(
     create: (context) => SettingsRepository(store: context.read()),
   ),
@@ -83,6 +112,21 @@ List<SingleChildWidget> providers(Services services) => [
   ChangeNotifierProvider(
     create: (context) =>
         InviteRepository(api: context.read(), links: context.read()),
+  ),
+  ChangeNotifierProvider(
+    create: (context) =>
+        LoadsRepository(api: context.read(), store: context.read()),
+  ),
+  Provider(create: (context) => AttachmentRepository(api: context.read())),
+  Provider(
+    create: (context) =>
+        AdvanceLoadUseCase(loads: context.read(), attachments: context.read()),
+  ),
+  ChangeNotifierProvider(
+    create: (context) => LocationRepository(service: context.read()),
+  ),
+  ChangeNotifierProvider(
+    create: (context) => ConnectivityRepository(service: context.read()),
   ),
   Provider(
     create: (context) => PushRepository(
@@ -101,7 +145,12 @@ List<SingleChildWidget> providers(Services services) => [
       push: context.read(),
       invites: context.read(),
       account: context.read(),
+      loads: context.read(),
+      location: context.read(),
+      connectivity: context.read(),
+      lifecycle: context.read(),
     )..start(),
+    dispose: (_, session) => session.dispose(),
   ),
   ChangeNotifierProvider(create: (_) => AppStartup()..run(const [])),
 ];
