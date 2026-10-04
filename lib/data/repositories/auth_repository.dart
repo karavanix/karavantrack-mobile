@@ -127,6 +127,7 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
       case Ok(:final value):
         final result = await _api.apple(
           idToken: value.identityToken,
+          authorizationCode: value.authorizationCode,
           firstName: value.firstName,
           lastName: value.lastName,
         );

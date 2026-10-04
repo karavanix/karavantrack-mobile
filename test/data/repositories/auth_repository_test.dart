@@ -227,6 +227,27 @@ void main() {
     });
   });
 
+  test(
+    'Apple: the code goes along, for revoking on account deletion',
+    () async {
+      final g = TestGraph();
+      g.apple.next = const Result.ok((
+        identityToken: 'apple-id-token',
+        authorizationCode: 'apple-code',
+        firstName: 'Ali',
+        lastName: 'Valiev',
+      ));
+
+      final result = await g.auth.signInWithApple();
+
+      expect(result, isA<Ok<void>>());
+      expect(g.auth.isSignedIn, isTrue);
+      final body = g.backend.requestsTo('/auth/apple').single.data as Map;
+      expect(body['authorization_code'], 'apple-code');
+      expect(body['first_name'], 'Ali');
+    },
+  );
+
   test('closing the Apple sheet is not an error worth showing', () async {
     final g = TestGraph();
 

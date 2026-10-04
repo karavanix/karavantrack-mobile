@@ -190,6 +190,11 @@ class FakeBackend {
         return _tokens();
       case ('POST', '/auth/pkce'):
         return (status: 200, body: {'state': 'st', 'code_challenge': 'ch'});
+      case ('POST', '/auth/apple'):
+        if (body['id_token'] != 'apple-id-token') {
+          return _error(403, 'FORBIDDEN', 'bad id_token');
+        }
+        return _tokens();
       case ('POST', '/auth/telegram'):
         if (body['id_token'] != 'tg-id-token') {
           return _error(403, 'FORBIDDEN', 'bad id_token');

@@ -6,6 +6,7 @@ import '../../utils/result.dart';
 
 typedef AppleCredential = ({
   String identityToken,
+  String authorizationCode,
   String? firstName,
   String? lastName,
 });
@@ -33,6 +34,9 @@ class AppleSignInService {
       }
       return Result.ok((
         identityToken: token,
+        // The server keeps what it trades this for, to revoke the app's
+        // access when the account is deleted (Apple's rule).
+        authorizationCode: credential.authorizationCode,
         // Apple only sends the name on the first sign-in.
         firstName: credential.givenName,
         lastName: credential.familyName,

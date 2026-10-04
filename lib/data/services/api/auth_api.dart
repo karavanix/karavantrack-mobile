@@ -50,12 +50,14 @@ class AuthApi {
 
   Future<Result<TokenPair>> apple({
     required String idToken,
+    required String authorizationCode,
     String? firstName,
     String? lastName,
   }) => _client.post(
     '/auth/apple',
     data: {
       'id_token': idToken,
+      'authorization_code': authorizationCode,
       'role': _role,
       if (firstName != null && firstName.isNotEmpty) 'first_name': firstName,
       if (lastName != null && lastName.isNotEmpty) 'last_name': lastName,
