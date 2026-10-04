@@ -178,7 +178,10 @@ class BgTrackingService implements TrackingService {
       bg.LocationQuery(limit: 1, order: bg.LocationQuery.ORDER_ASC),
     );
     if (rows.isEmpty) return null;
-    if (rows.first case {'timestamp': final String at}) {
+    // Android hands over the raw location; iOS the record as rendered by
+    // locationTemplate, where the time is `recorded_at`.
+    if (rows.first case {'timestamp': final String at} ||
+        {'recorded_at': final String at}) {
       return DateTime.tryParse(at);
     }
     return null;

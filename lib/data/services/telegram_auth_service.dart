@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -52,6 +53,13 @@ class TelegramAuthService {
     'code_challenge_method': 'S256',
   });
 
-  Future<bool> open(Uri url) =>
-      launchUrl(url, mode: LaunchMode.inAppBrowserView);
+  /// On iOS the in-app browser lives in our process: swiped away while the
+  /// driver is in Telegram, it takes the login page and its redirect with
+  /// it. Safari outlives the app.
+  Future<bool> open(Uri url) => launchUrl(
+    url,
+    mode: Platform.isIOS
+        ? LaunchMode.externalApplication
+        : LaunchMode.inAppBrowserView,
+  );
 }
