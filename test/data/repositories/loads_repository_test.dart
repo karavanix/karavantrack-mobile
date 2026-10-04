@@ -4,8 +4,10 @@ import 'package:dio/dio.dart';
 import 'package:driver_tracking_app/data/services/api/api_exception.dart';
 import 'package:driver_tracking_app/data/services/local_store.dart';
 import 'package:driver_tracking_app/domain/models/load.dart';
+import 'package:driver_tracking_app/utils/logger.dart';
 import 'package:driver_tracking_app/utils/result.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 
 import '../../testing/fake_backend.dart';
 import '../../testing/test_graph.dart';
@@ -198,6 +200,40 @@ void main() {
 
     expect(g.backend.requestsTo('/loads/active'), hasLength(1));
   });
+
+  test(
+    'no active load is one debug line; other errors log as before',
+    () async {
+      final g = TestGraph.signedIn();
+      // Tests run with the log off; history only, no console.
+      log.configure(settings: TalkerSettings(useConsoleLogs: false));
+      addTearDown(log.disable);
+      List<TalkerData> activeLines() => log.history
+          .where((l) => l.generateTextMessage().contains('/loads/active'))
+          .toList();
+
+      log.cleanHistory();
+      await g.loads.refresh();
+      expect(activeLines().where((l) => l.logLevel == LogLevel.error), isEmpty);
+      expect(
+        activeLines().where((l) => l.message!.startsWith('[loads]')).single,
+        isA<TalkerData>()
+            .having((l) => l.logLevel, 'level', LogLevel.debug)
+            .having((l) => l.message, 'message', contains('404')),
+      );
+
+      final backend = g.backend.server.handler;
+      g.backend.server.handler = (r) async => r.path == '/loads/active'
+          ? (status: 500, body: {'code': 'INTERNAL_ERROR', 'message': 'db'})
+          : backend(r);
+      log.cleanHistory();
+      await g.loads.refresh();
+      expect(
+        activeLines().where((l) => l.logLevel == LogLevel.error),
+        hasLength(1),
+      );
+    },
+  );
 
   test('clear forgets everything, and late answers too', () async {
     final g = TestGraph.signedIn();
