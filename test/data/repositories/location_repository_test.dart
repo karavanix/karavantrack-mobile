@@ -37,7 +37,7 @@ void main() {
     await location.requestAccess(allow);
 
     expect(disclosures, 1);
-    expect(phone.requests, ['whileInUse', 'always']);
+    expect(phone.requests, ['whileInUse', 'always', 'motion']);
     expect(location.state.access, LocationAccess.always);
     expect(location.state.problem, isNull);
     expect(location.promptsDone, isTrue);
@@ -56,7 +56,7 @@ void main() {
 
     await location.requestAccess(allow);
 
-    expect(phone.requests, ['always']);
+    expect(phone.requests, ['always', 'motion']);
   });
 
   test('"all the time" already given: no disclosure at all', () async {
@@ -100,7 +100,7 @@ void main() {
     await first;
 
     expect(disclosures, 1);
-    expect(phone.requests, ['whileInUse', 'always']);
+    expect(phone.requests, ['whileInUse', 'always', 'motion']);
   });
 
   test('GPS off comes first among the problems', () async {
@@ -132,5 +132,49 @@ void main() {
 
     expect(watched.state.problem, LocationProblem.gpsOff);
     watched.watch(false);
+  });
+
+  test(
+    'the library reports GPS switched off without waiting for a poll',
+    () async {
+      phone.access = LocationAccess.always;
+      await location.check();
+
+      phone.serviceEnabled = false;
+      phone.changed.add(null);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(location.state.problem, LocationProblem.gpsOff);
+    },
+  );
+
+  test('physical activity: asked once per sign-in, also without a '
+      'disclosure when location is already allowed', () async {
+    phone.access = LocationAccess.always;
+
+    await location.requestAccess(allow);
+    await location.requestAccess(allow);
+    expect(disclosures, 0);
+    expect(phone.requests, ['motion']);
+
+    location.reset();
+    await location.requestAccess(allow);
+    expect(phone.requests, ['motion', 'motion']);
+  });
+
+  test('"Not now" asks for no physical activity either', () async {
+    await location.requestAccess(notNow);
+
+    expect(phone.requests, isEmpty);
+  });
+
+  test('physical activity refused: nothing is blocked', () async {
+    phone.grantMotion = false;
+
+    await location.requestAccess(allow);
+
+    expect(phone.requests.last, 'motion');
+    expect(location.state.problem, isNull);
+    expect(location.promptsDone, isTrue);
   });
 }

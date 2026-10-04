@@ -213,7 +213,7 @@ void main() {
 
     await tapText(tester, 'Allow');
 
-    expect(h.location.requests, ['whileInUse', 'always']);
+    expect(h.location.requests, ['whileInUse', 'always', 'motion']);
     expect(find.text('Background Location Required'), findsNothing);
   });
 
@@ -266,5 +266,34 @@ void main() {
 
     expect(find.text('Old cotton'), findsOneWidget);
     expect(find.text('Confirmed'), findsOneWidget);
+  });
+
+  testWidgets('the card shows tracking, and points that don\'t get through', (
+    tester,
+  ) async {
+    final h = inApp();
+    activeLoad(h);
+    await h.start(tester);
+
+    expect(h.tracking.enabled, isTrue);
+    expect(h.tracking.setup?.loadId, 'A');
+    expect(find.text('GPS active'), findsOneWidget);
+
+    // A point a few seconds old is just waiting for its batch.
+    h.tracking.record(at: DateTime.now());
+    await tester.pumpAndSettle();
+    expect(find.textContaining('waiting to be sent'), findsNothing);
+    await tester.runAsync(h.tracking.autoSync);
+
+    // One that has waited six minutes isn't getting through.
+    h.tracking
+      ..record(at: DateTime.now().subtract(const Duration(minutes: 6)))
+      ..record(at: DateTime.now());
+    await tester.pumpAndSettle();
+    expect(find.text('2 points waiting to be sent'), findsOneWidget);
+
+    await tester.runAsync(h.tracking.autoSync);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('waiting to be sent'), findsNothing);
   });
 }

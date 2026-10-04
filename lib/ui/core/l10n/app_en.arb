@@ -200,5 +200,26 @@
   "errorCodeExpired": "The code has expired. Tap “Back to sign up” and send the form again to get a new code.",
   "errorCodeTooMany": "Too many wrong attempts. Tap “Back to sign up” and send the form again to get a new code.",
   "errorSignInFailed": "Couldn't sign in. Please try again.",
-  "verifyBackToSignUp": "Back to sign up"
+  "verifyBackToSignUp": "Back to sign up",
+  "locationDisclosureMotion": "The app will also ask for access to physical activity: motion sensors tell it whether you're driving or parked, so it can switch GPS off while you stand and save your battery.",
+  "trackingNotificationTitle": "YoolLive: load in progress",
+  "trackingNotificationText": "Sharing your location with the shipper until the delivery is confirmed",
+  "trackingRationaleTitle": "Allow location in the background?",
+  "trackingRationaleMessage": "To keep tracking your load with the screen off, choose “{option}”.",
+  "@trackingRationaleMessage": {
+    "placeholders": {
+      "option": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingRationaleAllow": "Open settings",
+  "pointsQueued": "{count, plural, =1{1 point waiting to be sent} other{{count} points waiting to be sent}}",
+  "@pointsQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
