@@ -47,6 +47,9 @@ class LocationRepository extends ChangeNotifier {
   /// (our disclosure, true for "Allow"), then the system prompts. Then
   /// physical activity, which the disclosure covers too.
   ///
+  /// Each request returns once its prompt is answered, so the prompts come
+  /// one at a time and [promptsDone] only after the last one.
+  ///
   /// Each system prompt pauses and resumes the app, and a resume may call
   /// this again: a second call while one runs does nothing. The disclosure
   /// is shown at most once per sign-in; after "Not now" the blocking
@@ -63,16 +66,25 @@ class LocationRepository extends ChangeNotifier {
       if (!consent && !_disclosureShown) {
         _disclosureShown = true;
         consent = await askConsent();
+        var access = state.access;
         if (consent) {
-          if (state.access == LocationAccess.denied) {
-            await _service.requestWhileInUse();
-            state = await _service.read();
+          // The access each prompt ended with, not a read(): right after a
+          // prompt the library may still report the old one on iOS.
+          if (access == LocationAccess.denied) {
+            access = await _service.requestWhileInUse();
           }
-          if (state.access == LocationAccess.whileInUse) {
-            await _service.requestAlways();
+          if (access == LocationAccess.whileInUse) {
+            access = await _service.requestAlways();
           }
         }
-        state = await _service.read();
+        final now = await _service.read();
+        state = consent
+            ? LocationState(
+                serviceEnabled: now.serviceEnabled,
+                access: access,
+                precise: now.precise,
+              )
+            : now;
         _set(state);
       }
       if (consent && !_motionAsked && state.access != LocationAccess.denied) {

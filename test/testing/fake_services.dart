@@ -155,23 +155,34 @@ class FakeLocationStatusService implements LocationStatusService {
   final requests = <String>[];
   int settingsOpened = 0;
 
+  /// Like the library's providerState on iOS: [read] still reports the
+  /// access from before the latest prompt.
+  bool readLags = false;
+  LocationAccess? _before;
+
+  /// While set, the "all the time" prompt is up until it completes.
+  Completer<void>? alwaysPrompt;
+
   @override
   Future<LocationState> read() async => LocationState(
     serviceEnabled: serviceEnabled,
-    access: access,
+    access: readLags ? _before ?? access : access,
     precise: precise,
   );
 
   @override
-  Future<void> requestWhileInUse() async {
+  Future<LocationAccess> requestWhileInUse() async {
     requests.add('whileInUse');
-    access = grantAtWhileInUse;
+    _before = access;
+    return access = grantAtWhileInUse;
   }
 
   @override
-  Future<void> requestAlways() async {
+  Future<LocationAccess> requestAlways() async {
     requests.add('always');
-    access = grantAtAlways;
+    await alwaysPrompt?.future;
+    _before = access;
+    return access = grantAtAlways;
   }
 
   @override
