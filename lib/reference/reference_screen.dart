@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../ui/core/themes/app_theme.dart';
@@ -83,8 +84,11 @@ class _ReferenceScreenState extends State<ReferenceScreen>
             const SizedBox(height: 12),
             _lastPointCard(),
             const SizedBox(height: 12),
-            _energyCard(),
-            const SizedBox(height: 12),
+            // Battery optimization and power managers are Android's.
+            if (defaultTargetPlatform != TargetPlatform.iOS) ...[
+              _energyCard(),
+              const SizedBox(height: 12),
+            ],
             _journalCard(),
             const SizedBox(height: 12),
             _dataCard(),

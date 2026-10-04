@@ -1,6 +1,7 @@
 import 'package:driver_tracking_app/reference/reference_recorder.dart';
 import 'package:driver_tracking_app/reference/reference_screen.dart';
 import 'package:driver_tracking_app/reference/reference_view_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fake_reference_recorder.dart';
@@ -57,4 +58,22 @@ void main() {
     expect(recorder.calls, ['destroy']);
     expect(recorder.records, isEmpty);
   });
+
+  testWidgets(
+    'the power saving block is Android only',
+    (tester) async {
+      await tester.pumpWidget(ReferenceApp(viewModel: vm));
+      await tester.pumpAndSettle();
+
+      final android = defaultTargetPlatform == TargetPlatform.android;
+      expect(
+        find.text('Энергосбережение', skipOffstage: false),
+        android ? findsOneWidget : findsNothing,
+      );
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
 }
