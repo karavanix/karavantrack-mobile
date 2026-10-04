@@ -18,6 +18,9 @@ class FakeLoad {
   /// Attachment ids sent with each status change, by the status it led to.
   final attachments = <String, List<String>>{};
 
+  /// The `location` sent with the step into each status.
+  final locations = <String, Map<String, Object?>>{};
+
   bool get isActive => FakeBackend._activeStatuses.contains(status);
 
   Map<String, Object?> toJson({bool withHistory = false}) => {
@@ -267,6 +270,9 @@ class FakeBackend {
             ...(body['attachment_ids'] as List? ?? const []).cast<String>(),
           ]
           ..status = to;
+        if (body['location'] case final Map<String, Object?> location) {
+          load.locations[to] = location;
+        }
         return (status: 200, body: null);
       }
     }

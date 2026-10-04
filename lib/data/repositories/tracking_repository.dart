@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../domain/models/fix.dart';
 import '../../utils/logger.dart';
 import '../services/local_store.dart';
 import '../services/tracking/tracking_config.dart';
@@ -23,6 +24,7 @@ class TrackingRepository extends ChangeNotifier {
     TrackingSnapshot launch = TrackingSnapshot.off,
     this.queueStuckAfter = const Duration(minutes: 5),
     this.flushTimeout = const Duration(seconds: 10),
+    this.fixTimeout = const Duration(seconds: 12),
     this._now = DateTime.now,
   }) : _enabled = launch.enabled,
        _isMoving = launch.isMoving,
@@ -73,6 +75,10 @@ class TrackingRepository extends ChangeNotifier {
 
   /// How long [flush] waits for the queue to empty.
   final Duration flushTimeout;
+
+  /// How long [currentFix] waits; a bit over the library's own timeout,
+  /// should its answer never come.
+  final Duration fixTimeout;
 
   bool _enabled;
   bool _isMoving;
@@ -141,6 +147,20 @@ class TrackingRepository extends ChangeNotifier {
     _isMoving = true;
     notifyListeners();
   });
+
+  /// Where the phone is, for a status change to mark on the map; null
+  /// without one in [fixTimeout]. Only while tracking: off, the location
+  /// may not be allowed, and the library would ask for it itself. Not
+  /// queued behind other operations, a flush mustn't hold up the driver.
+  Future<Fix?> currentFix() async {
+    if (!_enabled) return null;
+    try {
+      return await _service.currentFix().timeout(fixTimeout);
+    } catch (e) {
+      log.warning('[tracking] no fix for the step: $e');
+      return null;
+    }
+  }
 
   /// A new session's tokens, for the library's own requests. It refreshes
   /// the access token by itself on a 401; this is for sign-in.

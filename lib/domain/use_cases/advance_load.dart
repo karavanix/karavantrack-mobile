@@ -24,6 +24,10 @@ final class PhotoUploadException implements Exception {
 /// the way" the library is told the phone is moving, so the departure is
 /// recorded from the first metres instead of after the motion sensors
 /// notice, or after 150-200 m without them.
+///
+/// The step also takes where the phone is, for the load's map to mark it
+/// (pickup, drop-off…). Without a fix it goes without: the driver's step
+/// matters more than the mark.
 class AdvanceLoadUseCase {
   AdvanceLoadUseCase({
     required this._loads,
@@ -42,6 +46,9 @@ class AdvanceLoadUseCase {
     if (action == null) {
       return Result.error(Exception('No action in status ${load.status}'));
     }
+    // Asked for at once: while parked the GPS needs a few seconds, the
+    // photo goes up meanwhile.
+    final fix = action.takesLocation ? _tracking.currentFix() : null;
     final attachmentIds = <String>[];
     if (photoPath != null) {
       // The photo goes first, and a failed upload stops the status change:
@@ -57,6 +64,7 @@ class AdvanceLoadUseCase {
       load.id,
       action,
       attachmentIds: attachmentIds,
+      location: await fix,
     );
     // Queued behind the start the new status triggers; does nothing if
     // tracking didn't start.

@@ -1,3 +1,4 @@
+import '../../../domain/models/fix.dart';
 import '../../../domain/models/load.dart';
 import '../../../utils/logger.dart';
 import '../../../utils/result.dart';
@@ -53,9 +54,10 @@ class LoadsApi {
     String id,
     LoadAction action, {
     List<String> attachmentIds = const [],
+    Fix? location,
   }) => _client.post(
     '/loads/$id/${action.path}',
-    data: {'attachment_ids': attachmentIds},
+    data: {'attachment_ids': attachmentIds, 'location': ?location?.toJson()},
     decode: (_) {},
   );
 }

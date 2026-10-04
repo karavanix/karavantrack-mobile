@@ -80,6 +80,10 @@ enum LoadAction {
   /// A photo of the cargo or its papers may go with the step. Accepting
   /// is only a yes to the offer, there's nothing to show yet.
   bool get takesPhoto => this != accept;
+
+  /// The step is marked on the load's map where the phone was. Accepting
+  /// happens anywhere; the server takes no location with it.
+  bool get takesLocation => this != accept;
 }
 
 /// One entry of a load's status history.

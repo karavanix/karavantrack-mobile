@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../../domain/models/fix.dart';
 import '../../domain/models/load.dart';
 import '../../utils/logger.dart';
 import '../../utils/result.dart';
@@ -161,8 +162,14 @@ class LoadsRepository extends ChangeNotifier {
     String id,
     LoadAction action, {
     List<String> attachmentIds = const [],
+    Fix? location,
   }) async {
-    final result = await _api.perform(id, action, attachmentIds: attachmentIds);
+    final result = await _api.perform(
+      id,
+      action,
+      attachmentIds: attachmentIds,
+      location: location,
+    );
     log.info('[loads] ${action.name} $id: $result');
     await (fetch(id), refresh()).wait;
     return result;

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:driver_tracking_app/data/services/tracking/tracking_config.dart';
 import 'package:driver_tracking_app/data/services/tracking/tracking_service.dart';
+import 'package:driver_tracking_app/domain/models/fix.dart';
 
 import 'fake_backend.dart';
 
@@ -31,11 +32,22 @@ class FakeTrackingService implements TrackingService {
   final queue = <QueuedPoint>[];
 
   /// Every call, in order: `ready`, `configure:<load>`, `start`, `stop`,
-  /// `pace:<moving>`, `sync`, `destroy`.
+  /// `pace:<moving>`, `fix`, `sync`, `destroy`.
   final calls = <String>[];
 
   /// start() throws, as without a location permission.
   bool failStart = false;
+
+  /// What currentFix() answers; null fails it, as with no fix in time.
+  Fix? fix = Fix(
+    lat: 41.3111,
+    lng: 69.2797,
+    recordedAt: DateTime.utc(2026, 10, 5, 12),
+    accuracyM: 8,
+  );
+
+  /// While set, currentFix() waits for it: the GPS is slow to get a fix.
+  Completer<void>? fixHeld;
 
   /// While set, sync() waits for it: the server is slow to answer.
   Completer<void>? syncHeld;
@@ -94,6 +106,13 @@ class FakeTrackingService implements TrackingService {
   Future<void> changePace(bool moving) async {
     calls.add('pace:$moving');
     isMoving = moving;
+  }
+
+  @override
+  Future<Fix> currentFix() async {
+    calls.add('fix');
+    if (fixHeld case final held?) await held.future;
+    return fix ?? (throw Exception('location timeout'));
   }
 
   /// The library notices the phone stands still (stopTimeout).

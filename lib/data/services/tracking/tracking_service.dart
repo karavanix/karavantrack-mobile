@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
     as bg;
 
+import '../../../domain/models/fix.dart';
 import '../../../utils/logger.dart';
 import 'headless.dart';
 import 'tracking_config.dart';
@@ -94,6 +95,11 @@ abstract interface class TrackingService {
   /// about to drive off.
   Future<void> changePace(bool moving);
 
+  /// Where the phone is now: the latest fix if it's fresh, else a new one
+  /// (the GPS is switched on for it while parked). Not queued for sending.
+  /// Fails without a fix in time.
+  Future<Fix> currentFix();
+
   /// Points recorded but not yet accepted by the server.
   Future<int> pendingCount();
 
@@ -179,6 +185,31 @@ class BgTrackingService implements TrackingService {
   @override
   Future<void> changePace(bool moving) =>
       bg.BackgroundGeolocation.changePace(moving);
+
+  @override
+  Future<Fix> currentFix() async {
+    final l = await bg.BackgroundGeolocation.getCurrentPosition(
+      // Driving, a point is recorded every ~10 s: that one will do.
+      maximumAge: 60000,
+      timeout: 10,
+      desiredAccuracy: 50,
+      samples: 3,
+      // The step's point goes with the step; queued as well, it would be
+      // a second copy of the same fix.
+      persist: false,
+    );
+    final c = l.coords;
+    // The library has -1 for what the fix doesn't know (no GPS: no speed).
+    double? known(double v) => v < 0 ? null : v;
+    return Fix(
+      lat: c.latitude,
+      lng: c.longitude,
+      recordedAt: DateTime.tryParse('${l.timestamp}') ?? DateTime.now(),
+      accuracyM: known(c.accuracy),
+      speedMps: known(c.speed),
+      headingDeg: known(c.heading),
+    );
+  }
 
   @override
   Future<int> pendingCount() => bg.BackgroundGeolocation.count;
