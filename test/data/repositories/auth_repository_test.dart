@@ -111,11 +111,85 @@ void main() {
   });
 
   group('Telegram', () {
-    test('opens Telegram, then signs in when the code comes back', () async {
+    test('logs in in the Telegram app, which sends the code back', () async {
       final g = TestGraph();
 
       expect(await g.auth.startTelegramSignIn(), isA<Ok<void>>());
+      expect(g.telegram.opened.single.scheme, 'tg');
+      expect(g.auth.telegramWaiting, isTrue);
+      expect(g.store.values[StoreKeys.telegramVerifier], isNotNull);
+
+      g.telegram.appRedirect();
+      await pumpUntil(() => g.auth.isSignedIn);
+      expect(g.auth.telegramWaiting, isFalse);
+      expect(g.auth.telegramInProgress, isFalse);
+      expect(g.store.values[StoreKeys.telegramVerifier], isNull);
+      expect(g.backend.requestsTo('/auth/telegram'), hasLength(1));
+    });
+
+    test('the verifier outlives the app: iOS may kill it meanwhile', () async {
+      final g = TestGraph();
+      await g.auth.startTelegramSignIn();
+
+      // The app starts again because Telegram opened its link.
+      final telegram = FakeTelegramAuthService()
+        ..challenge = g.telegram.challenge
+        ..appRedirect();
+      final auth = AuthRepository(
+        api: AuthApi(ApiClient.public(adapter: g.backend.server)),
+        store: g.store,
+        apple: g.apple,
+        telegram: telegram,
+      );
+
+      await pumpUntil(() => auth.isSignedIn);
+    });
+
+    test('a code with no login of ours behind it is rejected', () async {
+      final g = TestGraph();
+      final errors = <Exception>[];
+      g.auth.telegramErrors.listen(errors.add);
+
+      g.telegram.appRedirect();
+      await pumpUntil(() => errors.isNotEmpty);
+
+      expect(g.auth.isSignedIn, isFalse);
+      expect(g.telegram.exchanges, isEmpty);
+      expect(g.backend.requestsTo('/auth/telegram'), isEmpty);
+    });
+
+    test('cancel hides the wait; a code that still comes signs in', () async {
+      final g = TestGraph();
+      await g.auth.startTelegramSignIn();
+
+      g.auth.cancelTelegramSignIn();
+      expect(g.auth.telegramWaiting, isFalse);
+
+      g.telegram.appRedirect();
+      await pumpUntil(() => g.auth.isSignedIn);
+    });
+
+    test('opened again, only the latest verifier is kept', () async {
+      final g = TestGraph();
+      await g.auth.startTelegramSignIn();
+      final first = g.store.values[StoreKeys.telegramVerifier];
+
+      await g.auth.startTelegramSignIn();
+
+      expect(g.telegram.opened, hasLength(2));
+      expect(g.store.values[StoreKeys.telegramVerifier], isNot(first));
+      g.telegram.appRedirect();
+      await pumpUntil(() => g.auth.isSignedIn);
+    });
+
+    test('without the Telegram app it logs in through the browser', () async {
+      final g = TestGraph();
+      g.telegram.appLoginAvailable = false;
+
+      expect(await g.auth.startTelegramSignIn(), isA<Ok<void>>());
+      expect(g.telegram.opened.single.host, 'oauth.telegram.org');
       expect(g.telegram.opened.single.queryParameters['state'], 'st');
+      expect(g.auth.telegramWaiting, isFalse);
 
       g.telegram.redirect(code: 'tg-code', state: 'st');
       await settle();
@@ -124,7 +198,7 @@ void main() {
       expect(g.auth.telegramInProgress, isFalse);
     });
 
-    test('a code from a cold start waits for the repository', () async {
+    test('a browser code from a cold start waits for the repository', () async {
       final telegram = FakeTelegramAuthService();
       // Delivered before anything subscribed.
       telegram.redirect(code: 'tg-code', state: 'st');
@@ -139,7 +213,7 @@ void main() {
       await pumpUntil(() => auth.isSignedIn);
     });
 
-    test('a rejected code is reported on telegramErrors', () async {
+    test('a rejected browser code is reported on telegramErrors', () async {
       final g = TestGraph();
       final errors = <Exception>[];
       g.auth.telegramErrors.listen(errors.add);

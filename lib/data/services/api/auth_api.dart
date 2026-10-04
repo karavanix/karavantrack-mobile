@@ -75,6 +75,14 @@ class AuthApi {
     },
   );
 
+  /// Sign-in with the id_token the device got from Telegram itself.
+  Future<Result<TokenPair>> telegramIdToken(String idToken) => _client.post(
+    '/auth/telegram',
+    data: {'id_token': idToken, 'role': _role},
+    decode: TokenPair.fromJson,
+  );
+
+  /// Sign-in with a browser-login code; the server exchanges it.
   Future<Result<TokenPair>> telegram({
     required String code,
     required String state,

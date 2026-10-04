@@ -38,11 +38,17 @@ android {
         // The tracking library's licence (release builds; debug runs
         // without one). CI passes it from a secret.
         manifestPlaceholders["bgLicenseKey"] = System.getenv("BG_LICENSE_KEY") ?: ""
+        // Where Telegram sends the driver after "Log In" (Telegram's domain
+        // for the app signed with the debug key). Must match
+        // TelegramAuthService.appRedirectUri.
+        manifestPlaceholders["telegramLoginHost"] = "app3297224938-login.tg.dev"
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+            // Telegram's domain for the app as Google Play signs it.
+            manifestPlaceholders["telegramLoginHost"] = "app1340816991-login.tg.dev"
             // Required by the tracking library, resource shrinking off.
             isMinifyEnabled = true
             isShrinkResources = false

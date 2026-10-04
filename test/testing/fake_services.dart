@@ -10,6 +10,7 @@ import 'package:driver_tracking_app/data/services/location_status_service.dart';
 import 'package:driver_tracking_app/data/services/push_service.dart';
 import 'package:driver_tracking_app/data/services/telegram_auth_service.dart';
 import 'package:driver_tracking_app/domain/models/location_state.dart';
+import 'package:driver_tracking_app/utils/pkce.dart';
 import 'package:driver_tracking_app/utils/result.dart';
 
 class FakePushService implements PushService {
@@ -59,15 +60,50 @@ class FakeAppleSignInService implements AppleSignInService {
   Future<Result<AppleCredential>> requestCredential() async => next;
 }
 
+/// Telegram as the driver uses it. By default the Telegram app is
+/// installed; [appLoginAvailable] = false sends the login to the browser.
 class FakeTelegramAuthService implements TelegramAuthService {
   final controller = StreamController<TelegramCallback>();
+
+  /// Links opened: `tg://` ones in the Telegram app, `https` in the browser.
   final opened = <Uri>[];
+  bool appLoginAvailable = true;
+
+  /// The challenge of the last link asked for, to check the verifier
+  /// against in [exchange] — as Telegram does.
+  String? challenge;
+  final exchanges = <String>[];
 
   @override
   Stream<TelegramCallback> get callbacks => controller.stream;
 
   @override
-  void listen() {}
+  void listen(Stream<Uri> links) {}
+
+  @override
+  Future<Uri?> appLoginUrl({required String codeChallenge}) async {
+    challenge = codeChallenge;
+    return Uri.parse('tg://resolve?domain=oauth&startapp=t1');
+  }
+
+  @override
+  Future<bool> openApp(Uri url) async {
+    if (!appLoginAvailable) return false;
+    opened.add(url);
+    return true;
+  }
+
+  @override
+  Future<Result<String>> exchange({
+    required String code,
+    required String codeVerifier,
+  }) async {
+    exchanges.add(code);
+    if (code != 'tg-app-code' || pkceChallenge(codeVerifier) != challenge) {
+      return const Result.error(TelegramLoginException('invalid_grant'));
+    }
+    return const Result.ok('tg-id-token');
+  }
 
   @override
   Uri authorizeUrl({
@@ -85,9 +121,13 @@ class FakeTelegramAuthService implements TelegramAuthService {
     return true;
   }
 
-  /// What the native side does when Telegram redirects back.
+  /// Telegram opening the app's login link after "Log In".
+  void appRedirect({String code = 'tg-app-code'}) =>
+      controller.add(TelegramAppCallback(code));
+
+  /// What the native side does when the browser login redirects back.
   void redirect({required String code, required String state}) =>
-      controller.add((code: code, state: state));
+      controller.add(TelegramWebCallback(code, state: state));
 }
 
 class FakeAppInfoService implements AppInfoService {

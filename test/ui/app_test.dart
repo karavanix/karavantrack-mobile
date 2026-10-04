@@ -178,19 +178,41 @@ void main() {
     expect(find.text('Loads'), findsWidgets);
   });
 
-  testWidgets('Telegram: the code coming back signs in', (tester) async {
+  testWidgets('Telegram: waits for the confirmation, then signs in', (
+    tester,
+  ) async {
     final h = Harness(
       device: {StoreKeys.seenLanguage: true, StoreKeys.seenOnboarding: true},
     );
     await h.start(tester);
 
     await tapText(tester, 'Continue with Telegram');
-    expect(h.telegram.opened, hasLength(1));
+    expect(h.telegram.opened.single.scheme, 'tg');
+    expect(find.text('Confirm in Telegram'), findsOneWidget);
 
-    h.telegram.redirect(code: 'tg-code', state: 'st');
+    // Back without confirming: open it again.
+    await tester.ensureVisible(find.text('Open Telegram'));
+    await tapText(tester, 'Open Telegram');
+    expect(h.telegram.opened, hasLength(2));
+
+    h.telegram.appRedirect();
     await tester.pumpAndSettle();
 
     expect(find.text('Loads'), findsWidgets);
+  });
+
+  testWidgets('Telegram: cancel brings the button back', (tester) async {
+    final h = Harness(
+      device: {StoreKeys.seenLanguage: true, StoreKeys.seenOnboarding: true},
+    );
+    await h.start(tester);
+
+    await tapText(tester, 'Continue with Telegram');
+    await tester.ensureVisible(find.text('Cancel'));
+    await tapText(tester, 'Cancel');
+
+    expect(find.text('Confirm in Telegram'), findsNothing);
+    expect(find.text('Continue with Telegram'), findsOneWidget);
   });
 
   testWidgets('sign out from settings', (tester) async {
