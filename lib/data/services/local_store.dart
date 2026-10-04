@@ -23,8 +23,17 @@ abstract final class StoreKeys {
   static const seenLanguage = 'seen_language';
   static const seenOnboarding = 'seen_onboarding';
   static const pendingVerificationEmail = 'pending_verification_email';
+
+  /// The PKCE verifier of a Telegram login in progress: iOS may kill the
+  /// app while the driver is in Telegram.
+  static const telegramVerifier = 'telegram_pkce_verifier';
   static const cachedProfile = 'cached_profile';
+  static const cachedActiveLoad = 'cached_active_load';
   static const pushDeviceId = 'fcm_device_id';
+
+  /// The load the tracking library stamps on points, given back to it on
+  /// every launch (its configuration is rebuilt then).
+  static const trackingLoadId = 'tracking_load_id';
 
   static const all = {
     accessToken,
@@ -34,8 +43,11 @@ abstract final class StoreKeys {
     seenLanguage,
     seenOnboarding,
     pendingVerificationEmail,
+    telegramVerifier,
     cachedProfile,
+    cachedActiveLoad,
     pushDeviceId,
+    trackingLoadId,
   };
 }
 

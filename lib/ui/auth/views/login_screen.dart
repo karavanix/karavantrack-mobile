@@ -218,13 +218,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 10),
 
                           // OAuth buttons — tight stack, no divider
-                          _OAuthButton(
-                            onPressed: loading
-                                ? null
-                                : _vm.signInWithTelegram.execute,
-                            icon: const _TelegramIcon(),
-                            label: t.continueWithTelegram,
-                          ),
+                          if (_vm.telegramWaiting)
+                            _TelegramWaiting(
+                              onOpen: loading
+                                  ? null
+                                  : _vm.signInWithTelegram.execute,
+                              onCancel: _vm.cancelTelegram,
+                            )
+                          else
+                            _OAuthButton(
+                              onPressed: loading
+                                  ? null
+                                  : _vm.signInWithTelegram.execute,
+                              icon: const _TelegramIcon(),
+                              label: t.continueWithTelegram,
+                            ),
                           if (_vm.appleAvailable) ...[
                             const SizedBox(height: 10),
                             _OAuthButton(
@@ -399,6 +407,62 @@ class _OAuthButton extends StatelessWidget {
           ),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
+      ),
+    );
+  }
+}
+
+/// In place of the Telegram button while the driver confirms in Telegram:
+/// they may come back without confirming (declined, or just looked around).
+class _TelegramWaiting extends StatelessWidget {
+  const _TelegramWaiting({required this.onOpen, required this.onCancel});
+
+  final VoidCallback? onOpen;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.l10n;
+    final colors = AppTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: colors.muted,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const _TelegramIcon(),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  t.telegramWaitingTitle,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: colors.foreground,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            t.telegramWaitingBody,
+            style: TextStyle(fontSize: 14, color: colors.mutedForeground),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(onPressed: onCancel, child: Text(t.cancel)),
+              TextButton(onPressed: onOpen, child: Text(t.telegramOpenAgain)),
+            ],
+          ),
+        ],
       ),
     );
   }

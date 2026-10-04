@@ -85,6 +85,12 @@ class LoginViewModel extends ChangeNotifier {
   String nameOf(Locale locale) =>
       SettingsRepository.languageNames[locale.languageCode]!;
 
+  /// Telegram is open for the driver to confirm: the screen says so and
+  /// offers to open it again or give up.
+  bool get telegramWaiting => _auth.telegramWaiting;
+
+  void cancelTelegram() => _auth.cancelTelegramSignIn();
+
   /// A Telegram sign-in that failed after the return from Telegram; the
   /// screen shows it once and calls [clearTelegramError].
   Exception? get telegramError => _telegramError;

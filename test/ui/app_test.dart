@@ -1,69 +1,8 @@
-import 'package:driver_tracking_app/config/dependencies.dart';
 import 'package:driver_tracking_app/data/services/local_store.dart';
-import 'package:driver_tracking_app/ui/app.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:provider/provider.dart';
 
-import '../testing/fake_backend.dart';
-import '../testing/fake_local_store.dart';
-import '../testing/fake_services.dart';
-
-/// The real App and object graph on a fake device and backend, driven the
-/// way a driver would.
-class Harness {
-  Harness({Map<String, Object>? device})
-    : store = FakeLocalStore(device),
-      backend = FakeBackend();
-
-  final FakeLocalStore store;
-  final FakeBackend backend;
-  final push = FakePushService();
-  final links = FakeDeepLinkService();
-  final telegram = FakeTelegramAuthService();
-
-  Future<void> start(WidgetTester tester) async {
-    final services = Services(
-      store: store,
-      telegram: telegram,
-      push: push,
-      links: links,
-      apple: FakeAppleSignInService(),
-      appInfo: FakeAppInfoService(),
-      http: backend.server,
-    );
-    await tester.pumpWidget(
-      MultiProvider(providers: providers(services), child: const App()),
-    );
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
-  }
-}
-
-const signedInDevice = <String, Object>{
-  StoreKeys.accessToken: 'access-0',
-  StoreKeys.refreshToken: 'refresh-0',
-  StoreKeys.seenLanguage: true,
-  StoreKeys.seenOnboarding: true,
-};
-
-Future<void> tapText(WidgetTester tester, String text) async {
-  await tester.tap(find.text(text));
-  await tester.pumpAndSettle();
-}
-
-/// Snackbars stay 4 s and in the 800×600 test window can cover the button
-/// pressed next.
-Future<void> clearSnackBars(WidgetTester tester) async {
-  tester
-      .state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger))
-      .clearSnackBars();
-  await tester.pumpAndSettle();
-}
-
-Future<void> enter(WidgetTester tester, String label, String text) async {
-  await tester.enterText(find.widgetWithText(TextField, label), text);
-}
+import '../testing/app_harness.dart';
 
 void main() {
   testWidgets('fresh install: language, onboarding, then sign-in', (
@@ -208,7 +147,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(h.backend.activeLoadId, 'L1');
-    expect(find.text('Load L1'), findsOneWidget);
+    // Straight to the load's details.
+    expect(find.text('Tashkent → Samarkand'), findsWidgets);
+    expect(find.text('Details'), findsOneWidget);
   });
 
   testWidgets('invite while busy with another load says so', (tester) async {
@@ -237,19 +178,41 @@ void main() {
     expect(find.text('Loads'), findsWidgets);
   });
 
-  testWidgets('Telegram: the code coming back signs in', (tester) async {
+  testWidgets('Telegram: waits for the confirmation, then signs in', (
+    tester,
+  ) async {
     final h = Harness(
       device: {StoreKeys.seenLanguage: true, StoreKeys.seenOnboarding: true},
     );
     await h.start(tester);
 
     await tapText(tester, 'Continue with Telegram');
-    expect(h.telegram.opened, hasLength(1));
+    expect(h.telegram.opened.single.scheme, 'tg');
+    expect(find.text('Confirm in Telegram'), findsOneWidget);
 
-    h.telegram.redirect(code: 'tg-code', state: 'st');
+    // Back without confirming: open it again.
+    await tester.ensureVisible(find.text('Open Telegram'));
+    await tapText(tester, 'Open Telegram');
+    expect(h.telegram.opened, hasLength(2));
+
+    h.telegram.appRedirect();
     await tester.pumpAndSettle();
 
     expect(find.text('Loads'), findsWidgets);
+  });
+
+  testWidgets('Telegram: cancel brings the button back', (tester) async {
+    final h = Harness(
+      device: {StoreKeys.seenLanguage: true, StoreKeys.seenOnboarding: true},
+    );
+    await h.start(tester);
+
+    await tapText(tester, 'Continue with Telegram');
+    await tester.ensureVisible(find.text('Cancel'));
+    await tapText(tester, 'Cancel');
+
+    expect(find.text('Confirm in Telegram'), findsNothing);
+    expect(find.text('Continue with Telegram'), findsOneWidget);
   });
 
   testWidgets('sign out from settings', (tester) async {

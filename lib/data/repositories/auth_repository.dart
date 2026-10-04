@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../config/env.dart';
 import '../../utils/logger.dart';
+import '../../utils/pkce.dart';
 import '../../utils/result.dart';
 import '../services/api/api_exception.dart';
 import '../services/api/auth_api.dart';
@@ -40,6 +41,7 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
   String? _refreshToken;
   String? _pendingEmail;
   SignUpForm? _lastSignUp;
+  bool _telegramWaiting = false;
   bool _telegramInProgress = false;
   final _telegramErrors = StreamController<Exception>.broadcast();
   Future<Result<String>>? _refreshing;
@@ -60,6 +62,10 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
   SignUpForm? get lastSignUp => _lastSignUp;
 
   bool get appleAvailable => _apple.isAvailable;
+
+  /// The Telegram app was opened for the driver to confirm the login and
+  /// nothing has come back yet.
+  bool get telegramWaiting => _telegramWaiting;
 
   /// Between the return from Telegram and the server's answer.
   bool get telegramInProgress => _telegramInProgress;
@@ -121,6 +127,7 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
       case Ok(:final value):
         final result = await _api.apple(
           idToken: value.identityToken,
+          authorizationCode: value.authorizationCode,
           firstName: value.firstName,
           lastName: value.lastName,
         );
@@ -128,9 +135,33 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
     }
   }
 
-  /// Opens Telegram's login page. The sign-in completes when the redirect
-  /// brings the code back (see [telegramInProgress], [telegramErrors]).
+  /// Opens the login in the Telegram app, or Telegram's login page in the
+  /// browser when there's no Telegram app. The sign-in completes when the
+  /// code comes back (see [telegramWaiting], [telegramInProgress],
+  /// [telegramErrors]).
   Future<Result<void>> startTelegramSignIn() async {
+    final pkce = createPkce();
+    final url = await _telegram.appLoginUrl(codeChallenge: pkce.challenge);
+    if (url != null) {
+      await _store.setString(StoreKeys.telegramVerifier, pkce.verifier);
+      if (await _telegram.openApp(url)) {
+        _telegramWaiting = true;
+        notifyListeners();
+        return const Result.ok(null);
+      }
+      log.info('[auth] No Telegram app, logging in through the browser');
+    }
+    return _startTelegramInBrowser();
+  }
+
+  /// The driver gave up on the Telegram app (declined there, or changed
+  /// their mind). A code that still comes back signs them in all the same.
+  void cancelTelegramSignIn() {
+    _telegramWaiting = false;
+    notifyListeners();
+  }
+
+  Future<Result<void>> _startTelegramInBrowser() async {
     switch (await _api.pkce()) {
       case Error(:final error):
         return Result.error(error);
@@ -148,13 +179,17 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
   }
 
   Future<void> _completeTelegram(TelegramCallback callback) async {
+    _telegramWaiting = false;
     _telegramInProgress = true;
     notifyListeners();
-    final result = await _api.telegram(
-      code: callback.code,
-      state: callback.state,
-      redirectUri: Env.telegramRedirectUrl,
-    );
+    final result = switch (callback) {
+      TelegramAppCallback(:final code) => await _exchangeTelegramCode(code),
+      TelegramWebCallback(:final code, :final state) => await _api.telegram(
+        code: code,
+        state: state,
+        redirectUri: Env.telegramRedirectUrl,
+      ),
+    };
     _telegramInProgress = false;
     switch (await _signedIn(result)) {
       case Ok():
@@ -163,6 +198,25 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
         log.warning('[auth] Telegram sign-in failed: $error');
         notifyListeners();
         _telegramErrors.add(error);
+    }
+  }
+
+  /// Code → Telegram's id_token (with the verifier from
+  /// [startTelegramSignIn]) → our tokens.
+  Future<Result<TokenPair>> _exchangeTelegramCode(String code) async {
+    final verifier = _store.getString(StoreKeys.telegramVerifier);
+    if (verifier == null) {
+      return const Result.error(
+        TelegramLoginException('no Telegram login in progress'),
+      );
+    }
+    switch (await _telegram.exchange(code: code, codeVerifier: verifier)) {
+      case Error(:final error):
+        return Result.error(error);
+      case Ok(value: final idToken):
+        // The code is spent; a new login starts with a new verifier.
+        await _store.remove(StoreKeys.telegramVerifier);
+        return _api.telegramIdToken(idToken);
     }
   }
 

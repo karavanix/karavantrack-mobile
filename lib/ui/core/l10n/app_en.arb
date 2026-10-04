@@ -18,6 +18,9 @@
   "dontHaveAccount": "Don't have an account? Sign up",
   "continueWithApple": "Continue with Apple",
   "continueWithTelegram": "Continue with Telegram",
+  "telegramWaitingTitle": "Confirm in Telegram",
+  "telegramWaitingBody": "In Telegram, tap “Log In” and allow access to your number. Telegram will bring you back here.",
+  "telegramOpenAgain": "Open Telegram",
   "orContinueWith": "or continue with",
   "tagline": "Move loads. Get paid.",
   "showPassword": "Show password",
@@ -130,7 +133,11 @@
   "statusConfirmed": "Confirmed",
   "statusCancelled": "Cancelled",
   "awaitingShipperConfirmation": "Awaiting shipper confirmation",
-  "awaitingConfirmationDetail": "Your delivery has been confirmed. Waiting for the shipper to verify and close the load.",
+  "awaitingConfirmationDetail": "The load is dropped off. Waiting for the shipper to confirm and close it.",
+  "trackingUntilConfirmed": "Your location is still being shared until the shipper confirms the delivery.",
+  "acceptBlockedAwaitingConfirmation": "You can accept a new load once the shipper confirms the current one",
+  "loadChanged": "The load has changed. Showing its current status.",
+  "statusUnknown": "Unknown",
   "loginError": "Login error",
   "registrationError": "Registration error",
   "networkError": "Network error",
@@ -144,8 +151,13 @@
   "gpsOffTitle": "GPS is Off",
   "gpsOffMessage": "Location services are disabled. Please turn on GPS so your position can be tracked.",
   "turnOnGps": "Turn On GPS",
+  "gpsOffIosMessage": "Location Services are turned off. Turn them on so your position can be tracked.",
+  "gpsOffIosStep1": "Tap \"Open Settings\" below, then go back to the main Settings screen",
+  "gpsOffIosStep2": "Select \"Privacy & Security\" → \"Location Services\"",
+  "gpsOffIosStep3": "Turn on \"Location Services\"",
   "alwaysLocationTitle": "Background Location Required",
   "alwaysLocationMessage": "This app needs \"Allow all the time\" location access to track your position even when the app is closed or in the background.",
+  "alwaysLocationIosMessage": "This app needs \"Always\" location access to track your position even when the app is closed or in the background.",
   "alwaysLocationStep1": "Tap \"Open Settings\" below",
   "alwaysLocationStep2": "Select \"Permissions\" → \"Location\"",
   "alwaysLocationStep3": "Choose \"Allow all the time\"",
@@ -196,5 +208,27 @@
   "errorCodeExpired": "The code has expired. Tap “Back to sign up” and send the form again to get a new code.",
   "errorCodeTooMany": "Too many wrong attempts. Tap “Back to sign up” and send the form again to get a new code.",
   "errorSignInFailed": "Couldn't sign in. Please try again.",
-  "verifyBackToSignUp": "Back to sign up"
+  "verifyBackToSignUp": "Back to sign up",
+  "locationDisclosureMotion": "The app will also ask for access to physical activity: motion sensors tell it whether you're driving or parked, so it can switch GPS off while you stand and save your battery.",
+  "locationDisclosureMotionIos": "The app will also ask for access to Motion & Fitness: motion sensors tell it whether you're driving or parked, so it can switch GPS off while you stand and save your battery.",
+  "trackingNotificationTitle": "YoolLive: load in progress",
+  "trackingNotificationText": "Sharing your location with the shipper until the delivery is confirmed",
+  "trackingRationaleTitle": "Allow location in the background?",
+  "trackingRationaleMessage": "To keep tracking your load with the screen off, choose “{option}”.",
+  "@trackingRationaleMessage": {
+    "placeholders": {
+      "option": {
+        "type": "String"
+      }
+    }
+  },
+  "trackingRationaleAllow": "Open settings",
+  "pointsQueued": "{count, plural, =1{1 point waiting to be sent} other{{count} points waiting to be sent}}",
+  "@pointsQueued": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

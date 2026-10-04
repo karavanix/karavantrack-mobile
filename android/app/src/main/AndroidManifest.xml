@@ -36,7 +36,21 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Telegram OAuth 2.0 redirect URI (custom URL scheme) -->
+            <!-- Telegram login from the Telegram app: Telegram opens this link
+                 after "Log In". The domain is Telegram's, one per app registered
+                 in @BotFather (Login Widget -> Native Login) and verified against
+                 this package and the signing key; see telegramLoginHost in
+                 build.gradle.kts. Read by app_links (TelegramAuthService). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="${telegramLoginHost}" />
+                <data android:path="/tglogin" />
+            </intent-filter>
+            <!-- Telegram login through the browser: the server redirects here
+                 (custom URL scheme), caught in MainActivity -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -67,13 +81,10 @@
             android:value="2" />
         <meta-data android:name="com.google.android.geo.API_KEY"
                android:value="AIzaSyAsnUwJNmk7Y5CHRG2NkSzbtTTekFm-Axs"/>
-        <!-- Background location service -->
-        <service
-            android:name="id.flutter.flutter_background_service.BackgroundService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="location"
-            tools:replace="android:exported" />
+        <!-- flutter_background_geolocation; empty in local builds (debug
+             needs none), set from the BG_LICENSE_KEY secret in CI. -->
+        <meta-data android:name="com.transistorsoft.locationmanager.license"
+            android:value="${bgLicenseKey}" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

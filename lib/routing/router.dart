@@ -8,11 +8,17 @@ import '../data/repositories/profile_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../ui/auth/view_models/login_view_model.dart';
 import '../ui/auth/views/login_screen.dart';
-import '../ui/core/ui/placeholder_screen.dart';
 import '../ui/invite/view_models/invite_view_model.dart';
 import '../ui/invite/views/invite_screen.dart';
 import '../ui/language/view_models/language_view_model.dart';
 import '../ui/language/views/language_screen.dart';
+import '../ui/load_details/view_models/load_details_view_model.dart';
+import '../ui/load_details/views/load_details_screen.dart';
+import '../ui/load_history/view_models/load_history_view_model.dart';
+import '../ui/load_history/views/load_history_screen.dart';
+import '../ui/loads/view_models/loads_view_model.dart';
+import '../ui/loads/views/loads_screen.dart';
+import '../ui/main_shell/view_models/main_shell_view_model.dart';
 import '../ui/main_shell/views/main_shell.dart';
 import '../ui/no_connection/view_models/no_connection_view_model.dart';
 import '../ui/no_connection/views/no_connection_screen.dart';
@@ -58,7 +64,12 @@ GoRouter createRouter({
     acceptedLoadId: invites.acceptedLoadId,
   );
 
+  // Details and history open over the whole screen, dock included, as in
+  // the old app; the tab's own stack would leave the dock over them.
+  final rootNavigator = GlobalKey<NavigatorState>();
+
   return GoRouter(
+    navigatorKey: rootNavigator,
     initialLocation: Routes.splash,
     debugLogDiagnostics: true,
     refreshListenable: Listenable.merge([
@@ -138,25 +149,56 @@ GoRouter createRouter({
         ),
       ),
       StatefulShellRoute.indexedStack(
-        builder: (_, _, navigationShell) =>
-            MainShell(navigationShell: navigationShell),
+        builder: (context, _, navigationShell) => _Owned(
+          create: () => MainShellViewModel(
+            location: context.read(),
+            lifecycle: context.read(),
+          ),
+          dispose: (vm) => vm.dispose(),
+          builder: (vm) =>
+              MainShell(viewModel: vm, navigationShell: navigationShell),
+        ),
         branches: [
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: Routes.loads,
-                builder: (_, _) => const PlaceholderScreen(title: 'Loads'),
+                builder: (context, _) => _Owned(
+                  create: () => LoadsViewModel(
+                    loads: context.read(),
+                    location: context.read(),
+                    connectivity: context.read(),
+                    tracking: context.read(),
+                    advance: context.read(),
+                  ),
+                  dispose: (vm) => vm.dispose(),
+                  builder: (vm) => LoadsScreen(viewModel: vm),
+                ),
                 routes: [
                   // Before ':loadId', which would match it too.
                   GoRoute(
                     path: 'history',
-                    builder: (_, _) =>
-                        const PlaceholderScreen(title: 'History'),
+                    parentNavigatorKey: rootNavigator,
+                    builder: (context, _) => _Owned(
+                      create: () => LoadHistoryViewModel(loads: context.read()),
+                      dispose: (vm) => vm.dispose(),
+                      builder: (vm) => LoadHistoryScreen(viewModel: vm),
+                    ),
                   ),
                   GoRoute(
                     path: ':loadId',
-                    builder: (_, state) => PlaceholderScreen(
-                      title: 'Load ${state.pathParameters['loadId']}',
+                    parentNavigatorKey: rootNavigator,
+                    builder: (context, state) => _Owned(
+                      // Another load in the same place is another screen.
+                      key: ValueKey(state.pathParameters['loadId']),
+                      create: () => LoadDetailsViewModel(
+                        loadId: state.pathParameters['loadId']!,
+                        loads: context.read(),
+                        advance: context.read(),
+                        camera: context.read(),
+                      ),
+                      dispose: (vm) => vm.dispose(),
+                      builder: (vm) => LoadDetailsScreen(viewModel: vm),
                     ),
                   ),
                 ],
