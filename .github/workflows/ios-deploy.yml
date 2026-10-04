@@ -50,12 +50,22 @@ jobs:
             > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
 
       - name: Flutter Build iOS
-        run: flutter build ios --release --no-codesign
+        env:
+          BG_LICENSE_KEY: ${{ secrets.BG_LICENSE_KEY_IOS }}
+        run: |
+          if [ -z "$BG_LICENSE_KEY" ]; then
+            echo "::error::BG_LICENSE_KEY_IOS secret is empty"
+            exit 1
+          fi
+          flutter build ios --release --no-codesign
 
       - name: Xcode Archive & Generate ExportOptions
         env:
           TEAM_ID: ${{ secrets.APP_STORE_CONNECT_TEAM_ID }}
           BUNDLE_ID: ${{ secrets.BUNDLE_ID }}
+          # flutter_background_geolocation licence for live.yool.app, fills
+          # $(BG_LICENSE_KEY) in Info.plist.
+          BG_LICENSE_KEY: ${{ secrets.BG_LICENSE_KEY_IOS }}
         run: |
           PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
 
@@ -105,7 +115,18 @@ jobs:
             -sdk iphoneos \
             -configuration Release \
             -archivePath $PWD/build/Runner.xcarchive \
-            archive
+            archive \
+            BG_LICENSE_KEY="$BG_LICENSE_KEY"
+
+      - name: Check Licence in Archive
+        run: |
+          PLIST=$PWD/build/Runner.xcarchive/Products/Applications/Runner.app/Info.plist
+          LICENSE=$(/usr/libexec/PlistBuddy -c "Print :TSLocationManagerLicense" "$PLIST" 2>/dev/null || true)
+          if [ -z "$LICENSE" ]; then
+            echo "::error::TSLocationManagerLicense is empty in the archived Info.plist"
+            exit 1
+          fi
+          echo "✅ TSLocationManagerLicense is set (${#LICENSE} chars)"
 
       - name: Export IPA
         run: |

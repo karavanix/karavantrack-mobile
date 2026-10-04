@@ -37,7 +37,15 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: flutter build appbundle --release
+          # flutter_background_geolocation licence for yool.live.app. Without
+          # it the release build still succeeds but tracking is locked.
+          BG_LICENSE_KEY: ${{ secrets.BG_LICENSE_KEY_ANDROID }}
+        run: |
+          if [ -z "$BG_LICENSE_KEY" ]; then
+            echo "::error::BG_LICENSE_KEY_ANDROID secret is empty"
+            exit 1
+          fi
+          flutter build appbundle --release
 
       - name: Upload AAB to Google Play (Internal Testing)
         uses: r0adkll/upload-google-play@v1
