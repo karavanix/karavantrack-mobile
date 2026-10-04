@@ -78,6 +78,8 @@ class TrackingRepository extends ChangeNotifier {
   String? _loadId;
   int _pending = 0;
   DateTime? _oldestPendingAt;
+  bool _queueStuck = false;
+  Timer? _stuckTimer;
   bool _flushing = false;
   Future<void> _queue = Future.value();
   final _serverStops = StreamController<void>.broadcast();
@@ -94,10 +96,9 @@ class TrackingRepository extends ChangeNotifier {
 
   /// Points have been waiting longer than [queueStuckAfter]: no signal, or
   /// the server keeps refusing them. A handful always waits for the next
-  /// batch, that's normal.
-  bool get queueStuck =>
-      _oldestPendingAt != null &&
-      _now().difference(_oldestPendingAt!) > queueStuckAfter;
+  /// batch, that's normal. Turns true on time also with nothing else
+  /// happening: parked with no signal, no point is recorded or answered.
+  bool get queueStuck => _queueStuck;
 
   /// The server said the load needs no more points and tracking stopped.
   Stream<void> get serverStops => _serverStops.stream;
@@ -221,10 +222,30 @@ class TrackingRepository extends ChangeNotifier {
       if (count == _pending && oldest == _oldestPendingAt) return;
       _pending = count;
       _oldestPendingAt = count == 0 ? null : oldest;
+      _watchQueueAge();
       notifyListeners();
     } catch (e) {
       log.warning('[tracking] queue not read: $e');
     }
+  }
+
+  /// Sets [queueStuck] for the oldest queued point, now or when it gets
+  /// too old.
+  void _watchQueueAge() {
+    _stuckTimer?.cancel();
+    _stuckTimer = null;
+    final oldest = _oldestPendingAt;
+    if (oldest == null) {
+      _queueStuck = false;
+      return;
+    }
+    final left = oldest.add(queueStuckAfter).difference(_now());
+    _queueStuck = left < Duration.zero;
+    if (_queueStuck) return;
+    _stuckTimer = Timer(left, () {
+      _queueStuck = true;
+      notifyListeners();
+    });
   }
 
   void _apply(TrackingSnapshot snapshot) {
@@ -258,6 +279,7 @@ class TrackingRepository extends ChangeNotifier {
 
   @override
   void dispose() {
+    _stuckTimer?.cancel();
     for (final sub in _subs) {
       unawaited(sub.cancel());
     }

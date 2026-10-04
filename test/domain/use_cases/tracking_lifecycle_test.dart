@@ -317,6 +317,31 @@ void main() {
     expect(g.tracking.queueStuck, isFalse);
   });
 
+  test('parked with no signal, the queue shows as stuck on time', () async {
+    final g = await driver();
+    g.backend.activeLoadId = 'A';
+    await g.loads.refresh();
+    await tracks(g, 'A');
+
+    // No more points, no answers: only the clock moves.
+    const left = Duration(milliseconds: 200);
+    g.trackingService.record(
+      at: g.now.subtract(const Duration(minutes: 5)).add(left),
+    );
+    await pumpUntil(() => g.tracking.pending == 1);
+    expect(g.tracking.queueStuck, isFalse);
+
+    final told = Completer<void>();
+    g.tracking.addListener(() {
+      if (g.tracking.queueStuck && !told.isCompleted) told.complete();
+    });
+    await told.future.timeout(left * 5);
+
+    await g.trackingService.autoSync();
+    await pumpUntil(() => g.tracking.pending == 0);
+    expect(g.tracking.queueStuck, isFalse);
+  });
+
   group('sign-out', () {
     Future<TestGraph> tracking() async {
       final g = await driver();
