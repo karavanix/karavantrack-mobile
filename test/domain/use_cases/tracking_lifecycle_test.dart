@@ -333,6 +333,39 @@ void main() {
       expectStoppedAndForgotten(g);
     });
 
+    test('a batch the library is sending is waited for', () async {
+      final g = await tracking();
+      final held = g.trackingService.autoSyncHeld = Completer<void>();
+      final batch = g.trackingService.autoSync();
+
+      final signedOut = g.session.signOut();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      // Logout would revoke the tokens of the batch still on its way.
+      expect(g.trackingService.calls, contains('sync'));
+      expect(g.backend.logouts, 0);
+
+      held.complete();
+      await batch;
+      await signedOut;
+      await settle();
+
+      expect(g.backend.takenPoints, ['A', 'A']);
+      expect(g.backend.logouts, 1);
+      expectStoppedAndForgotten(g);
+    });
+
+    test('a library busy for too long doesn\'t hold the driver', () async {
+      final g = await tracking();
+      g.trackingService.autoSyncHeld = Completer<void>();
+      unawaited(g.trackingService.autoSync());
+
+      await g.session.signOut().timeout(const Duration(seconds: 2));
+      await settle();
+
+      expect(g.auth.isSignedIn, isFalse);
+      expectStoppedAndForgotten(g);
+    });
+
     test(
       'a rejected refresh token: nothing to send with, just forgotten',
       () async {

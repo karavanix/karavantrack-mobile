@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_background_geolocation/flutter_background_geolocation.dart'
     as bg;
 
@@ -63,6 +64,15 @@ class BatchResult {
   bool get ok => status >= 200 && status < 300;
 }
 
+/// [TrackingService.sync] while the library is sending a batch of its own:
+/// it takes one request at a time.
+class TrackingBusy implements Exception {
+  const TrackingBusy();
+
+  @override
+  String toString() => 'TrackingBusy';
+}
+
 /// The tracking library (flutter_background_geolocation): it records the
 /// points, keeps them in its own database and sends them to the server
 /// with its own HTTP client, also while the app is in the background or
@@ -90,7 +100,8 @@ abstract interface class TrackingService {
   /// When the oldest of them was recorded; null with nothing queued.
   Future<DateTime?> oldestPendingAt();
 
-  /// Sends everything queued now. Fails without a connection.
+  /// Sends everything queued now. Fails without a connection, and with
+  /// [TrackingBusy] while a batch is already on its way.
   Future<void> sync();
 
   /// Forgets every queued point.
@@ -188,7 +199,16 @@ class BgTrackingService implements TrackingService {
   }
 
   @override
-  Future<void> sync() => bg.BackgroundGeolocation.sync();
+  Future<void> sync() async {
+    try {
+      await bg.BackgroundGeolocation.sync();
+    } on PlatformException catch (e) {
+      // Android: PlatformException(HTTPService is busy, ...).
+      final text = '${e.code} ${e.message}'.toLowerCase();
+      if (text.contains('busy')) throw const TrackingBusy();
+      rethrow;
+    }
+  }
 
   @override
   Future<void> destroyLocations() =>

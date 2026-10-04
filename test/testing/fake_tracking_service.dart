@@ -40,6 +40,12 @@ class FakeTrackingService implements TrackingService {
   /// While set, sync() waits for it: the server is slow to answer.
   Completer<void>? syncHeld;
 
+  /// While set, autoSync() waits for it before its batch reaches the
+  /// server; sync() meanwhile fails with TrackingBusy, like the library.
+  Completer<void>? autoSyncHeld;
+
+  bool _sending = false;
+
   /// The backend's logout count when sync() was last called.
   int? logoutsAtSync;
 
@@ -97,7 +103,15 @@ class FakeTrackingService implements TrackingService {
 
   /// The library sends its queue on its own (enough points, a stop or a
   /// start, the network back), in batches of [batchSize].
-  Future<void> autoSync({int batchSize = 250}) => _send(batchSize);
+  Future<void> autoSync({int batchSize = 250}) async {
+    _sending = true;
+    try {
+      if (autoSyncHeld case final held?) await held.future;
+      await _send(batchSize);
+    } finally {
+      _sending = false;
+    }
+  }
 
   @override
   Future<int> pendingCount() async => queue.length;
@@ -110,6 +124,7 @@ class FakeTrackingService implements TrackingService {
   Future<void> sync() async {
     calls.add('sync');
     logoutsAtSync = backend.logouts;
+    if (_sending) throw const TrackingBusy();
     if (syncHeld case final held?) await held.future;
     await _send(250);
   }

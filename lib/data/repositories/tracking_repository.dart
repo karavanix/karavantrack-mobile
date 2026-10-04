@@ -70,7 +70,7 @@ class TrackingRepository extends ChangeNotifier {
   /// Queued points older than this mean they aren't getting through.
   final Duration queueStuckAfter;
 
-  /// How long [flush] waits for the server.
+  /// How long [flush] waits for the queue to empty.
   final Duration flushTimeout;
 
   bool _enabled;
@@ -139,8 +139,9 @@ class TrackingRepository extends ChangeNotifier {
   Future<void> setTokens() => _serial(() => _service.configure(_setup()));
 
   /// Sends what's queued, before signing out makes it impossible (logout
-  /// revokes the library's copy of the tokens too). Gives up after
-  /// [flushTimeout] or on failure: the driver isn't kept waiting.
+  /// revokes the library's copy of the tokens too). A batch the library
+  /// is already sending is waited for. Gives up after [flushTimeout] or on
+  /// failure: the driver isn't kept waiting.
   Future<void> flush() => _serial(_flush);
 
   /// Signed out: stops tracking and forgets every point still queued and
@@ -167,8 +168,24 @@ class TrackingRepository extends ChangeNotifier {
   Future<void> _flush() async {
     if (await _service.pendingCount() == 0) return;
     _flushing = true;
+    final clock = Stopwatch()..start();
+    Duration left() => flushTimeout - clock.elapsed;
     try {
-      await _service.sync().timeout(flushTimeout);
+      while (await _service.pendingCount() > 0) {
+        if (left() <= Duration.zero) {
+          throw TimeoutException('queue not empty', flushTimeout);
+        }
+        final answered = _service.responses.first..ignore();
+        try {
+          await _service.sync().timeout(left());
+        } on TrackingBusy {
+          // The library is sending a batch of its own, maybe not all of
+          // the queue: once it's answered, the rest.
+          log.info('[tracking] flush: a batch is on its way, waiting');
+          final wait = left() < _busyRetry ? left() : _busyRetry;
+          await Future.any([answered, Future<void>.delayed(wait)]);
+        }
+      }
     } catch (e) {
       log.warning('[tracking] queued points not sent: $e');
     } finally {
@@ -176,6 +193,10 @@ class TrackingRepository extends ChangeNotifier {
       await _refreshQueue();
     }
   }
+
+  /// How often [flush] asks again while the library is busy, should its
+  /// answer get lost.
+  static const _busyRetry = Duration(milliseconds: 500);
 
   void _onResponse(BatchResult result) {
     unawaited(_refreshQueue());
