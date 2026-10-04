@@ -1,4 +1,5 @@
 import '../../../domain/models/load.dart';
+import '../../../utils/logger.dart';
 import '../../../utils/result.dart';
 import 'api_client.dart';
 import 'api_exception.dart';
@@ -28,12 +29,21 @@ class LoadsApi {
   /// The load the driver has now, or Ok(null) when there is none (the
   /// server answers 404).
   Future<Result<Load?>> active() async {
-    final result = await _client.get('/loads/active', decode: Load.fromJson);
+    final result = await _client.get(
+      '/loads/active',
+      expected: const {404},
+      decode: Load.fromJson,
+    );
     return switch (result) {
-      Error(error: HttpException(statusCode: 404)) => const Result.ok(null),
+      Error(error: HttpException(statusCode: 404)) => _none(),
       Ok(:final value) => Result.ok(value),
       Error(:final error) => Result.error(error),
     };
+  }
+
+  Result<Load?> _none() {
+    log.debug('[loads] GET /loads/active: 404, no active load');
+    return const Result.ok(null);
   }
 
   Future<Result<Load>> get(String id) =>
