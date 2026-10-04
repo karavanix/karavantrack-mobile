@@ -13,10 +13,14 @@ import 'package:driver_tracking_app/domain/models/location_state.dart';
 import 'package:driver_tracking_app/utils/pkce.dart';
 import 'package:driver_tracking_app/utils/result.dart';
 
+/// FCM as it behaves on a device: a token it creates (first launch, or
+/// the first one after [deleteToken]) comes on [tokenRefreshes] too, at the
+/// same time as [requestToken] returns it.
 class FakePushService implements PushService {
   String? token = 'push-token';
   int permissionRequests = 0;
   int deletedTokens = 0;
+  String? _issued;
   final refreshes = StreamController<String>.broadcast();
   final messages = StreamController<PushMessage>.broadcast();
   final opened = StreamController<String>.broadcast();
@@ -24,7 +28,12 @@ class FakePushService implements PushService {
   @override
   Future<String?> requestToken() async {
     permissionRequests++;
-    return token;
+    final created = token;
+    if (created != null && created != _issued) {
+      _issued = created;
+      refreshes.add(created);
+    }
+    return created;
   }
 
   @override
@@ -37,7 +46,10 @@ class FakePushService implements PushService {
   Stream<String> get openedLoadIds => opened.stream;
 
   @override
-  Future<void> deleteToken() async => deletedTokens++;
+  Future<void> deleteToken() async {
+    deletedTokens++;
+    _issued = null;
+  }
 
   @override
   String get platform => 'android';

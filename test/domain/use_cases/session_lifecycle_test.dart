@@ -41,6 +41,39 @@ void main() {
     expect(g.backend.devices.values.single, 'push-token');
   });
 
+  test('the device is registered once per sign-in', () async {
+    final g = TestGraph.signedIn()..session;
+    int registrations() => g.backend.requestsTo('/users/me/devices').length;
+    // Long enough for a second request to reach the server.
+    Future<void> settleRequests() async {
+      for (var i = 0; i < 20; i++) {
+        await settle();
+      }
+    }
+
+    await passLocationPrompts(g);
+    await pumpUntil(() => registrations() > 0);
+    await settleRequests();
+    expect(registrations(), 1);
+
+    // A token that really changes is sent again.
+    g.push.refreshes.add('push-token-2');
+    await pumpUntil(() => registrations() > 1);
+    await settleRequests();
+    expect(registrations(), 2);
+
+    // Back in after signing out: the new token, once.
+    await g.session.signOut();
+    await g.auth.signInWithPassword(
+      email: 'driver@yool.live',
+      password: 'password1',
+    );
+    await passLocationPrompts(g);
+    await pumpUntil(() => registrations() > 2);
+    await settleRequests();
+    expect(registrations(), 3);
+  });
+
   test('no push prompt while the profile is incomplete', () async {
     final g = TestGraph.signedIn(cachedProfile: false);
     g.backend.firstName = '';

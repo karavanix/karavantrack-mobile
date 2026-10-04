@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import '../../utils/logger.dart';
+import '../../utils/result.dart';
 import '../services/api/account_api.dart';
 import '../services/local_store.dart';
 import '../services/push_service.dart';
@@ -20,6 +21,11 @@ class PushRepository {
 
   StreamSubscription<String>? _refreshSub;
   bool _registered = false;
+
+  /// The token sent (or being sent) to the server. A token FCM creates
+  /// comes both from requestToken and on onTokenRefresh, at the same time;
+  /// it's sent once.
+  String? _sent;
 
   Stream<PushMessage> get foregroundMessages => _push.foregroundMessages;
 
@@ -43,16 +49,21 @@ class PushRepository {
     _refreshSub = null;
     if (!_registered) return;
     _registered = false;
+    _sent = null;
     await _push.deleteToken();
   }
 
   Future<void> _send(String token) async {
+    if (token == _sent) return;
+    _sent = token;
     final result = await _api.registerDevice(
       deviceId: _deviceId(),
       token: token,
       platform: _push.platform,
     );
     log.info('[push] device registration: $result');
+    // Not sent: the next time the token comes, it's tried again.
+    if (result is Error<void> && _sent == token) _sent = null;
   }
 
   /// A stable id for this install; the server keys tokens by it.
