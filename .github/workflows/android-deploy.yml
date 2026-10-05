@@ -47,6 +47,16 @@ jobs:
           fi
           flutter build appbundle --release
 
+      # Kept on the run even when the Play upload fails: the Play API can
+      # reject an edit (e.g. "You must let us know whether your app includes
+      # any health features") while a manual upload in Play Console works.
+      - name: Keep AAB as Run Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
       - name: Upload AAB to Google Play (Internal Testing)
         uses: r0adkll/upload-google-play@v1
         with:
