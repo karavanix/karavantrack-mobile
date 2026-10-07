@@ -15,6 +15,11 @@ android {
     compileSdk = 37
     ndkVersion = "27.0.12077973"
 
+    // telegramLoginHost() below
+    buildFeatures {
+        resValues = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -39,22 +44,32 @@ android {
         // without one). CI passes it from a secret.
         manifestPlaceholders["bgLicenseKey"] = System.getenv("BG_LICENSE_KEY") ?: ""
         // Where Telegram sends the driver after "Log In" (Telegram's domain
-        // for the app signed with the debug key). Must match
-        // TelegramAuthService.appRedirectUri.
-        manifestPlaceholders["telegramLoginHost"] = "app3297224938-login.tg.dev"
+        // for the app signed with the debug key). TelegramAuthService asks
+        // MainActivity for it.
+        telegramLoginHost("app3297224938-login.tg.dev")
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            // Telegram's domain for the app as Google Play signs it.
-            manifestPlaceholders["telegramLoginHost"] = "app1340816991-login.tg.dev"
+            // Telegram verifies its domain against the key the installed app
+            // is signed with. An app bundle goes to Google Play and is
+            // re-signed with Play's key; an APK keeps our upload key (builds
+            // installed by hand).
+            val forPlay = gradle.startParameter.taskNames.any { it.contains("bundle", ignoreCase = true) }
+            telegramLoginHost(if (forPlay) "app1451611780-login.tg.dev" else "app1340816991-login.tg.dev")
             // Required by the tracking library, resource shrinking off.
             isMinifyEnabled = true
             isShrinkResources = false
             proguardFiles("proguard-rules.pro")
         }
     }
+}
+
+// One value for the App Link in the manifest and for the app's redirect_uri.
+fun com.android.build.api.dsl.VariantDimension.telegramLoginHost(host: String) {
+    manifestPlaceholders["telegramLoginHost"] = host
+    resValue("string", "telegram_login_host", host)
 }
 
 kotlin {

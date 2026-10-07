@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -47,7 +46,7 @@ final class TelegramLoginException implements Exception {
 ///
 /// Normally the login happens in the Telegram app: [appLoginUrl] asks
 /// Telegram for a `tg://` link, the driver confirms there, and Telegram
-/// opens [appRedirectUri], which Android (App Link) and iOS (Universal
+/// opens [_redirectUri], which Android (App Link) and iOS (Universal
 /// Link) hand to this app. Without the Telegram app it falls back to the
 /// browser page ([authorizeUrl]), which comes back via the server's redirect
 /// to `yoollive://tglogin`, caught natively (MainActivity / SceneDelegate)
@@ -81,18 +80,17 @@ class TelegramAuthService {
   /// Where Telegram sends the driver after "Log In". Telegram hosts one such
   /// domain per native app registered with @BotFather (Login Widget →
   /// Native Login) and verifies it against the app: package and signing key
-  /// on Android, team and bundle id on iOS. Release builds are re-signed by
-  /// Google Play, debug and profile builds carry the debug key, so each has
-  /// its own domain. Must match `telegramLoginHost` in build.gradle.kts and
-  /// the associated domain in Runner.entitlements.
-  static Uri get appRedirectUri => Uri.https(
+  /// on Android, team and bundle id on iOS. On Android each key has its own
+  /// domain (debug key, our upload key, Google Play's key), so the build
+  /// picks it (`telegramLoginHost` in build.gradle.kts) and MainActivity
+  /// hands it over. On iOS it must match Runner.entitlements.
+  Future<Uri> _redirectUri() async => _redirectUriCache ??= Uri.https(
     Platform.isIOS
         ? 'app3555230600-login.tg.dev'
-        : kReleaseMode
-        ? 'app1340816991-login.tg.dev'
-        : 'app3297224938-login.tg.dev',
+        : (await _channel.invokeMethod<String>('loginHost'))!,
     '/tglogin',
   );
+  Uri? _redirectUriCache;
 
   final MethodChannel _channel;
   final Dio _http;
@@ -117,8 +115,8 @@ class TelegramAuthService {
       await closeInAppWebView();
       _callbacks.add(TelegramWebCallback(code, state: state));
     });
-    links.listen((uri) {
-      if (uri.host != appRedirectUri.host) return;
+    links.listen((uri) async {
+      if (uri.host != (await _redirectUri()).host) return;
       final code = uri.queryParameters['code'];
       if (code == null || code.isEmpty || code == _lastAppCode) return;
       _lastAppCode = code;
@@ -136,7 +134,7 @@ class TelegramAuthService {
           'client_id': clientId,
           'response_type': 'code',
           'scope': _scope,
-          'redirect_uri': appRedirectUri.toString(),
+          'redirect_uri': (await _redirectUri()).toString(),
           Platform.isIOS ? 'ios_sdk' : 'android_sdk': '1',
           'code_challenge': codeChallenge,
           'code_challenge_method': 'S256',
@@ -173,7 +171,7 @@ class TelegramAuthService {
           'grant_type': 'authorization_code',
           'client_id': clientId,
           'code': code,
-          'redirect_uri': appRedirectUri.toString(),
+          'redirect_uri': (await _redirectUri()).toString(),
           'code_verifier': codeVerifier,
         },
         options: Options(contentType: Headers.formUrlEncodedContentType),
