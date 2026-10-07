@@ -52,6 +52,14 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        // Telegram's login domain this build was made for (build.gradle.kts).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "yool.live.app/telegram_auth")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "loginHost" -> result.success(getString(R.string.telegram_login_host))
+                    else -> result.notImplemented()
+                }
+            }
     }
 
     override fun onNewIntent(intent: Intent) {
