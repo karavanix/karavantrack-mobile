@@ -152,6 +152,7 @@ GoRouter createRouter({
         builder: (context, _, navigationShell) => _Owned(
           create: () => MainShellViewModel(
             location: context.read(),
+            push: context.read(),
             lifecycle: context.read(),
           ),
           dispose: (vm) => vm.dispose(),

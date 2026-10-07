@@ -11,7 +11,12 @@ import '../services/location_status_service.dart';
 ///
 /// Google Play wants the request in context, behind our own disclosure, at
 /// the moment the feature is about to be used: that's when the signed-in
-/// driver with a complete profile first reaches the app.
+/// driver with a complete profile first reaches the app. On iOS there's no
+/// disclosure: [requestAccess] gets a consent that is always given.
+///
+/// Nothing here sends the driver to the settings on its own: Apple rejects
+/// that after "Don't Allow" (5.1.1(iv), 06.10.2026). The blocking overlay
+/// on the loads screen does it when the driver asks.
 class LocationRepository extends ChangeNotifier {
   LocationRepository({
     required this._service,
@@ -52,8 +57,8 @@ class LocationRepository extends ChangeNotifier {
   ///
   /// Each system prompt pauses and resumes the app, and a resume may call
   /// this again: a second call while one runs does nothing. The disclosure
-  /// is shown at most once per sign-in; after "Not now" the blocking
-  /// overlay explains what's missing. Physical activity is asked once per
+  /// is shown at most once per sign-in; after "Not now" or a refusal at a
+  /// system prompt the blocking overlay explains what's missing. Physical activity is asked once per
   /// sign-in too, and a refusal blocks nothing: tracking just wakes up
   /// later after a stop.
   Future<void> requestAccess(Future<bool> Function() askConsent) async {

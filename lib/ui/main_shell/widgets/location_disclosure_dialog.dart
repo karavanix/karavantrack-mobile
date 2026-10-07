@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/gestures.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,7 +9,8 @@ import '../../core/l10n/l10n.dart';
 /// location prompt, satisfying Google Play's Prominent Disclosure & Consent
 /// Requirement for the BACKGROUND_LOCATION permission: the user must see,
 /// inside the app, what is collected and why, and explicitly consent, before
-/// the system permission dialog appears.
+/// the system permission dialog appears. Android only: on iOS the system
+/// prompt goes first, with the reason from Info.plist.
 ///
 /// Returns `true` only if the user tapped "Allow" — the caller should then
 /// proceed to request the OS permission. Returns `false` on "Not Now" (the
@@ -39,11 +38,7 @@ class LocationDisclosureDialog {
                 Text(t.locationDisclosureBody),
                 const SizedBox(height: 12),
                 // The physical activity prompt follows the location ones.
-                Text(
-                  Platform.isIOS
-                      ? t.locationDisclosureMotionIos
-                      : t.locationDisclosureMotion,
-                ),
+                Text(t.locationDisclosureMotion),
                 const SizedBox(height: 12),
                 Text.rich(
                   TextSpan(

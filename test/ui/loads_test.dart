@@ -1,5 +1,6 @@
 import 'package:driver_tracking_app/data/services/local_store.dart';
 import 'package:driver_tracking_app/domain/models/location_state.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -176,32 +177,39 @@ void main() {
     );
   });
 
-  testWidgets('location: the disclosure once, then the overlay explains', (
+  testWidgets('location: the disclosure once, then the card explains', (
     tester,
   ) async {
     final h = inApp();
     h.location.access = LocationAccess.denied;
     await h.start(tester);
 
+    // The notification prompt first: two system prompts would overlap.
+    expect(h.push.permissionRequests, 1);
     expect(find.text('Background Location Access'), findsOneWidget);
-    expect(h.push.permissionRequests, 0);
 
     await tapText(tester, 'Not Now');
 
-    expect(find.text('Background Location Required'), findsOneWidget);
+    expect(find.text('Turn on location for your loads'), findsOneWidget);
     expect(h.location.requests, isEmpty);
-    // The notification prompt only now.
-    expect(h.push.permissionRequests, 1);
 
     // Coming back from the background re-checks, without a second dialog.
     h.lifecycle.resumes.add(null);
     await tester.pumpAndSettle();
     expect(find.text('Background Location Access'), findsNothing);
 
-    // The card scrolls in the small test window.
+    // The settings only when the driver asks, and "Later" always works.
+    await tapText(tester, 'Turn On Location');
+    expect(find.text('Allow location all the time'), findsOneWidget);
+    await tapText(tester, 'Later');
+    expect(find.text('Allow location all the time'), findsNothing);
+    expect(h.location.settingsOpened, 0);
+
+    await tapText(tester, 'Turn On Location');
     await tester.ensureVisible(find.text('Open Settings'));
     await tapText(tester, 'Open Settings');
     expect(h.location.settingsOpened, 1);
+    expect(find.text('Allow location all the time'), findsNothing);
   });
 
   testWidgets('location: "Allow" goes through the system prompts', (
@@ -214,10 +222,42 @@ void main() {
     await tapText(tester, 'Allow');
 
     expect(h.location.requests, ['whileInUse', 'always', 'motion']);
-    expect(find.text('Background Location Required'), findsNothing);
+    expect(find.text('Turn on location for your loads'), findsNothing);
   });
 
-  testWidgets('GPS off: the overlay leads to the location settings', (
+  testWidgets('location on iOS: no disclosure, nothing after "Don\'t Allow"', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      final h = inApp();
+      h.location
+        ..access = LocationAccess.denied
+        ..grantAtWhileInUse = LocationAccess.denied;
+      await h.start(tester);
+
+      // Straight to the system prompt, which the driver refuses.
+      expect(find.text('Background Location Access'), findsNothing);
+      expect(h.location.requests, ['whileInUse']);
+
+      // Apple's 5.1.1(iv): no settings and no sheet on our own, now or
+      // after coming back.
+      expect(find.text('Turn on location for your loads'), findsOneWidget);
+      h.lifecycle.resumes.add(null);
+      await tester.pumpAndSettle();
+      expect(find.text('Choose "Always" in Settings'), findsNothing);
+      expect(h.location.requests, ['whileInUse']);
+      expect(h.location.settingsOpened, 0);
+
+      await tapText(tester, 'Turn On Location');
+      expect(find.text('Choose "Always" in Settings'), findsOneWidget);
+      expect(find.text('Select "Location"'), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('GPS off: the card leads to the location settings', (
     tester,
   ) async {
     final h = inApp();
@@ -226,6 +266,8 @@ void main() {
 
     expect(find.text('GPS is Off'), findsOneWidget);
     await tapText(tester, 'Turn On GPS');
+    await tester.ensureVisible(find.text('Open Settings'));
+    await tapText(tester, 'Open Settings');
     expect(h.location.settingsOpened, 1);
   });
 
