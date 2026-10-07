@@ -57,7 +57,17 @@ jobs:
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 14
 
+      # Whether Play sends an edit for review on its own depends on the
+      # app's state in the Console, and the API refuses the wrong flag
+      # either way: "Changes cannot be sent for review automatically" while
+      # Play wants the review sent by hand (09.2026, the Prominent
+      # Disclosure policy issue), "Changes are sent for review
+      # automatically. The query parameter changesNotSentForReview must not
+      # be set" otherwise (08.10.2026). A refused edit commits nothing, so
+      # the second way is tried after the first.
       - name: Upload AAB to Google Play (Internal Testing)
+        id: upload
+        continue-on-error: true
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
@@ -65,10 +75,14 @@ jobs:
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
           track: internal
           status: completed
-          # Google Play now requires this app's edits to go through manual
-          # review (see the Prominent Disclosure policy issue) — the API
-          # rejects an auto-submit-for-review with "Changes cannot be sent
-          # for review automatically". Committing without changesNotSentForReview
-          # still uploads and publishes to the internal track; review submission
-          # then happens from the Play Console UI.
+
+      - name: Upload AAB to Google Play, review sent by hand
+        if: steps.upload.outcome == 'failure'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: yool.live.app
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
           changesNotSentForReview: true
