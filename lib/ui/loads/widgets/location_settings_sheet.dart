@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../domain/models/location_state.dart';
 import '../../core/l10n/l10n.dart';
+import 'settings_mockup.dart';
 
 /// What to pick in the phone's settings to fix [LocationProblem], with the
 /// way there: opened only when the driver taps the blocking overlay's
@@ -40,7 +41,9 @@ class LocationSettingsSheet extends StatelessWidget {
     final t = context.l10n;
     final theme = Theme.of(context);
     final ios = defaultTargetPlatform == TargetPlatform.iOS;
-    final (title, message, steps) = switch (problem) {
+    // The last step is a picture of the settings page: the option to pick,
+    // ringed, instead of its name in words.
+    final (title, message, steps, picture) = switch (problem) {
       // No app may open Location Services on iOS, only its own page in
       // Settings: the way from there is spelled out. Android opens the
       // location toggle itself.
@@ -50,36 +53,23 @@ class LocationSettingsSheet extends StatelessWidget {
         ios
             ? [t.gpsOffIosStep1, t.gpsOffIosStep2, t.gpsOffIosStep3]
             : <String>[],
+        ios ? const LocationServicesMockup() : null,
       ),
       LocationProblem.noAlwaysAccess => (
         ios ? t.alwaysSheetTitleIos : t.alwaysSheetTitle,
         t.alwaysSheetMessage,
         ios
-            ? [
-                t.alwaysLocationIosStep1,
-                t.alwaysLocationIosStep2,
-                t.alwaysLocationIosStep3,
-              ]
-            : [
-                t.alwaysLocationStep1,
-                t.alwaysLocationStep2,
-                t.alwaysLocationStep3,
-              ],
+            ? [t.alwaysLocationIosStep1, t.alwaysLocationIosStep2]
+            : [t.alwaysLocationStep1, t.alwaysLocationStep2],
+        const LocationSettingsMockup(focus: SettingsFocus.always),
       ),
       LocationProblem.notPrecise => (
         ios ? t.preciseSheetTitleIos : t.preciseSheetTitle,
         t.preciseSheetMessage,
         ios
-            ? [
-                t.preciseLocationIosStep1,
-                t.preciseLocationIosStep2,
-                t.preciseLocationIosStep3,
-              ]
-            : [
-                t.preciseLocationStep1,
-                t.preciseLocationStep2,
-                t.preciseLocationStep3,
-              ],
+            ? [t.preciseLocationIosStep1, t.preciseLocationIosStep2]
+            : [t.preciseLocationStep1, t.preciseLocationStep2],
+        const LocationSettingsMockup(focus: SettingsFocus.precise),
       ),
     };
 
@@ -132,6 +122,10 @@ class LocationSettingsSheet extends StatelessWidget {
                           ],
                         ),
                       ),
+                    ],
+                    if (picture != null) ...[
+                      const SizedBox(height: 12),
+                      picture,
                     ],
                   ],
                 ),
