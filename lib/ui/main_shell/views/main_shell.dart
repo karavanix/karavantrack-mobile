@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -31,6 +32,10 @@ class _MainShellState extends State<MainShell> {
       if (!mounted) return;
       widget.viewModel.start(() async {
         if (!mounted) return false;
+        // The disclosure is Google Play's requirement. On iOS the system
+        // prompt carries the reason itself (Info.plist), and Apple rejects
+        // a screen of our own before it that can skip it.
+        if (defaultTargetPlatform == TargetPlatform.iOS) return true;
         return LocationDisclosureDialog.show(context);
       });
     });

@@ -12,9 +12,12 @@ typedef PushMessage = ({String? title, String? body, String? loadId});
 
 /// Push notifications (FCM).
 abstract interface class PushService {
-  /// Shows the system permission prompt if it hasn't been answered, then
-  /// returns the device token; null when notifications are denied or the
-  /// token isn't available yet (it then arrives on [tokenRefreshes]).
+  /// Shows the system permission prompt if it hasn't been answered and
+  /// returns once it has; true unless notifications are denied.
+  Future<bool> requestPermission();
+
+  /// The device token, after [requestPermission]; null when it isn't
+  /// available yet (it then arrives on [tokenRefreshes]).
   Future<String?> requestToken();
 
   Stream<String> get tokenRefreshes;
@@ -45,13 +48,16 @@ class FirebasePushService implements PushService {
   String get platform => Platform.isIOS ? 'ios' : 'android';
 
   @override
+  Future<bool> requestPermission() async {
+    final settings = await (await _messaging()).requestPermission();
+    final denied = settings.authorizationStatus == AuthorizationStatus.denied;
+    if (denied) log.info('[push] notifications denied');
+    return !denied;
+  }
+
+  @override
   Future<String?> requestToken() async {
     final messaging = await _messaging();
-    final settings = await messaging.requestPermission();
-    if (settings.authorizationStatus == AuthorizationStatus.denied) {
-      log.info('[push] notifications denied');
-      return null;
-    }
     // On iOS the FCM token is derived from the APNs token, which arrives
     // some time after the permission; asking earlier throws.
     if (Platform.isIOS && await _waitForApnsToken(messaging) == null) {

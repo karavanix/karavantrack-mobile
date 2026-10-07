@@ -20,7 +20,7 @@ class PushRepository {
   final LocalStore _store;
 
   StreamSubscription<String>? _refreshSub;
-  bool _registered = false;
+  Future<void>? _registered;
 
   /// The token sent (or being sent) to the server. A token FCM creates
   /// comes both from requestToken and on onTokenRefresh, at the same time;
@@ -33,11 +33,20 @@ class PushRepository {
 
   /// Asks for the notification permission (the system prompt, the first
   /// time) and sends the token to the server; later token changes follow
-  /// on their own. Safe to call again.
-  Future<void> register() async {
-    if (_registered) return;
-    _registered = true;
+  /// on their own. Safe to call again: every call gets the same Future.
+  ///
+  /// Completes once the prompt is answered, so the next system prompt can
+  /// wait for it; the token goes out after that (on iOS it may take up to
+  /// half a minute to arrive).
+  Future<void> register() => _registered ??= _register();
+
+  Future<void> _register() async {
     _refreshSub ??= _push.tokenRefreshes.listen(_send);
+    if (!await _push.requestPermission()) return;
+    unawaited(_sendToken());
+  }
+
+  Future<void> _sendToken() async {
     final token = await _push.requestToken();
     if (token != null) await _send(token);
   }
@@ -47,8 +56,8 @@ class PushRepository {
   Future<void> unregister() async {
     await _refreshSub?.cancel();
     _refreshSub = null;
-    if (!_registered) return;
-    _registered = false;
+    if (_registered == null) return;
+    _registered = null;
     _sent = null;
     await _push.deleteToken();
   }

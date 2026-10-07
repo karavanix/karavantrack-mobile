@@ -53,7 +53,6 @@ class SessionLifecycle {
   void start() {
     _auth.addListener(_onAuthChanged);
     _profile.addListener(_maybeRegisterPush);
-    _location.addListener(_maybeRegisterPush);
     _invites.addListener(_onInvitesChanged);
     _connectivity.addListener(_onConnectivityChanged);
     _online = _connectivity.online;
@@ -98,12 +97,10 @@ class SessionLifecycle {
   }
 
   /// Notifications are asked for once the driver is fully in (signed in
-  /// with a profile) and past the location prompts, so the system prompt
-  /// never lands on top of the sign-in screens or the location disclosure.
+  /// with a profile), so the system prompt never lands on top of the
+  /// sign-in screens. The location prompts wait for it (MainShellViewModel).
   void _maybeRegisterPush() {
-    if (_signedIn &&
-        (_profile.user?.isProfileComplete ?? false) &&
-        _location.promptsDone) {
+    if (_signedIn && (_profile.user?.isProfileComplete ?? false)) {
       unawaited(_push.register());
     }
   }
@@ -155,7 +152,6 @@ class SessionLifecycle {
   void dispose() {
     _auth.removeListener(_onAuthChanged);
     _profile.removeListener(_maybeRegisterPush);
-    _location.removeListener(_maybeRegisterPush);
     _invites.removeListener(_onInvitesChanged);
     _connectivity.removeListener(_onConnectivityChanged);
     for (final sub in _subs) {

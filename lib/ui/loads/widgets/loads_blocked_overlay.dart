@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui';
 
 import 'package:material_ui/material_ui.dart';
@@ -6,10 +5,15 @@ import 'package:material_ui/material_ui.dart';
 import '../../../domain/models/location_state.dart';
 import '../../core/l10n/l10n.dart';
 import '../../core/ui/floating_dock.dart';
+import 'location_settings_sheet.dart';
 
 /// Frosted blocking overlay shown over the Loads content while location
 /// tracking can't work correctly: GPS is off, "Allow all the time" is
 /// missing, or only approximate location accuracy was granted.
+///
+/// It says why tracking matters to the driver, not what the app needs, and
+/// its button only opens [LocationSettingsSheet] with the way to fix it:
+/// the driver goes to the settings from there or picks "Later".
 ///
 /// Rendered inside the Loads screen's body `Stack`, so it covers the load list
 /// while leaving the screen's AppBar (above) and the shell's bottom dock
@@ -30,7 +34,14 @@ class LoadsBlockedOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.l10n;
     final theme = Theme.of(context);
-    final ios = Platform.isIOS;
+
+    void showSheet() => LocationSettingsSheet.show(
+      context,
+      problem: problem,
+      onOpenSettings: problem == LocationProblem.gpsOff
+          ? onOpenLocationSettings
+          : onOpenAppSettings,
+    );
 
     return Positioned.fill(
       // Absorb taps so the obscured Loads content stays non-interactive.
@@ -46,55 +57,26 @@ class LoadsBlockedOverlay extends StatelessWidget {
               LocationProblem.gpsOff => _ProblemCard(
                 icon: Icons.gps_off_rounded,
                 title: t.gpsOffTitle,
-                message: ios ? t.gpsOffIosMessage : t.gpsOffMessage,
-                // No app may open Location Services on iOS, only its own
-                // page in Settings: the way from there is spelled out.
-                steps: ios
-                    ? [t.gpsOffIosStep1, t.gpsOffIosStep2, t.gpsOffIosStep3]
-                    : const [],
-                buttonIcon: ios ? Icons.settings : Icons.location_on,
-                buttonLabel: ios ? t.openAppSettings : t.turnOnGps,
-                onPressed: onOpenLocationSettings,
+                message: t.gpsOffCardMessage,
+                buttonIcon: Icons.location_on,
+                buttonLabel: t.turnOnGps,
+                onPressed: showSheet,
               ),
               LocationProblem.noAlwaysAccess => _ProblemCard(
                 icon: Icons.location_off_rounded,
-                title: t.alwaysLocationTitle,
-                message: ios
-                    ? t.alwaysLocationIosMessage
-                    : t.alwaysLocationMessage,
-                steps: ios
-                    ? [
-                        t.alwaysLocationIosStep1,
-                        t.alwaysLocationIosStep2,
-                        t.alwaysLocationIosStep3,
-                      ]
-                    : [
-                        t.alwaysLocationStep1,
-                        t.alwaysLocationStep2,
-                        t.alwaysLocationStep3,
-                      ],
-                buttonIcon: Icons.settings,
-                buttonLabel: t.openAppSettings,
-                onPressed: onOpenAppSettings,
+                title: t.locationCardTitle,
+                message: t.locationCardMessage,
+                buttonIcon: Icons.location_on,
+                buttonLabel: t.locationCardButton,
+                onPressed: showSheet,
               ),
               LocationProblem.notPrecise => _ProblemCard(
                 icon: Icons.location_searching_rounded,
-                title: t.preciseLocationTitle,
-                message: t.preciseLocationMessage,
-                steps: ios
-                    ? [
-                        t.preciseLocationIosStep1,
-                        t.preciseLocationIosStep2,
-                        t.preciseLocationIosStep3,
-                      ]
-                    : [
-                        t.preciseLocationStep1,
-                        t.preciseLocationStep2,
-                        t.preciseLocationStep3,
-                      ],
-                buttonIcon: Icons.settings,
-                buttonLabel: t.openAppSettings,
-                onPressed: onOpenAppSettings,
+                title: t.preciseCardTitle,
+                message: t.preciseCardMessage,
+                buttonIcon: Icons.my_location,
+                buttonLabel: t.preciseCardButton,
+                onPressed: showSheet,
               ),
             },
           ),
@@ -104,15 +86,13 @@ class LoadsBlockedOverlay extends StatelessWidget {
   }
 }
 
-/// What's wrong, numbered steps to fix it, and the button that starts the
-/// fix. The button stays in sight: on a short screen the text above it
+/// What's wrong and the button that starts the fix. The button stays in sight: on a short screen the text above it
 /// scrolls instead (Honor, 04.10: it was below the fold).
 class _ProblemCard extends StatelessWidget {
   const _ProblemCard({
     required this.icon,
     required this.title,
     required this.message,
-    required this.steps,
     required this.buttonIcon,
     required this.buttonLabel,
     required this.onPressed,
@@ -121,7 +101,6 @@ class _ProblemCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String message;
-  final List<String> steps;
   final IconData buttonIcon;
   final String buttonLabel;
   final VoidCallback onPressed;
@@ -168,26 +147,6 @@ class _ProblemCard extends StatelessWidget {
                         height: 1.5,
                       ),
                     ),
-                    if (steps.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withAlpha(80),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (final (i, step) in steps.indexed) ...[
-                              if (i > 0) const SizedBox(height: 6),
-                              _InstructionStep(number: '${i + 1}', text: step),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -210,48 +169,6 @@ class _ProblemCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Small widget for numbered instruction steps.
-class _InstructionStep extends StatelessWidget {
-  const _InstructionStep({required this.number, required this.text});
-
-  final String number;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 22,
-          height: 22,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary,
-            shape: BoxShape.circle,
-          ),
-          child: Text(
-            number,
-            style: TextStyle(
-              color: theme.colorScheme.onPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: theme.textTheme.bodySmall?.copyWith(height: 1.4),
-          ),
-        ),
-      ],
     );
   }
 }

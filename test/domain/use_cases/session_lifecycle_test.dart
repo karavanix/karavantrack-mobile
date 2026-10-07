@@ -6,10 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../testing/fake_backend.dart';
 import '../../testing/test_graph.dart';
 
-/// What the app shell does once the driver is in: the location prompts.
-Future<void> passLocationPrompts(TestGraph g) =>
-    g.location.requestAccess(() async => true);
-
 void main() {
   test('a restored session has its profile at once, fresh one after', () async {
     final g = TestGraph.signedIn();
@@ -30,11 +26,7 @@ void main() {
     );
     expect(g.push.permissionRequests, 0);
     await pumpUntil(() => g.profile.user != null);
-    await settle();
-    // Not yet: the location disclosure and prompts come first.
-    expect(g.push.permissionRequests, 0);
-
-    await passLocationPrompts(g);
+    // Not waiting for the location prompts: they wait for this one.
     await pumpUntil(() => g.backend.devices.isNotEmpty);
 
     expect(g.push.permissionRequests, 1);
@@ -51,7 +43,6 @@ void main() {
       }
     }
 
-    await passLocationPrompts(g);
     await pumpUntil(() => registrations() > 0);
     await settleRequests();
     expect(registrations(), 1);
@@ -68,7 +59,6 @@ void main() {
       email: 'driver@yool.live',
       password: 'password1',
     );
-    await passLocationPrompts(g);
     await pumpUntil(() => registrations() > 2);
     await settleRequests();
     expect(registrations(), 3);
@@ -80,7 +70,6 @@ void main() {
 
     g.session;
     await pumpUntil(() => g.profile.user != null);
-    await passLocationPrompts(g);
     await settle();
 
     expect(g.push.permissionRequests, 0);
@@ -88,7 +77,6 @@ void main() {
 
   test('sign-out tells the server, then clears everything', () async {
     final g = TestGraph.signedIn()..session;
-    await passLocationPrompts(g);
     await pumpUntil(() => g.backend.devices.isNotEmpty);
 
     await g.session.signOut();
@@ -115,7 +103,6 @@ void main() {
   test('a rejected refresh token cleans up the same way', () async {
     // refresh-0 was never issued by this backend, so it gets refused.
     final g = TestGraph.signedIn()..session;
-    await passLocationPrompts(g);
     await pumpUntil(() => g.backend.devices.isNotEmpty);
 
     await g.auth.refreshAccessToken();

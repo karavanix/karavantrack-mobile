@@ -26,8 +26,13 @@ class FakePushService implements PushService {
   final opened = StreamController<String>.broadcast();
 
   @override
-  Future<String?> requestToken() async {
+  Future<bool> requestPermission() async {
     permissionRequests++;
+    return true;
+  }
+
+  @override
+  Future<String?> requestToken() async {
     final created = token;
     if (created != null && created != _issued) {
       _issued = created;
