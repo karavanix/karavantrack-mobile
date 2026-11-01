@@ -164,7 +164,11 @@ class TrackingRepository extends ChangeNotifier {
 
   /// A new session's tokens, for the library's own requests. It refreshes
   /// the access token by itself on a 401; this is for sign-in.
-  Future<void> setTokens() => _serial(() => _service.configure(_setup()));
+  Future<void> setTokens() => reconfigure();
+
+  /// Gives the library its configuration again, with whatever changed on
+  /// the device since: the tokens, the texts of its notification.
+  Future<void> reconfigure() => _serial(() => _service.configure(_setup()));
 
   /// Sends what's queued, before signing out makes it impossible (logout
   /// revokes the library's copy of the tokens too). A batch the library

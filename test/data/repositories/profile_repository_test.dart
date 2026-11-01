@@ -53,6 +53,23 @@ void main() {
     expect(g.profile.user?.fullName, 'Jasur Karimov');
   });
 
+  test('the language goes alone and updates the copy in place', () async {
+    final g = TestGraph.signedIn();
+    await g.profile.refresh();
+
+    await g.profile.updateLanguage('uz');
+
+    expect(g.backend.language, 'uz');
+    final sent = g.backend.requestsTo('/users/me').last.data as Map;
+    expect(sent.keys, ['language']);
+    expect(g.profile.user?.language, 'uz');
+    expect(g.profile.user?.fullName, 'Ali Valiev');
+    expect(
+      g.store.values[StoreKeys.cachedProfile],
+      contains('"language":"uz"'),
+    );
+  });
+
   test('clear forgets the copy', () async {
     final g = TestGraph.signedIn()..profile.restore();
 

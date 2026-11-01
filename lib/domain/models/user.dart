@@ -6,6 +6,7 @@ class User {
     required this.lastName,
     this.email,
     this.phone,
+    this.language,
   });
 
   factory User.fromJson(Object? json) {
@@ -16,6 +17,7 @@ class User {
       lastName: (map['last_name'] as String? ?? '').trim(),
       email: map['email'] as String?,
       phone: map['phone'] as String?,
+      language: map['language'] as String?,
     );
   }
 
@@ -24,6 +26,19 @@ class User {
   final String lastName;
   final String? email;
   final String? phone;
+
+  /// The language the server speaks to the user in (`ru`, `uz` or `en`);
+  /// null in a copy saved by a build that didn't know about it.
+  final String? language;
+
+  User withLanguage(String language) => User(
+    id: id,
+    firstName: firstName,
+    lastName: lastName,
+    email: email,
+    phone: phone,
+    language: language,
+  );
 
   String get fullName =>
       [firstName, lastName].where((s) => s.isNotEmpty).join(' ');
@@ -37,5 +52,6 @@ class User {
     'last_name': lastName,
     'email': ?email,
     'phone': ?phone,
+    'language': ?language,
   };
 }

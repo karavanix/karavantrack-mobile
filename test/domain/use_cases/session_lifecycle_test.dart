@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:driver_tracking_app/data/services/local_store.dart';
 import 'package:driver_tracking_app/domain/models/location_state.dart';
 import 'package:driver_tracking_app/utils/result.dart';
@@ -62,6 +64,73 @@ void main() {
     await pumpUntil(() => registrations() > 2);
     await settleRequests();
     expect(registrations(), 3);
+  });
+
+  group('account language', () {
+    List<String> languagesSent(TestGraph g) => g.backend
+        .requestsTo('/users/me')
+        .where((r) => r.method == 'PUT')
+        .map((r) => (r.data as Map)['language'] as String)
+        .toList();
+
+    test("an account in another language gets the app's on launch", () async {
+      final g = TestGraph.signedIn(); // app in English, account in Russian
+      g.session;
+
+      await pumpUntil(() => g.profile.user?.language == 'en');
+      expect(g.backend.language, 'en');
+      expect(languagesSent(g), ['en']);
+    });
+
+    test('nothing is sent when they already agree', () async {
+      final g = TestGraph.signedIn();
+      g.backend.language = 'en';
+      g.session;
+
+      await pumpUntil(() => g.profile.user?.language == 'en');
+      await pumpUntil(() => g.backend.devices.isNotEmpty);
+      expect(languagesSent(g), isEmpty);
+    });
+
+    test('and after a sign-in', () async {
+      final g = TestGraph()..session;
+      await g.settings.setLocale(const Locale('uz'));
+
+      await g.auth.signInWithPassword(
+        email: 'driver@yool.live',
+        password: 'password1',
+      );
+
+      await pumpUntil(() => g.backend.language == 'uz');
+      expect(languagesSent(g), ['uz']);
+    });
+
+    test('switching languages while signed in tells the server', () async {
+      final g = TestGraph.signedIn();
+      g.backend.language = 'en';
+      g.session;
+      await pumpUntil(() => g.profile.user != null);
+      int configured() => g.trackingService.calls
+          .where((c) => c.startsWith('configure'))
+          .length;
+      final before = configured();
+
+      await g.settings.setLocale(const Locale('ru'));
+      await pumpUntil(() => g.backend.language == 'ru');
+
+      expect(languagesSent(g), ['ru']);
+      // The tracking notification is re-worded at once.
+      expect(configured(), before + 1);
+    });
+
+    test('switching languages while signed out sends nothing', () async {
+      final g = TestGraph()..session;
+
+      await g.settings.setLocale(const Locale('ru'));
+      await settle();
+
+      expect(g.backend.requestsTo('/users/me'), isEmpty);
+    });
   });
 
   test('no push prompt while the profile is incomplete', () async {

@@ -7,9 +7,11 @@ import '../../data/repositories/loads_repository.dart';
 import '../../data/repositories/location_repository.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../data/repositories/push_repository.dart';
+import '../../data/repositories/settings_repository.dart';
 import '../../data/repositories/tracking_repository.dart';
 import '../../data/services/api/account_api.dart';
 import '../../data/services/app_lifecycle_service.dart';
+import '../../domain/models/user.dart';
 import '../../utils/logger.dart';
 import '../../utils/result.dart';
 
@@ -20,6 +22,13 @@ import '../../utils/result.dart';
 /// While signed in it also keeps the loads fresh: they change on the
 /// server (the shipper assigns or cancels one) without the app being told,
 /// so they're fetched again whenever the driver is likely to look.
+///
+/// It also keeps the account's language (the one the server writes
+/// e-mails and pushes in) equal to the app's: the app's wins, since the
+/// driver chose it on this phone and sees the app in it. Sent when the
+/// driver switches languages while signed in, and once after a sign-in or
+/// a launch when the two differ (accounts made before the app sent a
+/// language are all in Russian).
 class SessionLifecycle {
   SessionLifecycle({
     required this._auth,
@@ -32,6 +41,7 @@ class SessionLifecycle {
     required this._connectivity,
     required this._lifecycle,
     required this._tracking,
+    required this._settings,
   });
 
   final AuthRepository _auth;
@@ -44,8 +54,10 @@ class SessionLifecycle {
   final ConnectivityRepository _connectivity;
   final AppLifecycleService _lifecycle;
   final TrackingRepository _tracking;
+  final SettingsRepository _settings;
 
   bool _signedIn = false;
+  String _language = '';
   bool _online = true;
   String? _acceptedLoadId;
   final _subs = <StreamSubscription<Object?>>[];
@@ -55,6 +67,8 @@ class SessionLifecycle {
     _profile.addListener(_maybeRegisterPush);
     _invites.addListener(_onInvitesChanged);
     _connectivity.addListener(_onConnectivityChanged);
+    _settings.addListener(_onSettingsChanged);
+    _language = _settings.languageCode;
     _online = _connectivity.online;
     _subs
       ..add(_lifecycle.resumed.listen((_) => _refreshLoads()))
@@ -71,7 +85,7 @@ class SessionLifecycle {
       // The saved copies get the driver straight in; fresh ones follow.
       _profile.restore();
       _loads.restore();
-      unawaited(_profile.refresh());
+      unawaited(_refreshProfile());
       _refreshLoads();
     }
   }
@@ -80,7 +94,7 @@ class SessionLifecycle {
     if (_auth.isSignedIn == _signedIn) return;
     _signedIn = _auth.isSignedIn;
     if (_signedIn) {
-      unawaited(_profile.refresh());
+      unawaited(_refreshProfile());
       _refreshLoads();
     } else {
       unawaited(_ended());
@@ -94,6 +108,33 @@ class SessionLifecycle {
     await _profile.clear();
     await _loads.clear();
     await _push.unregister();
+  }
+
+  /// The fresh profile, and the account's language brought in line with
+  /// the app's if the server has it differently.
+  Future<void> _refreshProfile() async {
+    final result = await _profile.refresh();
+    if (result case Ok(value: User(:final language?))) {
+      if (language != _settings.languageCode) await _sendLanguage();
+    }
+  }
+
+  /// The driver switched languages: the server hears about it when signed
+  /// in, and the tracking notification is re-worded right away.
+  void _onSettingsChanged() {
+    final language = _settings.languageCode;
+    if (language == _language) return;
+    _language = language;
+    unawaited(_tracking.reconfigure());
+    if (_signedIn) unawaited(_sendLanguage());
+  }
+
+  Future<void> _sendLanguage() async {
+    final language = _settings.languageCode;
+    if (await _profile.updateLanguage(language) case Error(:final error)) {
+      // The next sign-in or launch tries again.
+      log.warning('[session] language not sent: $error');
+    }
   }
 
   /// Notifications are asked for once the driver is fully in (signed in
@@ -154,6 +195,7 @@ class SessionLifecycle {
     _profile.removeListener(_maybeRegisterPush);
     _invites.removeListener(_onInvitesChanged);
     _connectivity.removeListener(_onConnectivityChanged);
+    _settings.removeListener(_onSettingsChanged);
     for (final sub in _subs) {
       unawaited(sub.cancel());
     }
