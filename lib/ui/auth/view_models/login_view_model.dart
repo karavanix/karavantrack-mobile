@@ -40,8 +40,12 @@ class LoginViewModel extends ChangeNotifier {
     required this._invites,
   }) : _isSignUp = _auth.lastSignUp != null {
     submit = Command1(_submit);
-    signInWithApple = Command0(_auth.signInWithApple);
-    signInWithTelegram = Command0(_auth.startTelegramSignIn);
+    signInWithApple = Command0(
+      () => _auth.signInWithApple(source: _signUpSource),
+    );
+    signInWithTelegram = Command0(
+      () => _auth.startTelegramSignIn(source: _signUpSource),
+    );
     _auth.addListener(notifyListeners);
     _settings.addListener(notifyListeners);
     _telegramErrors = _auth.telegramErrors.listen((e) {
@@ -77,6 +81,11 @@ class LoginViewModel extends ChangeNotifier {
 
   /// Came here from "Log in & accept" on an invite.
   bool get forInvite => _invites.acceptAfterSignIn;
+
+  /// For the server's records: a sign-up with an invite link waiting came
+  /// through that link.
+  SignUpSource get _signUpSource =>
+      _invites.token != null ? SignUpSource.invite : SignUpSource.app;
 
   Locale get locale => _settings.locale;
 
@@ -128,6 +137,7 @@ class LoginViewModel extends ChangeNotifier {
       password: c.password,
       firstName: c.firstName.trim(),
       lastName: c.lastName.trim(),
+      source: _signUpSource,
     );
   }
 

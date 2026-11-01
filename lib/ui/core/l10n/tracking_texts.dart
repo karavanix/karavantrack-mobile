@@ -1,15 +1,18 @@
-import 'package:flutter/widgets.dart';
+import 'dart:ui';
 
+import '../../../data/repositories/settings_repository.dart';
 import '../../../data/services/local_store.dart';
 import '../../../data/services/tracking/tracking_config.dart';
 import 'l10n.dart';
 
 /// The tracking library's own texts in the app's language. Read from the
 /// device rather than a BuildContext: the library is configured before the
-/// first frame, and also when the app runs with no UI at all.
+/// first frame, and also when the app runs with no UI at all. The language
+/// is resolved the way SettingsRepository resolves it, so the notification
+/// matches the screens.
 TrackingTexts trackingTexts(LocalStore store) {
   final t = lookupAppLocalizations(
-    Locale(store.getString(StoreKeys.locale) ?? 'en'),
+    SettingsRepository.initialLocale(store, PlatformDispatcher.instance.locale),
   );
   return TrackingTexts(
     notificationTitle: t.trackingNotificationTitle,

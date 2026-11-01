@@ -84,6 +84,22 @@ class ProfileRepository extends ChangeNotifier {
     };
   }
 
+  /// Tells the server which language to write to the user in. The copy
+  /// here is updated in place: nothing else about the profile changes.
+  Future<Result<void>> updateLanguage(String language) async {
+    final result = await _api.updateLanguage(language);
+    if (result case Error(:final error)) return Result.error(error);
+    if (_user case final user?) {
+      _user = user.withLanguage(language);
+      await _store.setString(
+        StoreKeys.cachedProfile,
+        jsonEncode(_user!.toJson()),
+      );
+      notifyListeners();
+    }
+    return const Result.ok(null);
+  }
+
   Future<void> clear() async {
     _user = null;
     _status = ProfileStatus.unknown;

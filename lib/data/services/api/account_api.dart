@@ -19,6 +19,10 @@ class AccountApi {
     decode: (_) {},
   );
 
+  /// The language of the user's e-mails and pushes. Names left out stay.
+  Future<Result<void>> updateLanguage(String language) =>
+      _client.put('/users/me', data: {'language': language}, decode: (_) {});
+
   Future<Result<void>> delete() => _client.delete('/users/me', decode: (_) {});
 
   Future<Result<void>> registerDevice({

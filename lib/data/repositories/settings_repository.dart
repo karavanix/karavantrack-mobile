@@ -6,13 +6,21 @@ import '../services/local_store.dart';
 
 /// On-device preferences: language, theme and the first-run flags.
 class SettingsRepository extends ChangeNotifier {
-  SettingsRepository({required this._store})
-    : _locale = Locale(_store.getString(StoreKeys.locale) ?? 'en'),
-      _darkTheme = _store.getBool(StoreKeys.darkTheme) ?? true,
-      _seenLanguage = _store.getBool(StoreKeys.seenLanguage) ?? false,
-      _seenOnboarding = _store.getBool(StoreKeys.seenOnboarding) ?? false;
+  SettingsRepository({required LocalStore store, Locale? deviceLocale})
+    : _store = store,
+      _locale = initialLocale(
+        store,
+        deviceLocale ?? PlatformDispatcher.instance.locale,
+      ),
+      _darkTheme = store.getBool(StoreKeys.darkTheme) ?? true,
+      _seenLanguage = store.getBool(StoreKeys.seenLanguage) ?? false,
+      _seenOnboarding = store.getBool(StoreKeys.seenOnboarding) ?? false;
 
   static const supportedLocales = [Locale('en'), Locale('ru'), Locale('uz')];
+
+  /// What the app speaks when the driver never picked: the phone's language
+  /// when the app has it, Russian otherwise.
+  static const fallbackLocale = Locale('ru');
 
   /// Names for the language picker, each in its own language.
   static const languageNames = {
@@ -21,6 +29,19 @@ class SettingsRepository extends ChangeNotifier {
     'uz': "O'zbek",
   };
 
+  /// The language the app starts in: the driver's choice if there is one,
+  /// else the phone's language, else [fallbackLocale]. Also used where
+  /// there's no repository yet (the tracking library's texts in main).
+  static Locale initialLocale(LocalStore store, Locale deviceLocale) {
+    final saved = store.getString(StoreKeys.locale);
+    if (saved != null) return Locale(saved);
+    return supportedLocales.any(
+          (l) => l.languageCode == deviceLocale.languageCode,
+        )
+        ? Locale(deviceLocale.languageCode)
+        : fallbackLocale;
+  }
+
   final LocalStore _store;
 
   Locale _locale;
@@ -28,8 +49,11 @@ class SettingsRepository extends ChangeNotifier {
   bool _seenLanguage;
   bool _seenOnboarding;
 
-  /// The language the user picked; the app ignores the system language.
+  /// The language the driver picked, or the one the app started in.
   Locale get locale => _locale;
+
+  /// The language as the server knows it: `ru`, `uz` or `en`.
+  String get languageCode => _locale.languageCode;
 
   bool get darkTheme => _darkTheme;
 

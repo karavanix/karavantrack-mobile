@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:driver_tracking_app/data/repositories/auth_repository.dart';
 import 'package:driver_tracking_app/data/services/api/api_client.dart';
 import 'package:driver_tracking_app/data/services/api/api_exception.dart';
@@ -22,6 +24,87 @@ void main() {
     expect(result, isA<Ok<void>>());
     expect(g.auth.isSignedIn, isTrue);
     expect(g.store.values[StoreKeys.refreshToken], isNotNull);
+  });
+
+  group('sign-up records', () {
+    Map<String, Object?> body(TestGraph g, String path) =>
+        (g.backend.requestsTo(path).single.data as Map).cast();
+
+    test('e-mail: the app\'s language and the source', () async {
+      final g = TestGraph(deviceLocale: const Locale('uz'));
+      await g.auth.signUp(
+        email: 'new@yool.live',
+        password: 'password1',
+        firstName: 'Bek',
+        lastName: '',
+      );
+
+      final sent = body(g, '/auth/register');
+      expect(sent['language'], 'uz');
+      expect(sent['attribution'], {'source': 'app'});
+    });
+
+    test('an invite is said so, in every way of signing in', () async {
+      final g = TestGraph();
+      await g.settings.setLocale(const Locale('ru'));
+      g.apple.next = const Result.ok((
+        identityToken: 'apple-id-token',
+        authorizationCode: 'apple-code',
+        firstName: null,
+        lastName: null,
+      ));
+
+      await g.auth.signUp(
+        email: 'new@yool.live',
+        password: 'password1',
+        firstName: '',
+        lastName: '',
+        source: SignUpSource.invite,
+      );
+      await g.auth.signInWithApple(source: SignUpSource.invite);
+      await g.auth.signOut();
+      await g.auth.startTelegramSignIn(source: SignUpSource.invite);
+      g.telegram.appRedirect();
+      await pumpUntil(() => g.auth.isSignedIn);
+
+      for (final path in ['/auth/register', '/auth/apple', '/auth/telegram']) {
+        final sent = body(g, path);
+        expect(sent['language'], 'ru', reason: path);
+        expect(sent['attribution'], {'source': 'invite'}, reason: path);
+      }
+    });
+
+    test('the browser Telegram login carries them too', () async {
+      final g = TestGraph();
+      g.telegram.appLoginAvailable = false;
+
+      await g.auth.startTelegramSignIn();
+      g.telegram.redirect(code: 'tg-code', state: 'st');
+      await pumpUntil(() => g.auth.isSignedIn);
+
+      final sent = body(g, '/auth/telegram/callback');
+      expect(sent['language'], 'en');
+      expect(sent['attribution'], {'source': 'app'});
+    });
+
+    test('the Telegram source survives a restart, like the verifier', () async {
+      final g = TestGraph();
+      await g.auth.startTelegramSignIn(source: SignUpSource.invite);
+
+      final telegram = FakeTelegramAuthService()
+        ..challenge = g.telegram.challenge
+        ..appRedirect();
+      final auth = AuthRepository(
+        api: AuthApi(ApiClient.public(adapter: g.backend.server)),
+        store: g.store,
+        apple: g.apple,
+        telegram: telegram,
+        language: () => 'en',
+      );
+      await pumpUntil(() => auth.isSignedIn);
+
+      expect(body(g, '/auth/telegram')['attribution'], {'source': 'invite'});
+    });
   });
 
   test('a wrong password is a 403 and leaves the user signed out', () async {
@@ -140,6 +223,7 @@ void main() {
         store: g.store,
         apple: g.apple,
         telegram: telegram,
+        language: () => 'en',
       );
 
       await pumpUntil(() => auth.isSignedIn);
@@ -208,6 +292,7 @@ void main() {
         store: g.store,
         apple: g.apple,
         telegram: telegram,
+        language: () => 'en',
       );
 
       await pumpUntil(() => auth.isSignedIn);

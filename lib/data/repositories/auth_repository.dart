@@ -16,15 +16,32 @@ import '../services/telegram_auth_service.dart';
 
 typedef SignUpForm = ({String email, String firstName, String lastName});
 
+/// Where a sign-up from this app came from, for the server's records.
+enum SignUpSource {
+  /// The driver installed the app and signed up on their own.
+  app,
+
+  /// The driver came through a shipper's invite link.
+  invite;
+
+  static SignUpSource parse(String? name) =>
+      values.firstWhere((v) => v.name == name, orElse: () => app);
+}
+
 /// The session: how the user signs in, and the tokens once they have. The
 /// only owner of the tokens. Signed in means a refresh token is stored;
 /// listeners (the router, SessionLifecycle) hear about every change.
+///
+/// Every sign-in may create the account, so each carries the app's
+/// language (from [language], read at the moment of the request) and a
+/// [SignUpSource]; the server keeps them only for a new user.
 class AuthRepository extends ChangeNotifier implements TokenSource {
   AuthRepository({
     required this._api,
     required this._store,
     required this._apple,
     required this._telegram,
+    required this._language,
   }) : _accessToken = _store.getString(StoreKeys.accessToken),
        _refreshToken = _store.getString(StoreKeys.refreshToken),
        _pendingEmail = _store.getString(StoreKeys.pendingVerificationEmail) {
@@ -35,6 +52,7 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
   final LocalStore _store;
   final AppleSignInService _apple;
   final TelegramAuthService _telegram;
+  final String Function() _language;
   late final StreamSubscription<TelegramCallback> _telegramSub;
 
   String? _accessToken;
@@ -88,6 +106,7 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
     required String password,
     required String firstName,
     required String lastName,
+    SignUpSource source = SignUpSource.app,
   }) async {
     _lastSignUp = (email: email, firstName: firstName, lastName: lastName);
     final result = await _api.register(
@@ -95,6 +114,7 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
       password: password,
       firstName: firstName,
       lastName: lastName,
+      info: _signUpInfo(source),
     );
     if (result case Error(:final error)) return Result.error(error);
     _pendingEmail = email;
@@ -119,7 +139,9 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
     notifyListeners();
   }
 
-  Future<Result<void>> signInWithApple() async {
+  Future<Result<void>> signInWithApple({
+    SignUpSource source = SignUpSource.app,
+  }) async {
     final credential = await _apple.requestCredential();
     switch (credential) {
       case Error(:final error):
@@ -130,6 +152,7 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
           authorizationCode: value.authorizationCode,
           firstName: value.firstName,
           lastName: value.lastName,
+          info: _signUpInfo(source),
         );
         return _signedIn(result);
     }
@@ -138,8 +161,13 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
   /// Opens the login in the Telegram app, or Telegram's login page in the
   /// browser when there's no Telegram app. The sign-in completes when the
   /// code comes back (see [telegramWaiting], [telegramInProgress],
-  /// [telegramErrors]).
-  Future<Result<void>> startTelegramSignIn() async {
+  /// [telegramErrors]). The source is kept on the device with the
+  /// verifier: the sign-in completes in another launch when iOS kills the
+  /// app while the driver is in Telegram.
+  Future<Result<void>> startTelegramSignIn({
+    SignUpSource source = SignUpSource.app,
+  }) async {
+    await _store.setString(StoreKeys.telegramSignUpSource, source.name);
     final pkce = createPkce();
     final url = await _telegram.appLoginUrl(codeChallenge: pkce.challenge);
     if (url != null) {
@@ -188,6 +216,7 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
         code: code,
         state: state,
         redirectUri: Env.telegramRedirectUrl,
+        info: _telegramSignUpInfo(),
       ),
     };
     _telegramInProgress = false;
@@ -216,9 +245,18 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
       case Ok(value: final idToken):
         // The code is spent; a new login starts with a new verifier.
         await _store.remove(StoreKeys.telegramVerifier);
-        return _api.telegramIdToken(idToken);
+        return _api.telegramIdToken(idToken, info: _telegramSignUpInfo());
     }
   }
+
+  SignUpInfo _signUpInfo(SignUpSource source) =>
+      (language: _language(), source: source.name);
+
+  /// The source saved by [startTelegramSignIn]; a code that arrives with
+  /// no sign-in of ours behind it counts as the app's own.
+  SignUpInfo _telegramSignUpInfo() => _signUpInfo(
+    SignUpSource.parse(_store.getString(StoreKeys.telegramSignUpSource)),
+  );
 
   Future<Result<void>> _signedIn(Result<TokenPair> result) async {
     switch (result) {

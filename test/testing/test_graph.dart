@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:driver_tracking_app/data/repositories/attachment_repository.dart';
 import 'package:driver_tracking_app/data/repositories/auth_repository.dart';
 import 'package:driver_tracking_app/data/repositories/connectivity_repository.dart';
@@ -29,9 +31,12 @@ import 'fake_tracking_service.dart';
 /// The data layer wired the way config/dependencies.dart wires it, over
 /// fakes. Everything is created on first use.
 class TestGraph {
-  TestGraph({FakeBackend? backend, FakeLocalStore? store})
-    : backend = backend ?? FakeBackend(),
-      store = store ?? FakeLocalStore();
+  TestGraph({
+    FakeBackend? backend,
+    FakeLocalStore? store,
+    this.deviceLocale = const Locale('en'),
+  }) : backend = backend ?? FakeBackend(),
+       store = store ?? FakeLocalStore();
 
   /// A device already signed in (tokens the backend accepts on refresh are
   /// not needed: requests just carry a header).
@@ -53,6 +58,10 @@ class TestGraph {
 
   final FakeBackend backend;
   final FakeLocalStore store;
+
+  /// What the phone speaks; English so the texts in tests are the
+  /// template's.
+  final Locale deviceLocale;
   final push = FakePushService();
   final links = FakeDeepLinkService();
   final apple = FakeAppleSignInService();
@@ -70,13 +79,17 @@ class TestGraph {
     store: store,
     apple: apple,
     telegram: telegram,
+    language: () => settings.languageCode,
   );
   late final _client = ApiClient.authenticated(
     tokens: auth,
     adapter: backend.server,
   );
   late final account = AccountApi(_client);
-  late final settings = SettingsRepository(store: store);
+  late final settings = SettingsRepository(
+    store: store,
+    deviceLocale: deviceLocale,
+  );
   late final profile = ProfileRepository(api: account, store: store);
   late final invites = InviteRepository(api: InvitesApi(_client), links: links);
   late final pushes = PushRepository(push: push, api: account, store: store);
@@ -116,6 +129,7 @@ class TestGraph {
     connectivity: connectivity,
     lifecycle: lifecycle,
     tracking: tracking,
+    settings: settings,
   )..start();
   late final trackingLifecycle = TrackingLifecycle(
     auth: auth,

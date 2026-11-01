@@ -2,6 +2,12 @@ import '../../../utils/result.dart';
 import 'api_client.dart';
 import 'models/token_pair.dart';
 
+/// What the server records about a new account besides the credentials:
+/// the language of its e-mails and pushes (`ru`, `uz` or `en`) and where
+/// the sign-up came from. Every sign-up carries one; for an account that
+/// already exists the server ignores it.
+typedef SignUpInfo = ({String language, String source});
+
 /// The `/auth/*` endpoints that don't need a token. Every account made from
 /// this app is a carrier, hence the fixed role.
 class AuthApi {
@@ -10,6 +16,11 @@ class AuthApi {
   final ApiClient _client;
 
   static const _role = 'carrier';
+
+  static Map<String, Object?> _signUpFields(SignUpInfo info) => {
+    'language': info.language,
+    'attribution': {'source': info.source},
+  };
 
   Future<Result<TokenPair>> login({
     required String email,
@@ -27,6 +38,7 @@ class AuthApi {
     required String password,
     required String firstName,
     required String lastName,
+    required SignUpInfo info,
   }) => _client.post(
     '/auth/register',
     data: {
@@ -35,6 +47,7 @@ class AuthApi {
       'role': _role,
       if (firstName.isNotEmpty) 'first_name': firstName,
       if (lastName.isNotEmpty) 'last_name': lastName,
+      ..._signUpFields(info),
     },
     decode: (_) {},
   );
@@ -53,6 +66,7 @@ class AuthApi {
     required String authorizationCode,
     String? firstName,
     String? lastName,
+    required SignUpInfo info,
   }) => _client.post(
     '/auth/apple',
     data: {
@@ -61,6 +75,7 @@ class AuthApi {
       'role': _role,
       if (firstName != null && firstName.isNotEmpty) 'first_name': firstName,
       if (lastName != null && lastName.isNotEmpty) 'last_name': lastName,
+      ..._signUpFields(info),
     },
     decode: TokenPair.fromJson,
   );
@@ -78,9 +93,12 @@ class AuthApi {
   );
 
   /// Sign-in with the id_token the device got from Telegram itself.
-  Future<Result<TokenPair>> telegramIdToken(String idToken) => _client.post(
+  Future<Result<TokenPair>> telegramIdToken(
+    String idToken, {
+    required SignUpInfo info,
+  }) => _client.post(
     '/auth/telegram',
-    data: {'id_token': idToken, 'role': _role},
+    data: {'id_token': idToken, 'role': _role, ..._signUpFields(info)},
     decode: TokenPair.fromJson,
   );
 
@@ -89,6 +107,7 @@ class AuthApi {
     required String code,
     required String state,
     required String redirectUri,
+    required SignUpInfo info,
   }) => _client.post(
     '/auth/telegram/callback',
     data: {
@@ -96,6 +115,7 @@ class AuthApi {
       'state': state,
       'redirect_uri': redirectUri,
       'role': _role,
+      ..._signUpFields(info),
     },
     decode: TokenPair.fromJson,
   );

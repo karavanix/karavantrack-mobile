@@ -27,6 +27,10 @@ abstract final class StoreKeys {
   /// The PKCE verifier of a Telegram login in progress: iOS may kill the
   /// app while the driver is in Telegram.
   static const telegramVerifier = 'telegram_pkce_verifier';
+
+  /// Where that Telegram sign-up came from (`app` or `invite`), kept with
+  /// the verifier for the same reason.
+  static const telegramSignUpSource = 'telegram_signup_source';
   static const cachedProfile = 'cached_profile';
   static const cachedActiveLoad = 'cached_active_load';
   static const pushDeviceId = 'fcm_device_id';
@@ -44,6 +48,7 @@ abstract final class StoreKeys {
     seenOnboarding,
     pendingVerificationEmail,
     telegramVerifier,
+    telegramSignUpSource,
     cachedProfile,
     cachedActiveLoad,
     pushDeviceId,

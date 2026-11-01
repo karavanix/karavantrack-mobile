@@ -69,6 +69,9 @@ class FakeBackend {
   final pending = <String>{};
   String firstName = 'Ali';
   String lastName = 'Valiev';
+
+  /// The account's language on the server, as the server records it.
+  String language = 'ru';
   bool profileDeleted = false;
   int logouts = 0;
   final devices = <String, String>{};
@@ -220,11 +223,14 @@ class FakeBackend {
             'first_name': firstName,
             'last_name': lastName,
             'email': 'driver@yool.live',
+            'language': language,
           },
         );
       case ('PUT', '/users/me') when authed:
-        firstName = body['first_name'] as String;
-        lastName = body['last_name'] as String;
+        // Like the server: an empty or missing field keeps the value.
+        firstName = body['first_name'] as String? ?? firstName;
+        lastName = body['last_name'] as String? ?? lastName;
+        language = body['language'] as String? ?? language;
         return (status: 200, body: {});
       case ('DELETE', '/users/me') when authed:
         profileDeleted = true;

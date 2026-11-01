@@ -94,6 +94,9 @@ List<SingleChildWidget> providers(Services services) => [
   Provider<ConnectivityService>.value(value: services.connectivity),
   Provider<AppLifecycleService>.value(value: services.lifecycle),
   Provider<CameraService>.value(value: services.camera),
+  ChangeNotifierProvider(
+    create: (context) => SettingsRepository(store: context.read()),
+  ),
   Provider(create: (_) => AuthApi(ApiClient.public(adapter: services.http))),
   ChangeNotifierProvider(
     create: (context) => AuthRepository(
@@ -101,6 +104,7 @@ List<SingleChildWidget> providers(Services services) => [
       store: context.read(),
       apple: context.read(),
       telegram: context.read(),
+      language: () => context.read<SettingsRepository>().languageCode,
     ),
   ),
   Provider(
@@ -113,9 +117,6 @@ List<SingleChildWidget> providers(Services services) => [
   Provider(create: (context) => InvitesApi(context.read())),
   Provider(create: (context) => LoadsApi(context.read())),
   Provider(create: (context) => AttachmentsApi(context.read())),
-  ChangeNotifierProvider(
-    create: (context) => SettingsRepository(store: context.read()),
-  ),
   ChangeNotifierProvider(
     create: (context) =>
         ProfileRepository(api: context.read(), store: context.read()),
@@ -172,6 +173,7 @@ List<SingleChildWidget> providers(Services services) => [
       connectivity: context.read(),
       lifecycle: context.read(),
       tracking: context.read(),
+      settings: context.read(),
     )..start(),
     dispose: (_, session) => session.dispose(),
   ),

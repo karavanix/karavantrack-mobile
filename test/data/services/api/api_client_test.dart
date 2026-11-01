@@ -19,6 +19,7 @@ AuthRepository authRepository(FakeServer server, FakeLocalStore store) =>
       store: store,
       apple: FakeAppleSignInService(),
       telegram: FakeTelegramAuthService(),
+      language: () => 'en',
     );
 
 void main() {
