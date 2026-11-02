@@ -124,7 +124,7 @@ void main() {
     expect(find.text('Wrong email or password.'), findsOneWidget);
   });
 
-  testWidgets('forgotten password: code by e-mail, new password, sign in', (
+  testWidgets('forgotten password: e-mail, code, new password, sign in', (
     tester,
   ) async {
     final h = Harness(
@@ -140,16 +140,48 @@ void main() {
     expect(h.backend.resetCodesSentTo, ['driver@yool.live']);
     expect(find.textContaining('driver@yool.live'), findsOneWidget);
 
+    // The code step: nothing typed stays put.
+    await tapText(tester, 'Next');
+    expect(find.text('Please enter the verification code'), findsOneWidget);
+    await clearSnackBars(tester);
     await enter(tester, 'Verification Code', '111111');
+    await tapText(tester, 'Next');
+    expect(find.text('Confirm password'), findsOneWidget);
+
+    // The password step checks the pair before the server sees it.
+    await enter(tester, 'New password', 'short');
+    await enter(tester, 'Confirm password', 'short');
+    await tapText(tester, 'Change password');
+    expect(
+      find.text('The password must be at least 8 characters.'),
+      findsOneWidget,
+    );
+    await clearSnackBars(tester);
     await enter(tester, 'New password', 'password2');
+    await enter(tester, 'Confirm password', 'password3');
+    await tapText(tester, 'Change password');
+    expect(find.text("The passwords don't match."), findsOneWidget);
+    await clearSnackBars(tester);
+    expect(h.backend.requestsTo('/auth/password/reset'), isEmpty);
+
+    // A wrong code is only known to the server: back to the code step.
+    await enter(tester, 'Confirm password', 'password2');
     await tapText(tester, 'Change password');
     expect(
       find.text('Wrong code. Check the email and try again.'),
       findsOneWidget,
     );
     await clearSnackBars(tester);
+    expect(find.text('Next'), findsOneWidget);
+    expect(
+      find.text('111111'),
+      findsNothing,
+      reason: 'the code field is clean',
+    );
 
     await enter(tester, 'Verification Code', '123456');
+    await tapText(tester, 'Next');
+    // The passwords typed before are still there.
     await tapText(tester, 'Change password');
 
     // Back on the sign-in screen, told what to do.
@@ -166,9 +198,7 @@ void main() {
     expect(find.text('Loads'), findsWidgets);
   });
 
-  testWidgets('forgotten password: back from the code corrects the e-mail', (
-    tester,
-  ) async {
+  testWidgets('forgotten password: back goes one step back', (tester) async {
     final h = Harness(
       device: {StoreKeys.seenLanguage: true, StoreKeys.seenOnboarding: true},
     );
@@ -181,8 +211,17 @@ void main() {
 
     await enter(tester, 'Email', 'typo@yool.live');
     await tapText(tester, 'Send code');
+    await enter(tester, 'Verification Code', '123456');
+    await tapText(tester, 'Next');
     expect(find.text('Change password'), findsOneWidget);
 
+    // From the password to the code.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Next'), findsOneWidget);
+    expect(find.text('Send the code again'), findsOneWidget);
+
+    // From the code to the e-mail, to correct it.
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(find.text('Send code'), findsOneWidget);
