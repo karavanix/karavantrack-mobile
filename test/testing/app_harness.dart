@@ -64,6 +64,9 @@ const signedInDevice = <String, Object>{
 };
 
 Future<void> tapText(WidgetTester tester, String text) async {
+  // The test window is 800×600: a button below the fold is scrolled to,
+  // as a driver would.
+  await tester.ensureVisible(find.text(text));
   await tester.tap(find.text(text));
   await tester.pumpAndSettle();
 }

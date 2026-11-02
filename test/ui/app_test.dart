@@ -124,6 +124,75 @@ void main() {
     expect(find.text('Wrong email or password.'), findsOneWidget);
   });
 
+  testWidgets('forgotten password: code by e-mail, new password, sign in', (
+    tester,
+  ) async {
+    final h = Harness(
+      device: {StoreKeys.seenLanguage: true, StoreKeys.seenOnboarding: true},
+    );
+    await h.start(tester);
+    await enter(tester, 'Email', 'driver@yool.live');
+
+    await tapText(tester, 'Forgot password?');
+    expect(find.text('Reset password'), findsOneWidget);
+    // The e-mail from the sign-in form is already there.
+    await tapText(tester, 'Send code');
+    expect(h.backend.resetCodesSentTo, ['driver@yool.live']);
+    expect(find.textContaining('driver@yool.live'), findsOneWidget);
+
+    await enter(tester, 'Verification Code', '111111');
+    await enter(tester, 'New password', 'password2');
+    await tapText(tester, 'Change password');
+    expect(
+      find.text('Wrong code. Check the email and try again.'),
+      findsOneWidget,
+    );
+    await clearSnackBars(tester);
+
+    await enter(tester, 'Verification Code', '123456');
+    await tapText(tester, 'Change password');
+
+    // Back on the sign-in screen, told what to do.
+    expect(find.text('Sign in'), findsWidgets);
+    expect(
+      find.text('Password changed. Sign in with the new password.'),
+      findsOneWidget,
+    );
+    await clearSnackBars(tester);
+    await enter(tester, 'Email', 'driver@yool.live');
+    await enter(tester, 'Password', 'password2');
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Sign in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Loads'), findsWidgets);
+  });
+
+  testWidgets('forgotten password: back from the code corrects the e-mail', (
+    tester,
+  ) async {
+    final h = Harness(
+      device: {StoreKeys.seenLanguage: true, StoreKeys.seenOnboarding: true},
+    );
+    await h.start(tester);
+
+    await tapText(tester, 'Forgot password?');
+    await tapText(tester, 'Send code');
+    expect(find.text('Enter a valid email address.'), findsOneWidget);
+    await clearSnackBars(tester);
+
+    await enter(tester, 'Email', 'typo@yool.live');
+    await tapText(tester, 'Send code');
+    expect(find.text('Change password'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Send code'), findsOneWidget);
+    expect(find.text('typo@yool.live'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Forgot password?'), findsOneWidget);
+  });
+
   testWidgets('invite link on a fresh install: log in & accept in one go', (
     tester,
   ) async {

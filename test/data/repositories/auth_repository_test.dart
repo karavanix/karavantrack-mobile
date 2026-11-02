@@ -193,6 +193,42 @@ void main() {
     });
   });
 
+  group('password reset', () {
+    test('the code is asked for, then the new password set with it', () async {
+      final g = TestGraph();
+
+      expect(
+        await g.auth.requestPasswordReset('driver@yool.live'),
+        isA<Ok<void>>(),
+      );
+      expect(g.backend.resetCodesSentTo, ['driver@yool.live']);
+
+      final result = await g.auth.resetPassword(
+        email: 'driver@yool.live',
+        code: '123456',
+        newPassword: 'password2',
+      );
+
+      expect(result, isA<Ok<void>>());
+      expect(g.auth.isSignedIn, isFalse, reason: 'no tokens from a reset');
+      expect(g.backend.accounts['driver@yool.live'], 'password2');
+      final sent =
+          g.backend.requestsTo('/auth/password/reset').single.data as Map;
+      expect(sent.keys, unorderedEquals(['email', 'code', 'new_password']));
+    });
+
+    test('an unknown e-mail gets an Ok and no code', () async {
+      final g = TestGraph();
+
+      expect(
+        await g.auth.requestPasswordReset('nobody@yool.live'),
+        isA<Ok<void>>(),
+      );
+
+      expect(g.backend.resetCodesSentTo, isEmpty);
+    });
+  });
+
   group('Telegram', () {
     test('logs in in the Telegram app, which sends the code back', () async {
       final g = TestGraph();

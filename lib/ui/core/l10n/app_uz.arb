@@ -236,5 +236,16 @@
   "trackingRationaleTitle": "Fonda joylashuvga ruxsat berilsinmi?",
   "trackingRationaleMessage": "Ekran o'chiq bo'lganda ham reys kuzatilishi uchun «{option}» ni tanlang.",
   "trackingRationaleAllow": "Sozlamalarni ochish",
-  "pointsQueued": "{count} ta nuqta yuborilishini kutmoqda"
+  "pointsQueued": "{count} ta nuqta yuborilishini kutmoqda",
+  "forgotPassword": "Parolni unutdingizmi?",
+  "resetPasswordTitle": "Parolni tiklash",
+  "resetPasswordIntro": "Hisobingiz pochtasini kiriting, unga kod yuboramiz.",
+  "sendCode": "Kod yuborish",
+  "resetCodeSent": "Agar bu pochta bilan hisob bo'lsa, kod {email} manziliga yuborildi. Kodni va yangi parolni kiriting.",
+  "newPassword": "Yangi parol",
+  "changePassword": "Parolni o'zgartirish",
+  "passwordChanged": "Parol o'zgartirildi. Yangi parol bilan kiring.",
+  "resetResendCode": "Kodni qayta yuborish",
+  "errorResetCodeExpired": "Kodning muddati tugagan yoki u allaqachon ishlatilgan. Kodni qayta yuboring.",
+  "errorResetCodeTooMany": "Noto'g'ri urinishlar juda ko'p. Kodni qayta yuboring."
 }

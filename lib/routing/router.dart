@@ -8,6 +8,8 @@ import '../data/repositories/profile_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../ui/auth/view_models/login_view_model.dart';
 import '../ui/auth/views/login_screen.dart';
+import '../ui/forgot_password/view_models/forgot_password_view_model.dart';
+import '../ui/forgot_password/views/forgot_password_screen.dart';
 import '../ui/invite/view_models/invite_view_model.dart';
 import '../ui/invite/views/invite_screen.dart';
 import '../ui/language/view_models/language_view_model.dart';
@@ -127,6 +129,17 @@ GoRouter createRouter({
           ),
           dispose: (vm) => vm.dispose(),
           builder: (vm) => LoginScreen(viewModel: vm),
+        ),
+      ),
+      GoRoute(
+        path: Routes.forgotPassword,
+        builder: (context, state) => _Owned(
+          create: () => ForgotPasswordViewModel(
+            auth: context.read(),
+            email: state.uri.queryParameters['email'] ?? '',
+          ),
+          dispose: (vm) => vm.dispose(),
+          builder: (vm) => ForgotPasswordScreen(viewModel: vm),
         ),
       ),
       GoRoute(
