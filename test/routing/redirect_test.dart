@@ -120,6 +120,15 @@ void main() {
 
     test('lets the required route itself through', () {
       expect(redirect(state(signedIn: false), Routes.login), isNull);
+      // The password reset sits over the sign-in screen, nowhere else.
+      expect(redirect(state(signedIn: false), Routes.forgotPassword), isNull);
+      expect(
+        redirect(
+          state(signedIn: false, seenOnboarding: false),
+          Routes.forgotPassword,
+        ),
+        Routes.onboarding,
+      );
       expect(redirect(state(inviteToken: 'tok'), Routes.invite('tok')), isNull);
     });
 
@@ -127,6 +136,7 @@ void main() {
       for (final entry in [
         Routes.splash,
         Routes.login,
+        Routes.forgotPassword,
         Routes.language,
         Routes.onboarding,
         Routes.verifyEmail,

@@ -5,6 +5,7 @@ abstract final class Routes {
   static const language = '/language';
   static const onboarding = '/onboarding';
   static const login = '/login';
+  static const forgotPassword = '/forgot-password';
   static const profileSetup = '/profile-setup';
   static const noConnection = '/no-connection';
 

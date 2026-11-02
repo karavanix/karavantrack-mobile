@@ -80,7 +80,13 @@ String? requiredRoute(RouteState s) {
 /// Returns the path to go to instead, or null to let it through.
 String? redirect(RouteState s, String location) {
   final required = requiredRoute(s);
-  if (required != null) return location == required ? null : required;
+  if (required != null) {
+    // The password reset opens over the sign-in screen.
+    if (required == Routes.login && location == Routes.forgotPassword) {
+      return null;
+    }
+    return location == required ? null : required;
+  }
   // In the app proper the entry screens are behind us. Leaving an accepted
   // invite goes to its load.
   if (!_isEntryRoute(location)) return null;
@@ -97,5 +103,6 @@ bool _isEntryRoute(String location) =>
     location == Routes.language ||
     location == Routes.onboarding ||
     location == Routes.login ||
+    location == Routes.forgotPassword ||
     location == Routes.profileSetup ||
     location == Routes.noConnection;

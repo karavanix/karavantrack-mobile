@@ -133,6 +133,19 @@ class AuthRepository extends ChangeNotifier implements TokenSource {
     return _signedIn(result);
   }
 
+  /// Asks for a password reset code to be e-mailed. The server says Ok
+  /// whether or not there's an account, so the screen can't tell either.
+  Future<Result<void>> requestPasswordReset(String email) =>
+      _api.forgotPassword(email);
+
+  /// Sets a new password with the code from the e-mail. Doesn't sign in:
+  /// the driver enters the new password on the sign-in screen.
+  Future<Result<void>> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) => _api.resetPassword(email: email, code: code, newPassword: newPassword);
+
   /// Leaves the code screen for the sign-up form.
   Future<void> cancelVerification() async {
     await _clearPending();

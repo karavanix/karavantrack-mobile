@@ -120,6 +120,26 @@ class AuthApi {
     decode: TokenPair.fromJson,
   );
 
+  /// E-mails a reset code to [email]. Always Ok: whether the account
+  /// exists is not told.
+  Future<Result<void>> forgotPassword(String email) => _client.post(
+    '/auth/password/forgot',
+    data: {'email': email},
+    decode: (_) {},
+  );
+
+  /// Sets the password with the code from the e-mail. No tokens: the user
+  /// signs in with the new password. Every other device is signed out.
+  Future<Result<void>> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) => _client.post(
+    '/auth/password/reset',
+    data: {'email': email, 'code': code, 'new_password': newPassword},
+    decode: (_) {},
+  );
+
   Future<Result<TokenPair>> refresh(String refreshToken) => _client.post(
     '/auth/refresh',
     data: {'refresh_token': refreshToken},

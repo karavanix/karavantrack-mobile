@@ -250,5 +250,23 @@
         "type": "int"
       }
     }
-  }
+  },
+  "forgotPassword": "Forgot password?",
+  "resetPasswordTitle": "Reset password",
+  "resetPasswordIntro": "Enter the email of your account. We'll send a code to it.",
+  "sendCode": "Send code",
+  "resetCodeSent": "The code was sent to {email}, if there is an account with this email. Enter it and a new password.",
+  "@resetCodeSent": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "newPassword": "New password",
+  "changePassword": "Change password",
+  "passwordChanged": "Password changed. Sign in with the new password.",
+  "resetResendCode": "Send the code again",
+  "errorResetCodeExpired": "The code has expired or was already used. Send the code again.",
+  "errorResetCodeTooMany": "Too many wrong attempts. Send the code again."
 }

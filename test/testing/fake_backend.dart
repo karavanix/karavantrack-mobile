@@ -72,6 +72,9 @@ class FakeBackend {
 
   /// The account's language on the server, as the server records it.
   String language = 'ru';
+
+  /// Each password reset code e-mailed, by address.
+  final resetCodesSentTo = <String>[];
   bool profileDeleted = false;
   int logouts = 0;
   final devices = <String, String>{};
@@ -211,6 +214,23 @@ class FakeBackend {
           return _error(403, 'FORBIDDEN', 'bad code');
         }
         return _tokens();
+      case ('POST', '/auth/password/forgot'):
+        // Like the server: 200 whether or not the account exists.
+        if (accounts.containsKey(body['email'])) {
+          resetCodesSentTo.add(body['email'] as String);
+        }
+        return (status: 200, body: null);
+      case ('POST', '/auth/password/reset'):
+        final email = body['email'] as String;
+        if (!accounts.containsKey(email)) {
+          return _error(400, 'OTP_NOT_FOUND', 'otp not found');
+        }
+        if (body['code'] != '123456') {
+          return _error(400, 'OTP_MISMATCH', 'otp mismatch');
+        }
+        accounts[email] = body['new_password'] as String;
+        _validRefresh.clear();
+        return (status: 200, body: null);
       case ('POST', '/auth/logout'):
         logouts++;
         _validRefresh.clear();

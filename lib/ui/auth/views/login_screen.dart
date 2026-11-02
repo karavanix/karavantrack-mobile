@@ -1,7 +1,9 @@
 import 'package:flutter/gestures.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
+import '../../../routing/routes.dart';
 import '../../../utils/command.dart';
 import '../../../utils/logger.dart';
 import '../../../utils/result.dart';
@@ -82,6 +84,24 @@ class _LoginScreenState extends State<LoginScreen> {
     final text = loginErrorText(context.l10n, error, signUp: _vm.isSignUp);
     if (text == null) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  /// The reset screen comes back with `true` once the password is set;
+  /// the driver then signs in with it here.
+  Future<void> _forgotPassword() async {
+    final uri = Uri(
+      path: Routes.forgotPassword,
+      queryParameters: {
+        if (_emailCtrl.text.trim().isNotEmpty) 'email': _emailCtrl.text.trim(),
+      },
+    );
+    final changed = await context.push<bool>(uri.toString());
+    if (changed == true && mounted) {
+      _passwordCtrl.clear();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.passwordChanged)));
+    }
   }
 
   void _submit() => _vm.submit.execute((
@@ -197,7 +217,24 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          if (!_vm.isSignUp)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: loading ? null : _forgotPassword,
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 8,
+                                  ),
+                                ),
+                                child: Text(t.forgotPassword),
+                              ),
+                            ),
+                          SizedBox(height: _vm.isSignUp ? 20 : 4),
 
                           // Primary CTA
                           _TallButton(

@@ -236,5 +236,16 @@
   "trackingRationaleTitle": "Разрешить геолокацию в фоне?",
   "trackingRationaleMessage": "Чтобы рейс отслеживался и с выключенным экраном, выберите «{option}».",
   "trackingRationaleAllow": "Открыть настройки",
-  "pointsQueued": "{count, plural, one{{count} точка ждёт отправки} few{{count} точки ждут отправки} many{{count} точек ждут отправки} other{{count} точки ждут отправки}}"
+  "pointsQueued": "{count, plural, one{{count} точка ждёт отправки} few{{count} точки ждут отправки} many{{count} точек ждут отправки} other{{count} точки ждут отправки}}",
+  "forgotPassword": "Забыли пароль?",
+  "resetPasswordTitle": "Сброс пароля",
+  "resetPasswordIntro": "Введите почту вашего аккаунта, на неё придёт код.",
+  "sendCode": "Отправить код",
+  "resetCodeSent": "Код отправлен на {email}, если на эту почту есть аккаунт. Введите его и новый пароль.",
+  "newPassword": "Новый пароль",
+  "changePassword": "Сменить пароль",
+  "passwordChanged": "Пароль изменён. Войдите с новым паролем.",
+  "resetResendCode": "Отправить код ещё раз",
+  "errorResetCodeExpired": "Код устарел или уже использован. Отправьте код ещё раз.",
+  "errorResetCodeTooMany": "Слишком много неверных попыток. Отправьте код ещё раз."
 }
