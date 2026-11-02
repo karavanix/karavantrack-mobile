@@ -57,6 +57,7 @@ jobs:
             echo "::error::BG_LICENSE_KEY_IOS secret is empty"
             exit 1
           fi
+          python3 .github/scripts/check_bg_license.py live.yool.app
           flutter build ios --release --no-codesign
 
       - name: Xcode Archive & Generate ExportOptions
