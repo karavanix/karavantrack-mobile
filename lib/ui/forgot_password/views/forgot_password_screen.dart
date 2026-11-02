@@ -9,8 +9,9 @@ import '../../core/l10n/l10n.dart';
 import '../../verify_email/view_models/verify_email_view_model.dart';
 import '../view_models/forgot_password_view_model.dart';
 
-/// Two steps on one screen: the e-mail, then the code with the new
-/// password. Closes with `true` once the password is set.
+/// Three steps on one screen: the e-mail, the code, then the new
+/// password with its confirmation. Closes with `true` once the password
+/// is set.
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key, required this.viewModel});
 
@@ -24,6 +25,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   late final _emailCtrl = TextEditingController(text: _vm.email);
   final _codeCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _confirmationCtrl = TextEditingController();
   bool _obscurePassword = true;
 
   ForgotPasswordViewModel get _vm => widget.viewModel;
@@ -32,22 +34,32 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void initState() {
     super.initState();
     _vm.sendCode.addListener(_onSendCodeChanged);
+    _vm.confirmCode.addListener(_onConfirmCodeChanged);
     _vm.reset.addListener(_onResetChanged);
   }
 
   @override
   void dispose() {
     _vm.sendCode.removeListener(_onSendCodeChanged);
+    _vm.confirmCode.removeListener(_onConfirmCodeChanged);
     _vm.reset.removeListener(_onResetChanged);
     _emailCtrl.dispose();
     _codeCtrl.dispose();
     _passwordCtrl.dispose();
+    _confirmationCtrl.dispose();
     super.dispose();
   }
 
   void _onSendCodeChanged() {
     if (_vm.sendCode.result case Error(:final error)) {
       _vm.sendCode.clearResult();
+      _showError(error);
+    }
+  }
+
+  void _onConfirmCodeChanged() {
+    if (_vm.confirmCode.result case Error(:final error)) {
+      _vm.confirmCode.clearResult();
       _showError(error);
     }
   }
@@ -59,6 +71,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         context.pop(true);
       case Error(:final error):
         _vm.reset.clearResult();
+        // The server refused the code: the view model went back to the
+        // code step, and the field starts clean for the next one.
+        if (_vm.step == ResetStep.code) _codeCtrl.clear();
         _showError(error);
       case null:
         break;
@@ -76,15 +91,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final t = context.l10n;
 
     return ListenableBuilder(
-      listenable: Listenable.merge([_vm, _vm.sendCode, _vm.reset]),
+      listenable: Listenable.merge([
+        _vm,
+        _vm.sendCode,
+        _vm.confirmCode,
+        _vm.reset,
+      ]),
       builder: (context, child) {
         final loading = _vm.sendCode.running || _vm.reset.running;
-        final atCode = _vm.step == ResetStep.code;
+        final step = _vm.step;
         return PopScope(
-          // Back from the code goes to the e-mail, not out of the screen.
-          canPop: !atCode,
+          // Back goes one step back, not out of the screen.
+          canPop: step == ResetStep.email,
           onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) _vm.backToEmail();
+            if (!didPop) _vm.back();
           },
           child: Scaffold(
             appBar: AppBar(title: Text(t.resetPasswordTitle)),
@@ -98,17 +118,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Icon(
-                          atCode
-                              ? Icons.mark_email_read_outlined
-                              : Icons.lock_reset_outlined,
+                          switch (step) {
+                            ResetStep.email => Icons.lock_reset_outlined,
+                            ResetStep.code => Icons.mark_email_read_outlined,
+                            ResetStep.password => Icons.password_outlined,
+                          },
                           size: 48,
                           color: theme.colorScheme.primary,
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          atCode
-                              ? t.resetCodeSent(_vm.email)
-                              : t.resetPasswordIntro,
+                          switch (step) {
+                            ResetStep.email => t.resetPasswordIntro,
+                            ResetStep.code => t.resetCodeSent(_vm.email),
+                            ResetStep.password => t.resetNewPasswordIntro,
+                          },
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: theme.colorScheme.onSurface.withValues(
@@ -120,13 +144,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(20),
-                            child: atCode
-                                ? _codeStep(t, loading)
-                                : _emailStep(t, loading),
+                            child: switch (step) {
+                              ResetStep.email => _emailStep(t, loading),
+                              ResetStep.code => _codeStep(t, loading),
+                              ResetStep.password => _passwordStep(t, loading),
+                            },
                           ),
                         ),
                         const SizedBox(height: 8),
-                        if (atCode)
+                        if (step == ResetStep.code)
                           Center(
                             child: TextButton(
                               onPressed: loading
@@ -183,11 +209,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           labelText: t.verificationCodeLabel,
           counterText: '',
         ),
+        onSubmitted: (code) => _vm.confirmCode.execute(code),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 20),
+      _Button(
+        loading: loading,
+        onPressed: () => _vm.confirmCode.execute(_codeCtrl.text),
+        label: t.next,
+      ),
+    ],
+  );
+
+  Widget _passwordStep(AppLocalizations t, bool loading) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
       TextField(
         controller: _passwordCtrl,
         obscureText: _obscurePassword,
+        autofocus: true,
+        textInputAction: TextInputAction.next,
         decoration: InputDecoration(
           labelText: t.newPassword,
           suffixIcon: IconButton(
@@ -203,17 +243,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
         ),
       ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _confirmationCtrl,
+        // One eye for both: showing the first shows the second too.
+        obscureText: _obscurePassword,
+        decoration: InputDecoration(labelText: t.confirmPassword),
+        onSubmitted: (_) => _submitPassword(),
+      ),
       const SizedBox(height: 20),
       _Button(
         loading: loading,
-        onPressed: () => _vm.reset.execute((
-          code: _codeCtrl.text,
-          password: _passwordCtrl.text,
-        )),
+        onPressed: _submitPassword,
         label: t.changePassword,
       ),
     ],
   );
+
+  void _submitPassword() => _vm.reset.execute((
+    password: _passwordCtrl.text,
+    confirmation: _confirmationCtrl.text,
+  ));
 }
 
 class _Button extends StatelessWidget {
@@ -257,6 +307,7 @@ String resetPasswordErrorText(
     l10n.errorPasswordTooShort,
   FormException() => l10n.errorServer,
   EmptyCodeException() => l10n.enterVerificationCode,
+  PasswordMismatchException() => l10n.errorPasswordsMismatch,
   HttpException(code: 'OTP_EXPIRED' || 'OTP_NOT_FOUND') =>
     l10n.errorResetCodeExpired,
   HttpException(code: 'OTP_TOO_MANY_ATTEMPTS') => l10n.errorResetCodeTooMany,

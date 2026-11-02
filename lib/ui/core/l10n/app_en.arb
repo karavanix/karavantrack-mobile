@@ -255,7 +255,7 @@
   "resetPasswordTitle": "Reset password",
   "resetPasswordIntro": "Enter the email of your account. We'll send a code to it.",
   "sendCode": "Send code",
-  "resetCodeSent": "The code was sent to {email}, if there is an account with this email. Enter it and a new password.",
+  "resetCodeSent": "The code was sent to {email}, if there is an account with this email.",
   "@resetCodeSent": {
     "placeholders": {
       "email": {
@@ -263,7 +263,10 @@
       }
     }
   },
+  "resetNewPasswordIntro": "Choose a new password of at least 8 characters.",
   "newPassword": "New password",
+  "confirmPassword": "Confirm password",
+  "errorPasswordsMismatch": "The passwords don't match.",
   "changePassword": "Change password",
   "passwordChanged": "Password changed. Sign in with the new password.",
   "resetResendCode": "Send the code again",
